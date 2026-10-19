@@ -1,0 +1,13 @@
+{
+  "name": "storagesystem-base",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.14.0" },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --test-timeout=20000",
+    "check": "node scripts/check.js",
+    "audit:data": "node src/cli.js audit",
+    "inventory": "node src/cli.js"
+  }
+}

@@ -1,14 +1,57 @@
 # Architecture direction
 
-This document records the agreed direction, not an implemented system. Application framework, database driver, and library choices remain open until the initial implementation is designed.
+This document separates the implemented development foundation from the remaining target architecture. See README and the roadmap for feature availability.
+
+## Initial implementation decisions
+
+The first vertical slice uses Node.js 24.14, native ECMAScript modules, `node:http`, `node:sqlite` (`DatabaseSync`), and a small browser client served as static assets. There are no external runtime packages or frontend compilation steps. The HTTP layer is deliberately small and transport-only; it can later move to a framework without changing the inventory service. The built-in SQLite API is experimental in Node 24, so the container pins its runtime by version and image digest and tests it during the build.
+
+- `src/store.js`: SQLite, migration version 1, transactions, import/export, backup and audit.
+- `src/inventory.js`: current-session selection, inventory writes, search, local answers and location presentation.
+- `src/server.js`: HTTP transport and management authentication.
+- `src/mcp.js`: stateless JSON-RPC tool transport using the same inventory service.
+- `src/photos.js`: provider-specific image retrieval using stored settings.
+- `src/catalog.js`: album adapters, short-lived preview grants and validated image attachment without network I/O in transactions.
+- `src/settings.js`: redacted settings views and transactional source/credential editing.
+- `src/ai.js`: named AI connections, task settings, bounded OpenRouter/compatible HTTP adapter and validated single/multi-photo drafts without inventory writes.
+- `web/box-draft.js`: selected-photo role editing, combined suggestion review and explicit transfer to the ordinary new-box editor.
+- `web/`: English inventory UI; all searches call the shared server service.
+
+SQLite separates locations, boxes, sessions, photos and settings into relational tables with foreign keys and a unique current-session index. Each record also retains its legacy JSON payload so optional and future fields survive migration. Constraints tie JSON identifiers to relational columns. The audit validates complete record shapes and relationships as well as SQLite integrity. Location identifiers are preserved exactly. Empty storage-unit design and spatial layout are still future work.
+
+For this initial small-inventory implementation, writes validate a snapshot and replace inventory rows inside one short `BEGIN IMMEDIATE` transaction. This favors atomic behavior and a narrow service surface; it is not an efficient strategy for large inventories. Before supporting larger datasets, replace it with targeted statements and measure latency. SQLite operations and snapshots run synchronously on the application thread; backups temporarily pause request handling. No network I/O occurs inside write transactions.
+
+The schema uses `PRAGMA user_version`. Version 0 is initialized transactionally, version 1 is reopened, and newer unknown versions are rejected. Future changes must add ordered transactional migrations rather than edit an already deployed schema. `VERSION` remains authoritative for application version; package.json deliberately has no duplicate version.
+
+Management uses a separate environment key sent in a header, never query authentication. Public read authentication and per-photo HMAC signatures follow the reference contract. No management session is persisted in the browser. Origin checking rejects cross-site browser requests; no permissive CORS is enabled.
+
+The photo settings API exposes credential-presence flags and a SHA-256 source revision, never stored keys or unrelated settings. A source change invalidates previews, cached catalog metadata and pending new attachments. Moving an existing key to another host/provider is prevented by clearing credentials on identity changes. Sources cannot switch servers once photos are associated, because legacy references do not yet encode server identity.
+
+Album previews for images not yet in inventory use an independent per-process HMAC grant bound to asset ID, source revision and a 15-minute expiration. They do not contain management keys or upstream credentials. New image attachments must still belong to the configured album, are checked before the short database transaction, and cannot already belong to a different box. Retained associations require no network round-trip. Photo roles and filenames are stored in the same legacy-compatible photo records; no schema migration is needed for this increment.
+
+Consistent online backup uses SQLite [`VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html), with an exclusively reserved destination, instead of copying a live `.sqlite` file and ignoring its WAL. The Node asynchronous backup path stalled intermittently under the Windows Node 26.5.1 test runner, so it is not used. Restoration audits a snapshot and creates a new file; it never replaces the running database.
+
+## AI image renditions
+
+Inventory photo responses also include a signed `previewUrl` for uncropped box-detail images. Its signature binds both asset and rendition, and the adapter limits it to 8 MiB. The photo viewer loads the bounded original rendition and implements fit, actual-size and relative zoom through image dimensions inside a scrollable viewport. History expansion is browser-only state.
+
+AI analysis uses the photo adapter's internal `analysis` variant: Immich's larger `size=preview` image, or PhotoPrism's existing preview tile, limited to 8 MiB. Gallery and signed public thumbnail retrieval retain their existing 2 MiB small-thumbnail behavior. This avoids sending Immich's WebP thumbnail to compatible servers that cannot decode it, without downloading unbounded originals. The upstream photo source remains read-only.
 
 ## Boundaries
+
+Multi-photo analysis uses the same AI service and busy guard as single-photo tests. It accepts one to six distinct current-album asset references, reads each preview with a single source snapshot and bounds the total to 16 MiB. Model photo indices must form an exact permutation of the selected input positions; application code maps them back to source identifiers and preserves manual roles. No model-generated box/location identifier is accepted. Combined text and per-photo notes are returned as an unsaved suggestion, not persisted.
+
+The browser transfers a reviewed suggestion to the existing editor and session service. The final save rechecks album membership/source revision and photo ownership. For AI new-box drafts, `expectNewBox` is checked atomically within the inventory transaction to prevent replacement of an existing identifier, including a concurrent creation. No additional persistence schema or AI-specific inventory write path is introduced.
+
+AI configuration is stored in the `aiWorkspace` settings record without a relational schema change. Legacy `ai`, `translationAi`, `prompts` and `modelPrompts` records remain preserved and inactive. Management-only AI endpoints redact keys and use a configuration revision for stale writes and pending-result checks. A preview resolves its AI task and photo source once, checks current album membership and fetches only the selected preview image with those credentials. It validates the model output before returning the draft, never writes inventory, never follows provider redirects and never forwards raw provider errors. Connection tests/model discovery are distinct from an explicit image test. Last connection-test status is ephemeral and invalidated by settings edits or process restart. Credentials in full SQLite backups must be treated as private, just like photo credentials.
 
 Separate inventory rules, persistence, external integrations, transport endpoints, and user interface. UI actions, REST endpoints, and MCP tools should call the same application services.
 
 External integrations include album photo sources, AI providers, and printing. Keep provider-specific behavior behind explicit adapters.
 
 ## Persistence
+
+Optional box `coverAssetId` metadata records an explicit current-photo cover choice. The inventory service resolves a current photo for cards, returning additive REST fields `coverAssetId` and `coverIsAutomatic`. A management-only cover endpoint validates current-session membership and changes metadata atomically, without creating history. Session saves clear a cover removed from the new current photos. SQLite payload storage already preserves this metadata; no schema change is required. MCP's existing photo projections and default contents-photo preference remain unchanged.
 
 Use SQLite for a single application instance, with the active database on local storage in a persistent Docker volume. Do not place the active database on SMB or NFS.
 

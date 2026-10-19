@@ -18,6 +18,10 @@ __pycache__/
 # Runtime data and backups
 /data/
 /backups/
+/exports/
+/inventory.json
+/inventory-export*.json
+/app-settings.json
 *.db
 *.db-*
 *.sqlite

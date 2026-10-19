@@ -1,0 +1,17 @@
+# Build and push the verified image to your own registry first.
+# Set STORAGE_IMAGE to that immutable tag or digest in Portainer.
+services:
+  app:
+    image: ${STORAGE_IMAGE:?Set the published Storage System image}
+    ports:
+      - "${STORAGE_PORT:-3210}:3210"
+    environment:
+      STORAGE_ADMIN_KEY: ${STORAGE_ADMIN_KEY:?Set a separate management key}
+      STORAGE_API_KEY: ${STORAGE_API_KEY:?Set a public read API key}
+      APP_BASE_URL: ${APP_BASE_URL:?Set the browser and HA accessible application URL}
+    volumes:
+      - app-data:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+volumes:
+  app-data:

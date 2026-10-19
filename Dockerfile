@@ -1,0 +1,20 @@
+FROM node:24.14.0-bookworm-slim@sha256:d8e448a56fc63242f70026718378bd4b00f8c82e78d20eefb199224a4d8e33d8 AS test
+WORKDIR /app
+COPY package.json VERSION ./
+COPY src ./src
+COPY web ./web
+COPY test ./test
+RUN node --test --test-timeout=20000
+
+FROM node:24.14.0-bookworm-slim@sha256:d8e448a56fc63242f70026718378bd4b00f8c82e78d20eefb199224a4d8e33d8 AS runtime
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3210 STORAGE_DB=/data/storage.sqlite
+WORKDIR /app
+COPY --from=test --chown=node:node /app/src ./src
+COPY --from=test --chown=node:node /app/web ./web
+COPY --from=test --chown=node:node /app/package.json /app/VERSION ./
+RUN mkdir /data && chown node:node /data
+USER node
+VOLUME /data
+EXPOSE 3210
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node -e "fetch('http://127.0.0.1:3210/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+CMD ["node", "src/server.js"]

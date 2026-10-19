@@ -1,0 +1,17 @@
+name: storagesystem-base-dev
+services:
+  app:
+    image: storagesystem-base:local
+    build: .
+    ports:
+      - "127.0.0.1:${STORAGE_PORT:-3210}:3210"
+    environment:
+      STORAGE_ADMIN_KEY: ${STORAGE_ADMIN_KEY:?Set a separate management key}
+      STORAGE_API_KEY: ${STORAGE_API_KEY:-}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3210}
+    volumes:
+      - app-data:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+volumes:
+  app-data:

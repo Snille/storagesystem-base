@@ -1,0 +1,77 @@
+# Compatibility inventory
+
+## Source baseline
+
+Reviewed on 2026-10-19 from local source, without modifying or restarting the existing application:
+
+- `Snille/storagesystem`, commit `a92ed1d22f5bfb3e61a168e29bdae0b1ea04aadb`.
+- `Snille/storagesystem-ha`, commit `15e4daa9633e5507421f3a48390e4760546f0318`.
+
+Reference application files: `lib/types.ts`, `lib/data-store.ts`, `lib/search.ts`, `lib/public-api.ts`, `lib/public-api-auth.ts`, `lib/mcp-server.ts`, `lib/location-schema.ts`, `lib/location-presentation.ts`, `lib/shelf-map.ts`, public and MCP route handlers, photo adapters, catalog scripts, and `docs/MANUAL.md`. HA reference files: `api.py`, `result.py`, and `binary_sensor.py` under `custom_components/storagesystem`.
+
+Reusable behavior includes current-session precedence, structured location grammar, per-photo signature format, and the public/tool response shapes. These rules are implemented behind the new service boundary; the old JSON persistence, UI, AI runtime and printing implementation are not copied wholesale.
+
+## User workflows
+
+| Reference workflow | Development implementation |
+| --- | --- |
+| Search contents and browse boxes | Implemented through shared inventory services |
+| Storage map for shelving units, benches and cabinets | Location labels, filters and MCP unit browsing implemented; spatial map pending |
+| Create/update a box and its inventory session | Manual entry implemented; prior sessions retained |
+| Review box photos and history | Implemented; draft removal affects only the next session and retains earlier associations |
+| Album inbox and photo selection | Implemented for Immich/PhotoPrism with selected album, roles and unassigned filtering |
+| AI photo roles, analysis, matching and corrections | Single-photo tests and multi-photo new-box draft review/edit/save implemented; manual roles retained; automatic matching and AI updates to existing boxes remain pending |
+| AI-generated natural answers | Local search fallback implemented; provider-generated answers pending |
+| Settings, prompts and per-model overrides | Photo source and API-language editing implemented; other imported settings preserved, remaining editing/execution pending |
+| Language catalogs and translation tool | API location labels/local answers in en/sv/de; catalog/override editing and separate-file migration pending |
+| Label designer and printer selection/status | Pending; no physical printer contact performed |
+| Excel catalog import/export | Pending; old Python scripts read/write inventory.json directly and cannot run unchanged |
+
+## REST contract
+
+Public routes use `x-api-key`, Bearer authentication, or the legacy `?key=` fallback in that order. A configured key is compared without timing-sensitive string comparison. Wrong/missing keys return HTTP 401 with `{"error":"Invalid or missing API key."}`. If no public key is configured, public reads are open, matching the reference. Management routes always need a separate configured key and do not accept query credentials.
+
+| Route | Verified behavior |
+| --- | --- |
+| `GET /api/public/health` | `{ok, service:"lagersystem", date}` |
+| `GET /api/public/search?q=...&limit=...&lang=...` | Trimmed query; default limit 10, clamp 1–25, nonfinite fallback; `{query,count,matches}`; missing q → 400 |
+| `POST /api/public/ask` | `{query,language?}` → `{query,answer,source,count,matches}`; source is currently always `search` |
+| `GET /api/public/boxes/:boxId?lang=...` | One box; unknown identifier → 404; optional fields omitted when absent |
+| `GET /api/public/assets/:assetId/thumbnail` or `/original` | Public API authentication or per-asset/per-variant `?sig=` authentication; configured provider retrieval |
+
+Matches preserve `boxId`, `label`, `locationId`, `location:{system,shelf,slot}`, box/session notes, session ID/date, summary, itemKeywords, photos and score. Photo metadata preserves photo ID, `immichAssetId`, role, optional capture date/notes, and thumbnail/original URLs. Images use `APP_BASE_URL` when configured; they never derive a public URL from an internal container service name or forward the upstream key. Without an external base URL, links are relative and may be unsuitable for HA.
+
+The signature is HMAC-SHA256 of `public-asset:VARIANT:ASSET_ID`, encoded as base64url using the public API key. It grants access only to that asset variant. Changing the API key invalidates existing signed links.
+
+Image URLs, headers and bytes are tested against local HTTP fixtures. Live Immich acceptance verifies the dedicated account's album catalog, previews, session attachment, REST and MCP, including signed thumbnails and originals. The test inventory is in memory, separate from development and production data. Actual PhotoPrism access is not verified. Only raster image MIME types are served, redirects are rejected, and thumbnails/originals are bounded to 2/32 MiB.
+
+## MCP contract
+
+`POST /api/mcp` uses public API authentication and stateless JSON-RPC 2.0 with JSON responses. Supported initialize protocol values follow the reference: `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05`. Notifications receive HTTP 202 without a body. Batch requests return a response array with notifications omitted. GET/DELETE return 405 with `Allow: POST`. Malformed JSON returns HTTP 400 and JSON-RPC -32700. Unsupported methods use -32601; unknown tools use -32602. Tool failures use `isError:true` text content.
+
+| Tool | Arguments |
+| --- | --- |
+| `search_inventory` | query, optional limit 1–25 and language |
+| `get_box` | box_id, optional language |
+| `list_locations` | optional language |
+| `list_boxes_at_location` | location slug, optional language |
+| `get_box_photo` | box_id, optional photo_id or role |
+
+MCP text results contain text JSON and structuredContent. Photo metadata excludes URLs and upstream credentials. `get_box_photo` returns a base64 thumbnail, choosing inside/spread/detail/label/location in that order unless explicitly selected. Locations group boxes by storage unit and order positions by row, slot and variant.
+
+## Known differences and acceptance gates
+
+- Search currently provides accent-insensitive substring/token matching, including filenames saved on new attachments. The reference's Swedish stemming, synonym/typo expansion and live album filename lookup have not been ported. Ranking parity is not claimed.
+- Current-session selection retains reference precedence: isCurrent, photo count, then creation date. Import rejects duplicate current sessions or broken references instead of guessing a repair.
+- Malformed `/ask` payloads now return 400 rather than the reference handler's possible 500. Error wording, multiple-match answers and German labels do not yet have complete parity tests.
+- Actual HA client calls and result mapping are verified separately from full HA config-flow, entities, services, conversation agent and frontend card testing.
+- Legacy settings are retained but only appearance language, public security configuration and photo source/album settings are currently consumed. Separate language files require a later migration step.
+
+## Photo management endpoints
+
+All `/api/manage/*` routes require the management header key. `GET/PUT /api/manage/settings` exposes and edits the photo source and default API language, with redacted credentials and an optimistic source revision. `GET /api/manage/albums` discovers albums; `GET /api/manage/album?refresh=true` returns the selected album's image metadata, assignment flags and expiring preview URLs. `POST /api/manage/session` requires the catalog's `photoSourceRevision` when attaching previously unused images, and verifies current album membership before writing.
+
+Immich album images use paginated `POST /api/search/metadata` with `albumIds`, `size` and `page`, matching the reference rather than relying on embedded album assets. Shared-link mode reads `/api/shared-links/me`. PhotoPrism lists `/api/v1/albums` and searches `/api/v1/photos` with album `s`, `count` and `offset`. All calls are read-only even where the metadata search method is POST. Adapter errors do not expose upstream response bodies or credentials.
+- Physical output, queues, driver/filter behavior and DYMO status remain unverified. Printer tests are deferred at the user's request until access is available.
+
+No replacement of production is appropriate until the remaining migration, integration and workflow acceptance gates pass.
