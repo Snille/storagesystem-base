@@ -1,6 +1,10 @@
 # AI settings design proposal
 
-Status: wider design direction with initial settings/single-photo implementation in 0.4.0-dev and multi-photo new-box draft review/edit/save in 0.5.0-dev. Available now: overview, named connections, task settings/extra instructions and combined analysis of one to six photos with per-photo roles and interpretations. AI updates to existing boxes, inventory answers, translation drafting and legacy customization mapping remain planned. This design replaces the organization of the reference settings rather than copying that form.
+Status: wider design direction with initial settings/single-photo implementation in 0.4.0-dev and multi-photo new-box draft review/edit/save in 0.5.0-dev. Available now: overview, named connections, task settings/extra instructions and combined analysis of one to six photos with per-photo roles and interpretations. Selected-photo updates to existing boxes with current-description context and explicit review/apply/save are available in 0.8.0-dev. Inventory answers, translation drafting and legacy customization mapping remain planned. This design replaces the organization of the reference settings rather than copying that form.
+
+## Voice-first retrieval direction
+
+The [workshop voice/search design](VOICE-SEARCH.md) records the live button-activated flow and Erik's primary requirement: one well-supported destination in one short spoken sentence, otherwise a brief clarification or no-match answer. Full candidate lists remain available on screen. The proposed hybrid embedding/lexical retrieval and bounded follow-up context are not implemented. Keep the existing SQLite database at the measured and doubled scale; Mimers Brain's PostgreSQL/pgvector implementation is a reference, not a database prerequisite. Model choice, threshold calibration and end-to-end voice decisions need a reviewed evaluation set before activation.
 
 ## Findings from the reference implementation
 
@@ -36,6 +40,8 @@ Start with one connection and Image inventory. Additional connections and task-s
 Interface translation belongs with language maintenance, with a link from the AI task list. It is not part of daily box inventory. Existing public/voice answer distinctions remain available as advanced options within Inventory answers, preserving external API behavior.
 
 Where a language follows the application's language, show both the rule and the current resolved language. Never encode inheritance as an unexplained blank input.
+
+Implemented in 0.7.0-dev: interface language and external-response language are separate. The existing image task value `app` continues to follow the external-response default for compatibility; it is labeled **Use the external response language**, with its resolved language shown. Explicit AI English/Swedish/German choices are independent of both defaults. Header **Languages** edits the English/Swedish interface choice and the external-response default; it does not rewrite stored inventory text.
 
 ## Image workflow
 

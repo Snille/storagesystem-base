@@ -55,6 +55,7 @@ export function validateInventory(input) {
 
 export function validateSettings(settings) {
   object(settings, 'settings');
+  if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);
   for (const [section, fields] of Object.entries({
     appearance: ['language'], security: ['publicApiKey', 'appBaseUrl'],

@@ -68,6 +68,12 @@ export class Store {
 
   settings() { return Object.fromEntries(this.db.prepare('SELECT id, record FROM settings ORDER BY id').all().map(r => [r.id, JSON.parse(r.record)])); }
 
+  locationIds() { return this.db.prepare('SELECT id FROM locations ORDER BY id').all().map(row => row.id); }
+
+  addLocation(id) {
+    this.transaction(() => this.db.prepare('INSERT OR IGNORE INTO locations VALUES (?)').run(id));
+  }
+
   writeSettings(settings) {
     for (const [id, value] of Object.entries(validateSettings(settings))) {
       this.db.prepare('INSERT INTO settings VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET record = excluded.record').run(id, JSON.stringify(value));

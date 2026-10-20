@@ -14,10 +14,14 @@ The first vertical slice uses Node.js 24.14, native ECMAScript modules, `node:ht
 - `src/catalog.js`: album adapters, short-lived preview grants and validated image attachment without network I/O in transactions.
 - `src/settings.js`: redacted settings views and transactional source/credential editing.
 - `src/ai.js`: named AI connections, task settings, bounded OpenRouter/compatible HTTP adapter and validated single/multi-photo drafts without inventory writes.
-- `web/box-draft.js`: selected-photo role editing, combined suggestion review and explicit transfer to the ordinary new-box editor.
-- `web/`: English inventory UI; all searches call the shared server service.
+- `src/search.js`: reference-style ranked search shared by browser, REST and MCP, using current contents and retained filename history.
+- `src/storage-map.js` / `web/storage-map.js`: shared sparse map of registered positions and current box occupancy; no inferred storage capacity.
+- `web/box-draft.js`: selected-photo role editing, combined suggestion review and explicit transfer to a new-box editor or the open existing-box editor. Updates include current editor context, before/after review and optional name changes; shared session saves guard the expected current session.
+- `web/`: English/Swedish inventory UI; all searches call the shared server service.
 
 SQLite separates locations, boxes, sessions, photos and settings into relational tables with foreign keys and a unique current-session index. Each record also retains its legacy JSON payload so optional and future fields survive migration. Constraints tie JSON identifiers to relational columns. The audit validates complete record shapes and relationships as well as SQLite integrity. Location identifiers are preserved exactly. Empty storage-unit design and spatial layout are still future work.
+
+Known storage positions use the existing `locations` table. Inventory imports and session saves register their referenced IDs; explicit management registration also permits empty positions. Moving boxes does not remove old positions. `Inventory.positions` supplies exact IDs, readable labels (without box-ID inference) and occupancy through management-only endpoints. The browser location editor uses the shared `src/locations.js` parser/builder to compose category/unit/row/slot/letter selections; new destinations use the ordinary session save. Existing saved IDs remain unchanged until explicit location editing. Session save remains the same shared service consumed by REST/MCP reads; the legacy MCP storage-unit grouping contract is unchanged. Unused positions are included in SQLite backup/restore but not in the legacy inventory-only JSON format. No schema migration is needed.
 
 For this initial small-inventory implementation, writes validate a snapshot and replace inventory rows inside one short `BEGIN IMMEDIATE` transaction. This favors atomic behavior and a narrow service surface; it is not an efficient strategy for large inventories. Before supporting larger datasets, replace it with targeted statements and measure latency. SQLite operations and snapshots run synchronously on the application thread; backups temporarily pause request handling. No network I/O occurs inside write transactions.
 
@@ -73,7 +77,7 @@ Provide consistent online SQLite backups, downloadable backup and controlled res
 
 Import legacy inventory and settings with validation, preserving IDs, history, photo associations, and relevant user configuration. Compare record counts and relationships, retain source files, and prove restoration into a fresh instance before considering migration complete.
 
-Review the existing Excel import/export path: its Python scripts currently access inventory.json directly and cannot be copied unchanged.
+Excel catalog import/export is excluded: Erik retired the one-time label-import workflow on 2026-10-20. It is not a migration or release requirement.
 
 ## Printing
 
@@ -88,3 +92,19 @@ The reference repository includes raster2dymolw_nolm.cpp, an adaptation of the D
 Target a prebuilt application image, a Compose stack usable in Portainer, a persistent application-data volume, and optional persistent print-service configuration. Document fresh install, updates, backup, restore, and health checks.
 
 Develop and verify this service separately from the existing installation. Do not couple it to an existing host's systemd service or checkout layout.
+
+New sessions may omit box/session box IDs together (or send both empty). The inventory service assigns an available location-based identifier inside its write transaction, falling back to a UUID-based ID for unparsed locations. Explicit IDs remain supported for compatibility. The browser shows a read-only proposed ID but sends an empty ID for new boxes; final allocation rechecks all existing box identifiers, including moved boxes.
+
+Session-photo viewers retain original/preview URLs through album and AI-draft transfer but exclude them from inventory writes. Unsaved album image grants bind asset, rendition, source revision and expiration; the existing adapter bounds previews to 8 MiB and originals to 32 MiB. Draft viewing hides cover-management controls. Exact position occupancy is checked in the shared save transaction using a canonical comparison key for known legacy formats; stored IDs are preserved. The current box is excluded from conflicts.
+
+## Language boundaries and photo assignment
+
+`appearance.uiLanguage` controls English/Swedish application text. The existing `appearance.language` remains the default for external local answers and location labels. AI task language `app` keeps its existing resolution to this external default, but the UI names that dependency explicitly. Interface management reads pass their UI language explicitly, independently of external defaults. Language-only edits use a dedicated management endpoint with optimistic revision checks and preserve photo credentials and source revision.
+
+The interface loads a bundled source-language catalog and Swedish translations through `web/i18n.js`. Only initial application-owned text/attributes and explicit UI text helpers are translated. Later inventory text, filenames, provider/model names and AI results are not automatically scanned or translated. The public interface-language endpoint returns only the configured interface language for the sign-in view. English remains the fallback for unmapped technical messages.
+
+Album assignment and write ownership use the same effective current-session selection as inventory reads, rather than all historical photo rows. Saving a session without a photo releases its current ownership while leaving prior photo records untouched. Attaching an image referenced only in history is a new attachment and must pass the current source/album checks; another box's current ownership is still checked inside the final transaction.
+
+## Proposed semantic retrieval and voice decisions
+
+[VOICE-SEARCH.md](VOICE-SEARCH.md) documents the existing physical-button-to-HA-to-Piper-to-announcement path and the proposed hybrid retrieval/one-destination answer contract. This is design work, not an implemented feature. Retain SQLite for the observed 164 boxes/293 current photo references and their conservative doubled scenario. Store derived, versioned embeddings separately from inventory rows and compare this small corpus directly before considering a vector extension or PostgreSQL. Original image files stay in the external photo service. Revisit the database choice on measured concurrency/corpus growth rather than treating PostgreSQL as a requirement for semantic quality. The production route to an embedding service remains an explicit deployment gate.

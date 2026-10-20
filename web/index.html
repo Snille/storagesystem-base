@@ -11,7 +11,7 @@
 <body>
   <header>
     <a class="brand" href="/">▦ <span>Storage System<small>Everything has a place.</small></span></a>
-    <div class="header-actions"><span class="badge">Development preview</span><button id="theme" class="quiet" aria-label="Toggle color theme">◐ Theme</button></div>
+    <div class="header-actions"><span class="badge">Development preview</span><button id="open-languages" class="quiet">Languages</button><button id="theme" class="quiet" aria-label="Toggle color theme">◐ Theme</button></div>
   </header>
   <main>
     <section id="connect" class="panel connection">
@@ -24,31 +24,62 @@
     </section>
     <p id="message" role="status" aria-live="polite"></p>
     <div id="workspace" hidden>
-      <section class="intro"><div><p class="eyebrow">INVENTORY</p><h1>A place for everything.</h1><p class="muted">Your workshop at a glance.</p></div><div class="actions"><button id="open-settings" class="quiet">Photo settings</button><button id="open-ai" class="quiet">AI assistance</button><button id="open-album" class="quiet">Album inbox</button><button id="new-box">+ Add box</button></div></section>
+      <section class="intro"><div><p class="eyebrow">INVENTORY</p><h1>A place for everything.</h1><p class="muted">Your workshop at a glance.</p></div><div class="actions"><button id="open-storage-map" class="quiet">Storage map</button><button id="open-settings" class="quiet">Photo settings</button><button id="open-ai" class="quiet">AI assistance</button><button id="open-album" class="quiet">Album inbox</button><button id="new-box">+ Add box</button></div></section>
       <section class="stats" aria-label="Inventory totals"><div><strong id="box-count">0</strong><span>Boxes</span></div><div><strong id="location-count">0</strong><span>Storage positions</span></div><div><strong id="session-count">0</strong><span>Inventory sessions</span></div><div><strong id="photo-count">0</strong><span>Photo references</span></div></section>
       <section class="toolbar"><label class="search-label">Search inventory<input id="search" type="search" placeholder="Search contents, box names, or locations…"></label><label>Location<select id="location"><option value="">All locations</option></select></label><button class="quiet" id="refresh">↻ Refresh</button></section>
       <p id="result-count" class="muted"></p>
       <section id="boxes" class="grid" aria-label="Inventory boxes"></section>
       <section id="empty" class="panel empty" hidden><h2>Your inventory starts here.</h2><p class="muted">Add your first box, or import an existing inventory below. Imports require an empty database.</p><button id="empty-add">+ Add first box</button></section>
       <details class="panel maintenance"><summary>Data &amp; maintenance</summary><p class="muted">Exports contain inventory only. SQLite backups also include settings and credentials: keep them private. Original photos remain in your photo service.</p><div class="actions"><button id="export" class="quiet">Export JSON</button><button id="backup" class="quiet">Download SQLite backup</button><button id="audit" class="quiet">Check data integrity</button></div><label class="import-label">Import inventory JSON into an empty database<input id="import" type="file" accept="application/json,.json"></label><p class="hint">For a full SQLite restore, stop a fresh instance and use the documented restore command. Existing data is never overwritten here.</p></details>
-      <p class="hint footer">Your photos stay in your photo service. Review AI suggestions before saving. Catalog spreadsheets and label printing are planned.</p>
+      <p class="hint footer">Your photos stay in your photo service. Review AI suggestions before saving. Label printing is planned.</p>
     </div>
   </main>
+  <dialog id="storage-map-dialog" class="wide-dialog" aria-labelledby="storage-map-title">
+    <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
+    <p id="storage-map-query" class="hint"></p>
+    <label>Storage unit<select id="storage-map-unit"></select></label>
+    <p id="storage-map-status" class="hint" role="status"></p>
+    <div id="storage-map-body"></div>
+  </dialog>
+  <dialog id="languages-dialog">
+    <form id="languages-form">
+      <div class="dialog-title"><h2>Languages</h2><button type="button" id="close-languages" class="quiet" aria-label="Close languages">✕</button></div>
+      <label>Interface language<select id="ui-language"><option value="en">English</option><option value="sv">Svenska</option></select></label>
+      <p class="hint">Menus, buttons and guidance in this application. Saved inventory descriptions are not translated.</p>
+      <label>Default language for external responses<select id="response-language"><option value="en">English</option><option value="sv">Swedish</option><option value="de">German</option></select></label>
+      <p class="hint">Answers and location names returned to Home Assistant, REST and MCP when the caller does not request a language. This does not change the interface.</p>
+      <h3>AI description language</h3><p class="hint">Choose the language for new AI descriptions in AI assistance → Image inventory. It can be English, Swedish, German, or use the external response language. Existing descriptions are not rewritten.</p>
+      <p id="languages-error" role="alert"></p><button id="save-languages">Save language settings</button>
+    </form>
+  </dialog>
   <dialog id="editor">
     <form id="box-form">
       <div class="dialog-title"><h2 id="editor-title">Add box</h2><button type="button" id="close-editor" class="quiet" aria-label="Close">✕</button></div>
       <p class="hint">Each save creates a new session and preserves the previous inventory.</p>
-      <p id="ai-editor-note" class="ai-disclosure" hidden>Review and edit the AI draft below, including its uncertainty notes and photo roles. Enter the box ID and location ID yourself. This creates a new box; to change an existing box, open it and choose Update inventory. Nothing is saved until you choose Save inventory session.</p>
-      <div class="form-grid"><label>Box ID<input name="boxId" required maxlength="200" placeholder="e.g. IVAR-A-H1-P1-A"></label><label>Location ID<input name="currentLocationId" required maxlength="200" placeholder="e.g. A-H1-P1-A"></label></div>
+      <p id="ai-editor-note" class="ai-disclosure" hidden>Review and edit the AI draft below, including its uncertainty notes and photo roles, and choose its storage position. The box ID is generated automatically. This creates a new box; to change an existing box, open it and choose Update inventory. The box is saved only when you choose Save inventory session.</p>
+      <input type="hidden" name="currentLocationId">
+      <section aria-label="Current location">
+        <h3>Current location</h3>
+        <p id="position-status" class="hint" role="status"></p>
+        <button id="change-position" type="button" class="quiet" hidden>Change location</button>
+        <div id="position-fields">
+          <div class="location-grid"><label>Location category<select id="position-kind"><option value="ivar">Shelving unit</option><option value="bench">Bench</option><option value="cabinet">Cabinet</option></select></label><label><span id="position-unit-label">Shelving unit</span><input id="position-unit" list="position-units" maxlength="100" placeholder="Choose or enter a shelving unit"><datalist id="position-units"></datalist></label><label><span id="position-row-label">Shelf</span><select id="position-row"></select></label></div>
+          <div class="form-grid"><label>Position<select id="position-slot"></select></label><label>Letter<select id="position-variant"></select></label></div>
+          <p id="position-availability" class="hint" role="status"></p>
+          <p class="hint">Choose a suggested unit or enter a new name. New positions are saved with the inventory session.</p>
+          <button id="cancel-position" type="button" class="quiet" hidden>Keep saved location</button>
+        </div>
+      </section>
       <label>Label<input name="label" required maxlength="500" placeholder="What is in this box?"></label>
       <label>Contents summary<textarea name="summary" rows="3" placeholder="Describe the contents"></textarea></label>
       <label>Keywords <span class="hint">(comma separated)</span><input name="keywords" placeholder="screws, M3, washers"></label>
       <label>Box notes<textarea name="notes" rows="2" placeholder="Anything useful to remember"></textarea></label>
-      <section class="editor-photos"><div class="dialog-title"><h3>Session photos</h3><button type="button" id="choose-photos" class="quiet">Choose from album</button></div><p class="hint">Choose a role for each image. Removing an image here only removes it from the new session; earlier history is preserved.</p><div id="session-photos" class="session-photos"></div></section>
+      <section class="editor-photos"><div class="dialog-title"><h3>Session photos</h3><button type="button" id="choose-photos" class="quiet">Choose from album</button></div><p class="hint">Click a photo to enlarge it and zoom in on labels or contents. Choose a role for each image. Removing an image here only removes it from the new session; earlier history is preserved.</p><div id="session-photos" class="session-photos"></div><p id="editor-ai-status" class="hint" role="status"></p><button id="editor-ai-analyze" type="button" class="quiet" disabled>Analyze selected photos</button></section>
       <p id="save-error" role="alert"></p><div class="actions"><button id="save">Save inventory session</button></div>
+      <p class="hint box-identity" title="Generated automatically. New boxes show a proposed ID until saved; existing IDs stay unchanged.">Box ID: <output id="box-identity">Assigned automatically on save</output></p>
     </form>
   </dialog>
-  <dialog id="detail"><div class="dialog-title"><h2 id="detail-title"></h2><button id="close-detail" class="quiet" aria-label="Close">✕</button></div><div id="detail-body"></div><div class="actions"><button id="edit">Update inventory</button></div></dialog>
+  <dialog id="detail" class="wide-dialog"><div class="dialog-title"><h2 id="detail-title"></h2><button id="close-detail" class="quiet" aria-label="Close">✕</button></div><div id="detail-body"></div><div class="actions"><button id="edit">Update inventory</button></div></dialog>
   <dialog id="photo-viewer" class="image-viewer" aria-labelledby="viewer-title">
     <div class="dialog-title"><h2 id="viewer-title"></h2><button id="viewer-close" class="quiet" aria-label="Close photo viewer">✕</button></div>
     <p id="viewer-caption" class="hint"></p>
@@ -58,11 +89,9 @@
     <div class="actions viewer-controls"><button id="viewer-previous" class="quiet" aria-label="Previous photo">← Previous</button><button id="viewer-next" class="quiet" aria-label="Next photo">Next →</button><button id="viewer-cover">Use as card image</button><button id="viewer-auto-cover" class="quiet">Automatic card image</button></div>
     <p class="hint">Click a detail to zoom in there, then hold and drag the image to explore. Use Fit image to zoom out, ← / → to browse and Esc to return to the box.</p>
   </dialog>
-  <dialog id="settings-dialog">
+  <dialog id="settings-dialog" class="wide-dialog">
     <form id="settings-form">
-      <div class="dialog-title"><h2>Photos &amp; language</h2><button type="button" id="close-settings" class="quiet" aria-label="Close settings">✕</button></div>
-      <label>API answer language<select name="language"><option value="en">English</option><option value="sv">Swedish</option><option value="de">German</option></select></label>
-      <p class="hint">Used by REST and MCP when no language is requested. The interface is currently English.</p>
+      <div class="dialog-title"><h2>Photo settings</h2><button type="button" id="close-settings" class="quiet" aria-label="Close settings">✕</button></div>
       <div class="form-grid"><label>Photo provider<select name="provider"><option value="immich">Immich</option><option value="photoprism">PhotoPrism</option></select></label><label>Access mode<select name="accessMode"><option value="apiKey">API key / token</option><option value="shareKey">Immich shared link key</option></select></label></div>
       <label>Photo server URL<input name="baseUrl" type="url" placeholder="https://photos.example.com" autocomplete="off"></label>
       <p class="hint">Server address only, without /api. Access is read-only; the application never uploads or changes photos.</p>
@@ -80,17 +109,19 @@
     <div class="dialog-title"><div><h2>Album inbox</h2><p id="album-status" class="hint" role="status"></p></div><button id="close-album" class="quiet" aria-label="Close album">✕</button></div>
     <div class="album-toolbar"><label class="check-label"><input id="unused-only" type="checkbox" checked> Show unassigned photos only</label><button id="refresh-album" class="quiet">Refresh album</button></div>
     <p id="album-error" role="alert" class="error"></p><div id="album-photos" class="album-grid"></div>
-    <div class="actions album-actions"><span id="selection-count" class="hint">0 selected</span><div class="actions"><button id="create-ai-draft" class="quiet" disabled>Create AI draft · up to 6 photos</button><button id="use-photos" disabled>Use selected photos</button></div></div>
+    <div class="actions album-actions"><span id="selection-count" class="hint" role="status">Select at least one photo to continue.</span><div class="actions"><button id="create-ai-draft" class="quiet" disabled aria-describedby="selection-count">Create AI draft · up to 6 photos</button><button id="use-photos" disabled aria-describedby="selection-count">Use selected photos</button></div></div>
   </dialog>
   <dialog id="box-draft-dialog" class="wide-dialog">
-    <div class="dialog-title"><div><p class="eyebrow">NEW BOX · AI ASSISTED</p><h2>Build a box draft</h2></div><button id="box-draft-close" class="quiet" aria-label="Close box draft">✕</button></div>
+    <div class="dialog-title"><div><p class="eyebrow" id="box-draft-eyebrow">NEW BOX · AI ASSISTED</p><h2 id="box-draft-title">Build a box draft</h2></div><button id="box-draft-close" class="quiet" aria-label="Close box draft">✕</button></div>
     <p class="hint">Combine up to six photos of the same box: its label, contents, storage location or details. Analysis creates a suggestion for you to review.</p>
     <h3>1. Photos &amp; roles</h3><div id="box-draft-photos" class="session-photos"></div>
     <p id="box-draft-disclosure" class="ai-disclosure"></p><button id="box-draft-run" disabled>Analyze photos together</button><p id="box-draft-status" class="hint" role="status" aria-live="polite"></p>
     <article id="box-draft-result" class="ai-result" hidden>
       <div class="dialog-title"><h3>2. Review combined suggestion</h3><span class="chip">Draft · not saved</span></div><p id="box-draft-meta" class="hint"></p>
+      <section id="box-draft-before" hidden><h3>Current description</h3><p id="box-draft-before-label"></p><p id="box-draft-before-summary" class="detail-notes"></p><p id="box-draft-before-keywords" class="hint"></p><h3>Proposed update</h3><p class="hint">Review the complete description. Only selected photos were analyzed; check that other contents are still represented. Nothing changes until you apply the suggestion.</p></section>
       <dl><dt>Suggested label</dt><dd id="box-draft-label"></dd><dt>Contents description</dt><dd id="box-draft-summary"></dd><dt>Searchable keywords</dt><dd id="box-draft-keywords"></dd><dt>Uncertainty &amp; conflicts</dt><dd id="box-draft-uncertainties"></dd></dl>
       <details><summary>View each photo's interpretation</summary><div id="box-draft-photo-notes"></div></details>
+      <label id="box-draft-name-option" class="check-label" hidden><input id="box-draft-update-name" type="checkbox">Also update the box name from the suggestion</label>
     </article>
     <div class="actions box-draft-footer"><button id="box-draft-apply" disabled>Review &amp; edit in box form →</button><span class="hint">The box form is the final step before saving.</span></div>
   </dialog>
@@ -104,7 +135,7 @@
       <div class="ai-task-list">
         <article class="ai-task"><span class="chip">Available to try</span><h3>Inventory from photos</h3><p>Combine photos of the same box into one draft description and searchable keywords. Review and edit before saving.</p><p id="ai-overview-model" class="hint"></p><div class="actions"><button type="button" id="ai-go-box">Choose photos for a box →</button><button type="button" id="ai-go-images" class="quiet">Settings &amp; single-photo test</button></div></article>
         <article class="ai-task"><span class="chip">Planned</span><h3>Inventory answers</h3><p>Write a short answer using matching boxes. Your existing inventory search already works without AI.</p></article>
-        <article class="ai-task"><span class="chip">Planned · language tools</span><h3>Interface translation</h3><p>Create draft translations for interface text. This is separate from descriptions of your boxes.</p></article>
+        <article class="ai-task"><span class="chip">Planned · language tools</span><h3>AI translation drafts</h3><p>Draft additional interface translations with AI. Built-in interface languages are selected under Languages.</p></article>
       </div>
       <p id="ai-legacy" class="hint" hidden>Imported AI settings are preserved. They have not been activated or automatically converted into these new task settings.</p>
     </section>
@@ -126,17 +157,17 @@
     <section id="ai-images" hidden>
       <h3>Inventory from photos</h3><p class="muted">Start with one photo. You get a suggestion to inspect, without changing any saved boxes.</p>
       <form id="ai-image-form">
-        <div class="form-grid"><label>Use connection<select id="ai-task-connection"></select></label><label>Output language<select id="ai-language"><option value="app">Follow application language</option><option value="en">English</option><option value="sv">Swedish</option><option value="de">German</option></select></label></div>
+        <div class="form-grid"><label>Use connection<select id="ai-task-connection"></select></label><label>AI description language<select id="ai-language"><option value="app">Use the external response language</option><option value="en">English</option><option value="sv">Swedish</option><option value="de">German</option></select></label></div>
         <p id="ai-language-help" class="hint"></p>
         <label>Image model<input id="ai-model" list="ai-models" maxlength="200" placeholder="Choose a model or enter its exact ID" autocomplete="off"><datalist id="ai-models"></datalist></label>
         <div class="actions"><button type="button" id="ai-load-models" class="quiet">Load models</button><span id="ai-model-help" class="hint">Image support is confirmed only by a successful image test.</span></div>
-        <details class="ai-advanced"><summary>Advanced instructions <span id="ai-custom" class="hint">· Default</span></summary><p class="hint">Add preferences for this task. Changing the model keeps these instructions.</p><label>Extra instructions<textarea id="ai-extra" rows="3" maxlength="4000" placeholder="e.g. Keep product codes exactly as written."></textarea></label><button type="button" id="ai-reset-instructions" class="quiet">Use default instructions</button><details><summary>View built-in instructions</summary><p id="ai-default-instructions" class="hint"></p></details></details>
+        <details class="ai-advanced"><summary>Advanced instructions <span id="ai-custom" class="hint">· Default</span></summary><p class="hint">Extra instructions are added to the built-in instructions below; they do not replace them. Changing the model keeps your additions.</p><label>Extra instructions<textarea id="ai-extra" rows="3" maxlength="4000" placeholder="e.g. Keep product codes exactly as written."></textarea></label><button type="button" id="ai-reset-instructions" class="quiet">Clear extra instructions</button><details><summary>View built-in instructions (read-only)</summary><p id="ai-default-instructions" class="hint"></p></details></details>
         <div class="actions"><button type="submit" id="ai-save-task">Save image settings</button><span id="ai-task-state" class="hint"></span></div>
       </form>
       <section class="ai-preview">
         <div class="dialog-title"><div><h3>Try a photo</h3><p class="hint">1. Select a photo · 2. Run analysis · 3. Review the suggestion</p></div><button type="button" id="ai-load-photos" class="quiet">Load test album</button></div>
         <p id="ai-photos-status" class="hint" role="status"></p><div id="ai-test-photos" class="album-grid ai-photo-grid" aria-label="AI test photos"></div>
-        <label>How should this photo be read?<select id="ai-photo-role"><option value="auto">Suggest a role from the image</option><option value="label">Label</option><option value="location">Storage location</option><option value="inside">Inside a box</option><option value="spread">Spread-out contents</option><option value="detail">Detail / close-up</option></select></label><p id="ai-role-help" class="hint"></p>
+        <label>How should this photo be read?<select id="ai-photo-role"><option value="auto">Suggest a role from the image</option><option value="label">Label photo</option><option value="location">Storage location</option><option value="inside">Inside a box</option><option value="spread">Spread-out contents</option><option value="detail">Detail / close-up</option></select></label><p id="ai-role-help" class="hint"></p>
         <p id="ai-send-description" class="ai-disclosure">Choose a saved connection, a model and a test photo first.</p>
         <button type="button" id="ai-run-preview" disabled>Analyze selected photo</button><p id="ai-preview-status" role="status" class="hint" aria-live="polite"></p>
         <article id="ai-result" class="ai-result" hidden><div class="dialog-title"><h3>Review suggestion</h3><span class="chip">Preview only · not saved</span></div><p id="ai-result-meta" class="hint"></p><dl><dt>Suggested photo role</dt><dd id="ai-result-role"></dd><dt>Suggested label</dt><dd id="ai-result-label"></dd><dt>Contents description</dt><dd id="ai-result-summary"></dd><dt>Searchable keywords</dt><dd id="ai-result-keywords"></dd><dt>Uncertainty</dt><dd id="ai-result-uncertainties"></dd></dl><p class="hint">Check names, quantities and product codes against the photo. To create a box draft from one or more photos, select them in Album inbox and choose Create AI draft.</p></article>

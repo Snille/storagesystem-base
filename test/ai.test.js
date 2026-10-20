@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { Store } from '../src/store.js';
 import { createApp } from '../src/server.js';
+import { Inventory } from '../src/inventory.js';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1sAAAAASUVORK5CYII=', 'base64');
 const result = { role: 'detail', label: 'Fasteners', summary: 'Visible screws and washers.', keywords: ['screws', 'washers'], uncertainties: 'Size is not readable.' };
@@ -121,6 +122,53 @@ test('multi-photo draft rejects duplicate/missing assets, bad roles, excess phot
     c.setCompletion(completion({ ...combined, photos })); assert.equal((await c.request('ai/draft', input)).status, 502);
   }
   assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
+});
+
+test('existing-box analysis combines selected retained/new photos with editor context; explicit save retains identifiers and history', async t => {
+  const c = await setup(t); const state = await c.configure(); const source = await c.previewInput(state);
+  const seed = { box: { boxId: 'EXISTING', label: 'User box name', currentLocationId: 'A-H1-P1-A', notes: 'User notes' }, session: { boxId: 'EXISTING', summary: 'Existing screws.', itemKeywords: ['screws'] }, photos: [{ immichAssetId: 'one', photoRole: 'inside' }], photoSourceRevision: source.sourceRevision };
+  const saved = await (await c.request('session', seed)).json(); const before = c.store.read();
+  c.setCompletion(completion({ ...combined, summary: 'Existing screws and newly visible washers.' }));
+  const input = { revision: state.revision, sourceRevision: source.sourceRevision, boxId: saved.boxId, expectedSessionId: saved.sessionId, context: { label: saved.label, summary: 'Manual editor description: screws.', keywords: ['manual-code'] }, photos: [{ assetId: 'one', role: 'inside' }, { assetId: 'two', role: 'spread' }] };
+  const response = await c.request('ai/draft', input); assert.equal(response.status, 200); const update = await response.json();
+  assert.equal(update.saved, false); assert.deepEqual(c.store.read(), before);
+  assert.deepEqual(update.result.photos.map(p => p.role), ['inside', 'spread']);
+  const call = c.calls.find(call => call.path.endsWith('completions'));
+  assert.match(call.body.messages[0].content, /absence|Absence/); assert.match(call.body.messages[0].content, /Preserve useful existing facts/);
+  assert.ok(call.body.messages[1].content[0].text.includes('Manual editor description: screws.'));
+  assert.ok(call.body.messages[1].content[0].text.includes('manual-code'));
+  const commit = { ...seed, expectedSessionId: saved.sessionId, session: { ...seed.session, summary: update.result.summary, itemKeywords: update.result.keywords }, photos: update.result.photos.map(p => ({ immichAssetId: p.assetId, photoRole: p.role, notes: p.description })) };
+  const updated = await (await c.request('session', commit)).json();
+  assert.equal(updated.boxId, saved.boxId); assert.equal(updated.locationId, saved.locationId); assert.equal(updated.label, saved.label); assert.equal(updated.boxNotes, 'User notes');
+  assert.equal(c.store.read().sessions.length, 2); assert.equal(c.store.read().photos.length, 3);
+  assert.ok(c.store.read().sessions.some(s => s.sessionId === saved.sessionId && s.summary === 'Existing screws.' && !s.isCurrent));
+  const after = c.store.read();
+  assert.equal((await c.request('session', commit)).status, 409); assert.deepEqual(c.store.read(), after);
+  assert.equal((await c.request('ai/draft', input)).status, 409);
+  assert.equal(c.calls.filter(call => call.path.endsWith('completions')).length, 1);
+  const mcp = await (await c.request('../mcp', { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_box', arguments: { box_id: saved.boxId } } }, 'POST', 'read-fixture')).json();
+  assert.equal(mcp.result.structuredContent.summary, update.result.summary); assert.equal(mcp.result.structuredContent.photos.length, 2);
+  assert.equal(c.store.audit().ok, true);
+});
+
+test('current box photos outside the album can be analyzed, while missing ownership and in-flight inventory changes reject results', async t => {
+  const c = await setup(t); const state = await c.configure(); const source = await c.previewInput(state);
+  const inventory = new Inventory(c.store);
+  const payload = { box: { boxId: 'ARCHIVED-PHOTOS', label: 'Old photo box', currentLocationId: 'B-H1-P1-A' }, session: { boxId: 'ARCHIVED-PHOTOS', summary: 'Original items.', itemKeywords: ['original'] }, photos: [{ immichAssetId: 'not-in-album', photoRole: 'spread', originalFileName: 'retained.png' }] };
+  const saved = inventory.save(payload); const before = c.store.read();
+  c.setCompletion(completion({ ...combined, photos: [{ index: 1, role: 'detail', description: 'Retained visible items.' }] }));
+  const input = { revision: state.revision, sourceRevision: source.sourceRevision, boxId: saved.boxId, expectedSessionId: saved.sessionId, context: { label: saved.label, summary: saved.summary, keywords: saved.itemKeywords }, photos: [{ assetId: 'not-in-album', role: 'spread' }] };
+  const response = await c.request('ai/draft', input); assert.equal(response.status, 200); assert.equal((await response.json()).result.photos[0].role, 'spread');
+  assert.equal(c.calls.some(call => call.path === '/api/search/metadata'), false); assert.deepEqual(c.store.read(), before);
+  assert.equal((await c.request('ai/draft', { ...input, photos: [{ assetId: 'unowned-outside-album', role: 'inside' }] })).status, 409);
+  assert.equal((await c.request('ai/draft', { ...input, context: { ...input.context, unexpected: 'not sent' } })).status, 400);
+  assert.equal((await c.request('ai/draft', { ...input, context: { ...input.context, summary: 'a'.repeat(12001) } })).status, 400);
+  assert.equal(c.calls.filter(call => call.path.endsWith('completions')).length, 1);
+  let release, arrived; const waiting = new Promise(resolve => { arrived = resolve; });
+  c.setCompletion((req, res) => { release = () => completion({ ...combined, photos: [{ index: 1, role: 'spread', description: 'Late answer.' }] })(req, res); arrived(); });
+  const pending = c.request('ai/draft', input); await waiting;
+  inventory.save({ ...payload, session: { ...payload.session, summary: 'Another client changed the inventory.' } }); const changed = c.store.read();
+  release(); assert.equal((await pending).status, 409); assert.deepEqual(c.store.read(), changed); assert.equal(c.store.audit().ok, true);
 });
 
 test('changing the photo source during a multi-photo request rejects the result and shared busy guard bounds concurrent calls', async t => {

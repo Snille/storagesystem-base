@@ -10,7 +10,7 @@ A runnable development preview is available. The version is defined only in [VER
 
 Implemented: manual box inventory with session history; photo source settings and an album inbox; a shared inventory service for the browser, REST and MCP; SQLite storage and schema migration; validated legacy inventory/settings import into an empty database; inventory JSON export; consistent SQLite backup and restore to a new database; data integrity audit; and a non-root Docker image with local Compose and a Portainer stack template.
 
-This is **not a production replacement**. AI connections, single-photo tests and multi-photo new-box drafts with explicit review/edit/save are available. AI answer phrasing, full settings/translation editing, spreadsheet catalog migration, label design and printing remain planned. The Immich album-to-inventory flow is verified live with a dedicated account, including browser selection/save, REST and MCP image retrieval, using an isolated in-memory inventory. Single-photo AI is verified live through OpenRouter and Spark llama.cpp. PhotoPrism remains fixture-tested only. REST/MCP shape compatibility is tested; full legacy search and language parity and a running Home Assistant installation still require acceptance testing. See [Compatibility](docs/COMPATIBILITY.md) and [Verification](docs/VERIFICATION.md).
+This is **not a production replacement**. AI connections, single-photo tests, multi-photo new-box drafts and selected-photo updates to existing boxes with explicit review/edit/save are available. AI answer phrasing, full settings/translation editing, label design and printing remain planned. The Immich album-to-inventory flow is verified live with a dedicated account, including browser selection/save, REST and MCP image retrieval, using an isolated in-memory inventory. Single-photo AI is verified live through OpenRouter and Spark llama.cpp. PhotoPrism remains fixture-tested only. REST/MCP shape compatibility is tested; remaining language/migration parity still requires acceptance testing. Real Home Assistant runtime acceptance is available through the isolated Docker harness. See [Compatibility](docs/COMPATIBILITY.md) and [Verification](docs/VERIFICATION.md).
 
 The existing application is the functional reference. This repository has independent Git history and is not a GitHub fork. The existing installation remains the production system while this implementation is developed and verified separately.
 
@@ -38,7 +38,7 @@ $env:STORAGE_API_KEY = 'development-readonly'
 npm start
 ```
 
-Open [localhost:3210](http://localhost:3210) and enter the management key. The first start creates an empty database under `data/`. Each box save creates a new inventory session. Existing sessions and photo references remain in history. The UI is English; public location labels and local answers support English, Swedish and German. Theme follows the operating system and can be switched for the current tab.
+Open [localhost:3210](http://localhost:3210) and enter the management key. The first start creates an empty database under `data/`. Each box save creates a new inventory session. Existing sessions and photo references remain in history. The interface defaults to English and also supports Swedish; public location labels and local answers support English, Swedish and German. Theme follows the operating system and can be switched for the current tab.
 
 Configuration:
 
@@ -53,13 +53,35 @@ Configuration:
 
 The imported `security.publicApiKey` takes precedence over `STORAGE_API_KEY`. The legacy `LAGERSYSTEM_API_KEY` environment fallback is also accepted. `APP_BASE_URL` takes precedence over the imported base URL. A different management key is recommended; the read API key must not authorize writes.
 
+## Languages
+
+Open **Languages** in the header after signing in. **Interface language** controls the application's menus, buttons and guidance (English or Swedish). The choice is saved for this instance and is restored before sign-in on reload. Saved box names, descriptions, keywords and photo filenames are never translated by the interface catalog.
+
+**Default language for external responses** controls generated local answers and location names returned to Home Assistant, REST and MCP when a caller does not specify a language (English, Swedish or German). It does not control the interface or translate saved contents. Existing `appearance.language` settings retain this meaning; the interface uses the separate `appearance.uiLanguage` setting.
+
+Under **AI assistance → Image inventory**, **AI description language** independently selects English, Swedish or German, or **Use the external response language**. The help text displays the resolved language. This choice affects new analyses only; existing inventory text is unchanged. The legacy task value `app` is retained for compatibility and now has an explicit external-response-language label.
+
+**Extra instructions** are appended to the built-in instructions, which remain read-only. **Clear extra instructions** removes only these additions. Prompt text and technical service errors may remain in English regardless of the interface language.
+
+## Storage positions
+
+Choose the current location using the same parts as the reference application: **Location category** (Shelving unit, Bench or Cabinet), a unit name, **Shelf** or bench **Surface** (On top / Under), **Position** and an optional **Letter**. Shelf and position choices are 1-12; letters are A-Z or None. Existing imported values outside those ranges remain available when editing.
+
+The unit field suggests known units (plus shelving units A-G) and accepts a new name. The location ID is assembled automatically, for example `A-H2-P1-A`, `BENCH:SVARV:UNDER:P2` or `CABINET:3D-PRINT:H1:P3:B`. New destinations are registered by the ordinary inventory session save; no separate position-registration step is needed.
+
+Existing boxes keep their exact saved location until you choose **Change location**. **Keep saved location** cancels the location edit. Box ID appears as a small read-only metadata line below the save action. New boxes show a proposed location-based ID, allocated uniquely by the server when saving; existing box IDs stay unchanged when moving the box. Existing unrecognized location IDs are retained until explicitly replaced. An exact location, including its optional letter, can belong to only one box. Occupied choices are marked unavailable; the server rechecks inside the save transaction, including equivalent legacy IDs. Moving a box frees its old location.
+
+SQLite backups include all registered positions, including vacated ones. Legacy inventory JSON contains box-associated positions only. Open **Storage map** to browse shelving units, benches and cabinets by shelf/surface and position. Letters have separate occupancy, registered vacant places are marked Free and gaps are Not registered. Click a box to open its details. An active search highlights matches and opens a matching unit. The map refreshes inventory when opened. It reflects saved positions rather than assuming empty capacity; storage-unit geometry/layout editing remains planned.
+
+Search supports Swedish word endings, reference RC/car synonyms, short adjacent-letter transpositions, accent-insensitive matching and field-weighted ranking. The same service serves the UI, REST and MCP. Filename searches prioritize exact matches and can find retained filenames from earlier sessions while showing current contents. Legacy imports without filename metadata are not automatically enriched from the live album.
+
 ## Photo setup and album workflow
 
 After opening the inventory, choose **Photo settings**. Enter the Immich or PhotoPrism server URL (without `/api`), the access mode and a read-only key/token. **Save & load albums**, choose an album, then **Save settings**. API keys are stored in the runtime database but are never returned by the settings endpoint. Blank key fields retain existing credentials; clearing requires an explicit checkbox. Changing server/provider/access mode clears credentials. Existing photo references prevent switching to a different server/provider, because legacy asset IDs do not identify their originating server.
 
 For Immich, use a dedicated service account with a key granting `album.read`, `asset.read`, `asset.view` and `asset.download`. Its album must be accessible to that account; when another user owns it, share it with the service account as a viewer. A public shared link is not required for API-key mode. Immich shared-link mode is also supported using its key. PhotoPrism uses a Bearer access token.
 
-Open **Album inbox**, select images, and use them in a new box, or choose **Choose from album** while editing an existing box. Assign each image a role before saving. The inbox hides assigned photos by default. Removing a photo from the draft only changes the next session; earlier sessions and original images stay intact. Existing associations can be retained without contacting the photo service, but new attachments are checked against the current album before saving.
+Album inbox images are fitted without cropping, preserving portrait/landscape proportions and showing the full available preview. Open **Album inbox**, select images, and use them in a new box, or choose **Choose from album** while editing an existing box. Click a selected session photo to inspect its full-resolution image in the zoom/pan viewer without leaving the editor. Previous/Next and Esc retain the unsaved form. Assign each image a role before saving. The inbox hides photos used in current box inventories by default. Removing a photo and saving the next inventory session releases it back to the unassigned inbox, where it can be used for another box. Earlier session references remain in history and do not reserve the photo. Removing a photo from the draft only changes the next session; earlier sessions and original images stay intact. Existing associations can be retained without contacting the photo service, but new attachments are checked against the current album before saving.
 
 Album preview links expire after 15 minutes or a server/settings change; refresh the inbox to renew them. The catalog supports up to 20000 images with bounded pagination. Video entries are excluded. Manual inventory and AI draft review use the same final session save.
 
@@ -70,6 +92,10 @@ Box details show complete preview images in their original proportions. Inventor
 Box cards show a photo from the current inventory session. Automatic selection prefers Inside, then Spread, Detail, Label and Storage location; this retains the reference application's preference for an inside photo. Open a box and select a photo to view it inside the app. **Previous/Next** and the left/right arrow keys cycle through the box's current images. **Esc** closes the viewer and returns to the box; photos do not open new tabs.
 
 In the viewer, **Use as card image** saves the displayed image as the box's cover. **Automatic card image** restores the default selection. This changes only cover metadata, without creating an inventory session or editing the original photo. If the chosen image is removed from a later current session, the card falls back automatically; earlier session photos remain intact. Boxes without photos retain the placeholder.
+
+## Voice search and semantic-search direction
+
+See [workshop voice flow and proposed semantic design](docs/VOICE-SEARCH.md) for the current button-activated HA/ESPHome/Piper/announcement path, the requirement for one precise spoken destination, clarification behavior and the SQLite capacity decision. These voice/semantic changes are proposed, not implemented. The read-only production measurement on 2026-10-20 found 164 boxes and 293 current photo references; doubling that scale does not require a PostgreSQL migration.
 
 ## AI assistance
 
@@ -83,9 +109,11 @@ Under **Try a photo**, load the configured album, select one image and optionall
 
 In **Album inbox**, select one to six unassigned photos of the same box, then choose **Create AI draft**. Set each role: Label, Inside a box, Spread-out contents, Storage location or Detail; automatic suggestions are optional. The disclosure identifies the saved image connection/model and the number of photos before **Analyze photos together** sends them in one request. Manual roles are preserved. The model combines complementary views, avoids counting repeated views as different items and reports uncertain or conflicting observations. These instructions guide the model; they do not guarantee identification or quantity accuracy.
 
-Review the combined label, description, keywords and uncertainty, and expand each photo's interpretation if useful. **Review & edit in box form** transfers the suggestion and photos into the ordinary new-box editor without saving. Correct the text, review uncertainty notes and roles, and enter the box ID and location ID yourself. Only **Save inventory session** creates the box/session. An existing box ID is rejected for this new-box workflow. AI assistance for updating an existing box remains future work; use its manual Update inventory flow meanwhile.
+Review the combined label, description, keywords and uncertainty, and expand each photo's interpretation if useful. **Review & edit in box form** transfers the suggestion and photos into the ordinary new-box editor without saving. Correct the text, review uncertainty notes and roles, and choose the storage position. The box ID is generated automatically. Only **Save inventory session** creates the box/session. An existing box ID is rejected for this new-box workflow. For an existing box, use the update workflow below.
 
 Total preview image data is limited to 16 MiB per analysis, in addition to the 8 MiB per-image bound. Photos and source configuration are revalidated when attaching them on final save. No inventory writes occur during analysis or transfer to the editor. Closing the editor discards the unsaved form.
+
+To add evidence to an existing box, open it and choose **Update inventory**. Attach any new photos via **Choose from album**, set their roles (for example Spread), and select **Include in AI analysis** on one to six current or newly attached photos. New attachments start selected; existing photos can be selected too. Choose **Analyze selected photos**, confirm the destination/roles, then **Analyze photos together**. The current editor name, contents description and keywords accompany the selected photos as context. The model is instructed to preserve useful prior contents and flag contradictions; an item missing from a close-up is not evidence of removal. Review the current description beside the complete proposal. **Apply suggestion to open editor** replaces the draft description/keywords and selected-photo interpretations; the box name changes only if explicitly selected (or previously empty). Location, box ID, manual notes and unselected photos remain intact. Edit the resulting fields and choose **Save inventory session** to persist a new historical session. Analysis and applying a suggestion do not save inventory. Changes by another client invalidate a stale analysis/save. Current photos can be analyzed even if removed from the source album; new attachments still require album membership.
 
 AI answer phrasing and translation drafting remain planned. Local search and manual inventory work without AI. See [AI design](docs/AI-DESIGN.md) for the wider direction.
 
@@ -138,3 +166,9 @@ The UI offers inventory JSON import/export, data audit and SQLite backup downloa
 - [Verification](docs/VERIFICATION.md)
 - [History](docs/HISTORY.md)
 - [License](LICENSE)
+
+## Isolated Home Assistant acceptance
+
+Run `./scripts/verify-ha-container.ps1` after building the application image. It starts real HA 2026.10.2 and a synthetic application on a unique Docker network, mounts the existing integration read-only, verifies its config flow, entities, services, events, conversation, card delivery and signed images, then removes its own containers/network/config volume. Discovery and TTS are disabled. Loopback ports 3215/3216 must be free. `-Hold` keeps the disposable runtime available for browser review; it does not connect to the production HA or inventory.
+
+Excel catalog import/export is retired from scope (2026-10-20): the historical one-time label import is no longer needed.

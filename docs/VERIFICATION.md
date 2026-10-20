@@ -1,5 +1,51 @@
 # Development verification
 
+## Fitted album previews on 2026-10-20 (0.7.1-dev)
+
+- Browser acceptance uses synthetic 640×360 landscape and 320×480 portrait images with a visible perimeter. Both load through the album preview rendition and compute to `object-fit: contain`; all perimeter edges are visible in the inbox.
+- The shared album-card layout also applies to the AI test-album picker. Original aspect ratios are preserved in a consistent 180-pixel image frame. Selection behavior is unchanged.
+- All 42 host checks and pinned-image checks passed. Development Compose runs 0.7.1-dev and serves the fitted-image CSS. Inventory/settings/position hashes matched before/after; audits passed. The synthetic browser fixture was stopped.
+
+## Languages and released photos on 2026-10-20 (0.7.0-dev)
+
+- All 42 host checks and all 42 checks in the pinned Docker build passed. Isolated tests verify UI/external/AI language independence, explicit AI override, preserved photo credentials, management authorization, stale edits, unsupported interface choices and language persistence through SQLite backup/fresh restore.
+- Photo acceptance assigns an image, saves a new session without it, observes no current assignment, reassigns it to another box and confirms the historical reference remains. Historical-only reattachments require current source/album validation; a new current owner blocks reassignment atomically.
+- Browser acceptance passed English → Swedish → English, Swedish persistence across reload/sign-in, translated editor/album controls and language guidance. Box name `Photo settings` and summary `Label` stayed unchanged while the surrounding UI and location labels changed language.
+- Browser removal/save acceptance returned the photo to the checked unassigned-only album list. Two sessions and the historical photo reference remained. All browser writes used the synthetic in-memory fixture; no live AI or photo calls were needed.
+- AI language help explicitly displays both the external-default rule and its resolved language; explicit language selections state that they do not change interface or existing inventory text.
+- Development Compose runs 0.7.0-dev. Before/after hashes of retained inventory, settings and positions matched; both data audits passed. The interface-language endpoint and Swedish catalog are served successfully. The temporary browser fixture was stopped.
+
+## Draft photos and occupied positions on 2026-10-20 (0.6.9-dev)
+
+- Host checks pass, including rendition-bound album thumbnail/preview/original grants, upstream rendition verification, tamper rejection and no inventory writes during viewing.
+- New HTTP acceptance covers concurrent double assignment, equivalent legacy location IDs, rejected moves with exact snapshot rollback, retaining the current location and freeing a location after movement.
+- Synthetic browser acceptance passed from two-photo AI draft to the review editor: thumbnails open the existing viewer using the original rendition, zoom/navigation controls work, cover-write controls are hidden, and Esc returns with manually edited text and photo selections intact.
+- Synthetic browser acceptance confirmed an occupied exact position is disabled and marked occupied, with visible guidance to choose another position or letter.
+- All 40 checks passed in the host suite and pinned Docker build. Development Compose runs 0.6.9-dev; before/after inventory/settings/position hashes matched and both data audits passed. The temporary browser fixture was stopped.
+
+## Automatic IDs and disabled controls on 2026-10-20 (0.6.7-dev)
+
+- All 39 host checks passed, including concurrent automatic-ID allocation, collision handling, movement with stable identity, MCP retrieval and integrity audit.
+- Synthetic browser acceptance confirmed that Box ID is read-only, updates its proposal after location choices and saves a selected album image under the server-generated ID.
+- Browser inspection confirmed the disabled Use selected photos button has computed cursor `not-allowed`; selecting a photo enables it and updates the visible next-step guidance.
+- The pinned Docker build passed all 39 checks. Development Compose runs 0.6.7-dev; before/after hashes of inventory, settings and positions matched, with healthy integrity audits.
+
+## Structured locations on 2026-10-20 (0.6.6-dev)
+
+- All 37 host checks passed, including reference-compatible structured IDs for all three categories, optional letters, name normalization, invalid/missing choices, exact saved alias retention and movement with intact history/audit.
+- Browser acceptance with synthetic in-memory data passed for shelving unit A, shelf 2, position 1, letter A, ordinary session save, saved-location retention, explicit Change location, switching to bench surfaces, selecting Under with no letter and cancelling back to the original saved location.
+- No live photo/AI requests or production changes were needed.
+- The pinned Docker build passed all 37 checks. The development Compose app runs 0.6.6-dev; before/after hashes covering inventory, settings and registered positions matched and both integrity audits passed.
+
+## Results on 2026-10-20 (0.6.5-dev)
+
+- All 35 host checks passed, as did all 35 checks in the pinned Node 24.14 Docker build.
+- New isolated checks cover management authorization, empty/invalid/duplicate position registration, exact IDs and translations, movement with preserved box IDs/history, shared REST/MCP location results, vacated positions and SQLite backup/fresh restore including unused positions.
+- Browser acceptance on the synthetic in-memory fixture passed: empty installation guidance, blank registration validation, first position registration, required selection, new box save, existing position preselection, new destination registration and movement. The same box ID remained and session count increased from one to two; the old position remained selectable with zero boxes.
+- Disposable container acceptance passed for non-root startup, HTTP write/read, restart persistence, audit, backup, fresh restore and MCP. Its container and volume were removed by the acceptance script.
+- The existing development Compose app now runs 0.6.5-dev. Before/after inventory exports and settings hashes matched, the integrity audit passed and the management position list returned two known positions. No acceptance writes used the retained development inventory.
+- Full HA, real PhotoPrism, production migration, Portainer and physical printing were not exercised in this increment.
+
 ## Results on 2026-10-19
 
 | Check | Result |
@@ -118,9 +164,9 @@ Versions 0.6.1–0.6.3 were also checked with the real test images: uncropped po
 ## Remaining external verification
 
 - Real PhotoPrism access.
-- Additional live AI providers, broader image/model accuracy, AI-assisted updates to existing boxes and generated inventory answers.
-- A fully running isolated Home Assistant instance.
-- Spreadsheet catalog round-trip and separate legacy language-file migration.
+- Additional live AI providers, broader image/model accuracy and generated inventory answers.
+- Physical Assist/speech/satellite acceptance; real isolated HA runtime and card have passed.
+- Separate legacy language-file migration. Excel catalog round-trip was retired from scope on 2026-10-20.
 - Real Portainer installation/update and future database schema upgrades.
 - Printer filters, print queue/status and physical label/sheet output. All physical printer testing is deferred until the user has access again.
 

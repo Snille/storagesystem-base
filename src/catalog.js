@@ -1,6 +1,7 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import { Settings, sourceRevision } from './settings.js';
 import { InputError, object, text } from './validation.js';
+import { currentSession } from './inventory.js';
 import { equal } from './auth.js';
 
 const MAX_PAGES = 100;
@@ -118,26 +119,29 @@ export class Catalog {
     return result;
   }
 
-  grant(asset, expires, revision) {
-    return createHmac('sha256', this.signingKey).update(JSON.stringify([asset, expires, revision])).digest('base64url');
+  grant(asset, expires, revision, variant = 'thumbnail') {
+    return createHmac('sha256', this.signingKey).update(JSON.stringify([asset, expires, revision, variant])).digest('base64url');
   }
 
   async album(refresh = false) {
     const config = this.config(); const revision = sourceRevision(config); const assets = await this.assets(config, { refresh });
-    const data = this.store.read(); const sessionBoxes = new Map(data.sessions.map(s => [s.sessionId, s.boxId]));
+    const data = this.store.read(); const sessionBoxes = new Map(data.boxes.map(b => [currentSession(data, b.boxId)?.sessionId, b.boxId]));
     const expires = String(Date.now() + 15 * 60 * 1000);
+    const imageUrl = (asset, variant) => `/api/album-preview/${encodeURIComponent(asset)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(asset, expires, revision, variant)}`;
     return { sourceRevision: revision, albumId: config.albumId, assets: assets.map(a => ({
-      ...a, assignedBoxIds: [...new Set(data.photos.filter(p => p.immichAssetId === a.id).map(p => sessionBoxes.get(p.sessionId)))],
-      thumbnailUrl: `/api/album-preview/${encodeURIComponent(a.id)}?expires=${expires}&revision=${revision}&grant=${this.grant(a.id, expires, revision)}`
+      ...a, assignedBoxIds: [...new Set(data.photos.filter(p => p.immichAssetId === a.id && sessionBoxes.has(p.sessionId)).map(p => sessionBoxes.get(p.sessionId)))],
+      thumbnailUrl: imageUrl(a.id, 'thumbnail'), previewUrl: imageUrl(a.id, 'preview'), originalUrl: imageUrl(a.id, 'original')
     })) };
   }
 
   async preview(asset, url) {
     const expires = url.searchParams.get('expires') || ''; const revision = url.searchParams.get('revision') || '';
+    const variant = url.searchParams.get('variant') || 'thumbnail';
     if (!/^\d+$/.test(expires) || Number(expires) <= Date.now() || Number(expires) > Date.now() + 15 * 60 * 1000
-      || !equal(url.searchParams.get('grant') || '', this.grant(asset, expires, revision))
+      || !['thumbnail', 'preview', 'original'].includes(variant)
+      || !equal(url.searchParams.get('grant') || '', this.grant(asset, expires, revision, variant))
       || revision !== sourceRevision(this.settings.source())) throw new InputError('Album preview expired. Reload the album.', 401);
-    return this.photos.fetch(asset, 'thumbnail');
+    return this.photos.fetch(asset, variant);
   }
 
   async saveSession(input) {
@@ -149,8 +153,8 @@ export class Catalog {
       if (ids.has(photo.immichAssetId)) throw new InputError('The same image cannot be added twice to a session.');
       ids.add(photo.immichAssetId);
     }
-    const data = this.store.read(); const sessions = new Map(data.sessions.map(s => [s.sessionId, s.boxId]));
-    const retained = new Set(data.photos.filter(p => sessions.get(p.sessionId) === input.box.boxId).map(p => p.immichAssetId));
+    const data = this.store.read(); const retainedSession = currentSession(data, input.box.boxId)?.sessionId;
+    const retained = new Set(data.photos.filter(p => p.sessionId === retainedSession).map(p => p.immichAssetId));
     const added = photos.filter(p => !retained.has(p.immichAssetId));
     let config;
     if (added.length) {
@@ -165,9 +169,9 @@ export class Catalog {
       this.assertCurrent(config);
     }
     // Recheck assignments after network I/O. No await occurs between this check and the write.
-    const latest = this.store.read(); const owners = new Map(latest.sessions.map(s => [s.sessionId, s.boxId]));
+    const latest = this.store.read(); const owners = new Map(latest.boxes.map(b => [currentSession(latest, b.boxId)?.sessionId, b.boxId]));
     for (const photo of photos) {
-      if (latest.photos.some(p => p.immichAssetId === photo.immichAssetId && owners.get(p.sessionId) !== input.box.boxId)) throw new InputError('A selected image is already linked to another box.', 409);
+      if (latest.photos.some(p => p.immichAssetId === photo.immichAssetId && owners.has(p.sessionId) && owners.get(p.sessionId) !== input.box.boxId)) throw new InputError('A selected image is already linked to another box.', 409);
     }
     return this.inventory.save(input);
   }

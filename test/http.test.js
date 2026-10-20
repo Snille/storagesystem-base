@@ -18,6 +18,33 @@ async function setup(t, { populated = true, settings = {}, env = {} } = {}) {
   return { store, base, request, rpc };
 }
 
+test('position registration requires management, preserves exact IDs and shares box moves with REST and MCP', async t => {
+  const { store, request, rpc } = await setup(t, { populated: false });
+  const path = '/api/manage/positions';
+  const post = (locationId, headers) => request(path, { method: 'POST', headers, body: JSON.stringify({ locationId }) });
+  assert.deepEqual(await (await request(path)).json(), { positions: [] });
+  assert.equal((await post('A-H1-P1-A', { 'x-api-key': 'public-test-key' })).status, 401);
+  for (const invalid of ['', '   ', null, 42, 'a'.repeat(201)]) assert.equal((await post(invalid)).status, 400);
+  for (const id of ['A-H1-P1-A', 'CABINET:C:H2:P3', 'Unmapped corner']) {
+    assert.equal((await post(id)).status, 200); assert.equal((await post(id)).status, 200);
+  }
+  assert.equal((await (await request(path)).json()).positions.length, 3);
+  const position = (await (await request(path + '?lang=sv')).json()).positions.find(p => p.locationId === 'A-H1-P1-A');
+  assert.deepEqual(position.location, { system: 'Lagerhylla: A', shelf: 'Hylla 1', slot: 'Plats: 1A' });
+  const payload = { box: { boxId: 'IVAR-Z-H9-P9-A', label: 'Separate identity', currentLocationId: 'A-H1-P1-A' }, session: { boxId: 'IVAR-Z-H9-P9-A', summary: 'Test', itemKeywords: [] } };
+  const save = () => request('/api/manage/session', { method: 'POST', body: JSON.stringify(payload) });
+  assert.equal((await save()).status, 200);
+  payload.box.currentLocationId = 'CABINET:C:H2:P3'; assert.equal((await save()).status, 200);
+  const detail = await (await request('/api/public/boxes/IVAR-Z-H9-P9-A?lang=en')).json();
+  const mcp = await rpc('tools/call', { name: 'get_box', arguments: { box_id: payload.box.boxId, language: 'en' } });
+  assert.deepEqual(mcp.result.structuredContent.location, detail.location);
+  assert.equal(detail.locationId, 'CABINET:C:H2:P3'); assert.equal(detail.boxId, payload.box.boxId);
+  const positions = (await (await request(path)).json()).positions;
+  assert.equal(positions.find(p => p.locationId === 'A-H1-P1-A').boxCount, 0);
+  assert.equal(positions.find(p => p.locationId === 'CABINET:C:H2:P3').boxCount, 1);
+  assert.equal(store.audit().counts.sessions, 2); assert.equal(store.audit().ok, true);
+});
+
 test('REST contract: health, auth precedence, search languages, ask fallback, missing box', async t => {
   const { base, request } = await setup(t);
   assert.equal((await fetch(base + '/api/public/health')).status, 401);
@@ -41,6 +68,72 @@ test('REST contract: health, auth precedence, search languages, ask fallback, mi
   const detail = await (await request('/api/public/boxes/IVAR-G-H6-P1-A')).json(); assert.equal(detail.sessionId, 'S-1');
   assert.equal((await request('/api/public/search')).status, 400);
   assert.equal((await request('/api/public/ask', { method: 'POST', body: '{broken' })).status, 400);
+});
+
+test('interface, external responses and AI description language are independent and language saves preserve photo settings', async t => {
+  const { store, base, request } = await setup(t);
+  store.writeSettings({ immich: { provider: 'immich', baseUrl: 'https://photos.example.test', apiKey: 'fixture-secret', albumId: 'test' } });
+  const sourceBefore = store.settings().immich;
+  const publicLanguage = () => fetch(base + '/api/interface-language').then(r => r.json());
+  assert.deepEqual(await publicLanguage(), { language: 'en' });
+  const current = await (await request('/api/manage/languages')).json();
+  const put = value => request('/api/manage/languages', { method: 'PUT', body: JSON.stringify(value) });
+  const updated = await (await put({ ...current, uiLanguage: 'sv', responseLanguage: 'en' })).json();
+  assert.equal(updated.uiLanguage, 'sv'); assert.deepEqual(await publicLanguage(), { language: 'sv' });
+  assert.deepEqual(store.settings().immich, sourceBefore);
+  const publicBox = await (await request('/api/public/boxes/IVAR-G-H6-P1-A')).json();
+  assert.equal(publicBox.location.system, 'Shelving unit: G');
+  const management = await (await request('/api/manage/boxes?lang=sv')).json();
+  assert.equal(management.boxes.find(b => b.boxId === publicBox.boxId).location.system, 'Lagerhylla: G');
+  let ai = await (await request('/api/manage/ai/settings')).json();
+  assert.equal(ai.responseLanguage, 'en'); assert.equal(ai.imageInventory.resolvedLanguage, 'en');
+  assert.equal((await put({ ...updated, uiLanguage: 'en', responseLanguage: 'sv' })).status, 200);
+  ai = await (await request('/api/manage/ai/settings')).json();
+  assert.equal(ai.imageInventory.resolvedLanguage, 'sv'); assert.deepEqual(await publicLanguage(), { language: 'en' });
+  const explicit = { ...ai.imageInventory, language: 'de' }; delete explicit.resolvedLanguage;
+  assert.equal((await request('/api/manage/ai/settings', { method: 'PUT', body: JSON.stringify({ revision: ai.revision, connections: [], imageInventory: explicit }) })).status, 200);
+  assert.equal((await (await request('/api/manage/ai/settings')).json()).imageInventory.resolvedLanguage, 'de');
+  assert.equal((await put(updated)).status, 409);
+  const latest = await (await request('/api/manage/languages')).json();
+  assert.equal((await put({ ...latest, uiLanguage: 'de' })).status, 400);
+  assert.equal((await request('/api/manage/languages', { headers: { 'x-api-key': 'public-test-key' } })).status, 401);
+  assert.ok(!JSON.stringify(latest).includes('fixture-secret')); assert.equal(store.audit().ok, true);
+});
+
+test('automatic IDs are assigned atomically without overwriting boxes and remain stable on movement', async t => {
+  const { store, request, rpc } = await setup(t, { populated: false });
+  const payload = { box: { boxId: '', label: 'Automatic box', currentLocationId: 'A-H2-P1-A' }, session: { boxId: '', summary: 'Auto-generated identity', itemKeywords: [] }, expectNewBox: true };
+  const save = value => request('/api/manage/session', { method: 'POST', body: JSON.stringify(value) });
+  const responses = await Promise.all([save(payload), save({ ...payload, box: { ...payload.box, currentLocationId: 'A-H2-P1-B' } })]);
+  for (const response of responses) assert.equal(response.status, 200);
+  const created = await Promise.all(responses.map(r => r.json()));
+  assert.deepEqual(created.map(b => b.boxId).sort(), ['IVAR-A-H2-P1-A', 'IVAR-A-H2-P1-B']);
+  const first = created[0];
+  const moved = await (await save({ box: { boxId: first.boxId, label: first.label, currentLocationId: 'BENCH:SVARV:UNDER:P3' }, session: { boxId: first.boxId, summary: 'Moved', itemKeywords: [] } })).json();
+  assert.equal(moved.boxId, first.boxId);
+  const third = await (await save(payload)).json(); assert.equal(third.boxId, 'IVAR-A-H2-P1-C');
+  const mcp = await rpc('tools/call', { name: 'get_box', arguments: { box_id: moved.boxId } });
+  assert.equal(mcp.result.structuredContent.boxId, first.boxId);
+  assert.equal(store.audit().counts.boxes, 3); assert.equal(store.audit().counts.sessions, 4); assert.equal(store.audit().ok, true);
+});
+
+test('occupied locations reject concurrent creation, equivalent legacy IDs and moves without inventory writes', async t => {
+  const { store, request } = await setup(t, { populated: false });
+  const payload = { box: { boxId: '', label: 'First', currentLocationId: 'A-H2-P1-A' }, session: { boxId: '', summary: '', itemKeywords: [] } };
+  const save = p => request('/api/manage/session', { method: 'POST', body: JSON.stringify(p) });
+  const results = await Promise.all([save(payload), save(payload)]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 409]);
+  const box = store.read().boxes[0]; const snapshot = store.read();
+  const equivalent = { ...payload, box: { ...payload.box, currentLocationId: 'IVAR:a:H2:P01:a' } };
+  assert.equal((await save(equivalent)).status, 409); assert.deepEqual(store.read(), snapshot);
+  assert.equal((await save({ ...payload, box: { ...payload.box, currentLocationId: 'A-H2-P1-B' } })).status, 200);
+  const move = { box: { ...box, currentLocationId: 'A-H2-P1-B' }, session: { ...payload.session, boxId: box.boxId } };
+  const beforeMove = store.read(); assert.equal((await save(move)).status, 409); assert.deepEqual(store.read(), beforeMove);
+  move.box.currentLocationId = box.currentLocationId;
+  assert.equal((await save(move)).status, 200); // The current box may retain its own location.
+  move.box.currentLocationId = 'BENCH:LATHE:TOP:P3'; assert.equal((await save(move)).status, 200);
+  assert.equal((await save(payload)).status, 200); // Moving away frees the position.
+  assert.equal(store.audit().ok, true);
 });
 
 test('cover selection is management-only, restricted to current box photos and shared with REST without changing history or MCP photos', async t => {

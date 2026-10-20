@@ -92,6 +92,14 @@ test('Immich album pagination, image filtering, expiring previews and tamper pro
   const url = catalog.assets[0].thumbnailUrl;
   assert.ok(!url.includes('upstream-fixture-key')); assert.ok(!url.includes('admin-fixture'));
   const preview = await fetch(ctx.base + url); assert.equal(preview.status, 200); assert.deepEqual(Buffer.from(await preview.arrayBuffer()), image);
+  for (const [field, upstream] of [['previewUrl', '/api/assets/asset-1/thumbnail?size=preview'], ['originalUrl', '/api/assets/asset-1/original?edited=true']]) {
+    const large = await fetch(ctx.base + catalog.assets[0][field]);
+    assert.equal(large.status, 200); assert.deepEqual(Buffer.from(await large.arrayBuffer()), image);
+    assert.equal(ctx.calls.at(-1).url, upstream);
+    const tampered = new URL(ctx.base + url); tampered.searchParams.set('variant', field === 'originalUrl' ? 'original' : 'preview');
+    assert.equal((await fetch(tampered)).status, 401);
+  }
+  assert.equal(ctx.store.audit().counts.boxes, 0); assert.equal(ctx.store.audit().counts.photos, 0);
   assert.equal((await fetch(ctx.base + url.replace('asset-1?', 'asset-2?'))).status, 401);
   const expired = new URL(ctx.base + url); expired.searchParams.set('expires', '1'); assert.equal((await fetch(expired)).status, 401);
   await ctx.saveSettings({ apiKey: 'replacement-fixture-key' });
@@ -125,6 +133,27 @@ test('album-to-session save is checked against current membership, ownership and
   const retained = await ctx.request('/api/manage/session', { method: 'POST', payload: { ...payload, photoSourceRevision: undefined } }); assert.equal(retained.status, 200);
   assert.equal(ctx.store.read().sessions.length, 2); assert.equal(ctx.store.read().photos.length, 2);
   assert.equal(ctx.store.audit().ok, true);
+});
+
+test('removing a current photo releases it to the album and another box while retaining historical references', async t => {
+  const ctx = await setup(t, respond); await ctx.configure();
+  const album = () => ctx.request('/api/manage/album').then(r => r.json());
+  const initial = await album();
+  const first = { box: { boxId: 'first-box', label: 'First', currentLocationId: 'A-H1-P1-A' }, session: { boxId: 'first-box', summary: '', itemKeywords: [] }, photos: [{ immichAssetId: 'asset-1', photoRole: 'label' }], photoSourceRevision: initial.sourceRevision };
+  const save = payload => ctx.request('/api/manage/session', { method: 'POST', payload });
+  assert.equal((await save(first)).status, 200);
+  assert.deepEqual((await album()).assets.find(p => p.id === 'asset-1').assignedBoxIds, ['first-box']);
+  const originalSession = ctx.store.read().photos[0].sessionId;
+  assert.equal((await save({ ...first, photos: [], photoSourceRevision: undefined })).status, 200);
+  assert.deepEqual((await album()).assets.find(p => p.id === 'asset-1').assignedBoxIds, []);
+  assert.ok(ctx.store.read().photos.some(p => p.sessionId === originalSession));
+  // An old historical reference is no longer a retained current attachment.
+  assert.equal((await save({ ...first, photoSourceRevision: undefined })).status, 409);
+  const second = { ...first, box: { ...first.box, boxId: 'second-box', label: 'Second', currentLocationId: 'A-H1-P2-A' }, session: { ...first.session, boxId: 'second-box' } };
+  assert.equal((await save(second)).status, 200);
+  assert.deepEqual((await album()).assets.find(p => p.id === 'asset-1').assignedBoxIds, ['second-box']);
+  const before = ctx.store.read(); assert.equal((await save(first)).status, 409); assert.deepEqual(ctx.store.read(), before);
+  assert.equal(ctx.store.read().photos.length, 2); assert.equal(ctx.store.audit().ok, true);
 });
 
 test('provider failures are bounded and do not expose upstream response bodies or secrets', async t => {

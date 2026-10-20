@@ -16,16 +16,16 @@ Reusable behavior includes current-session precedence, structured location gramm
 | Reference workflow | Development implementation |
 | --- | --- |
 | Search contents and browse boxes | Implemented through shared inventory services |
-| Storage map for shelving units, benches and cabinets | Location labels, filters and MCP unit browsing implemented; spatial map pending |
+| Storage map for shelving units, benches and cabinets | Location labels, filters, MCP unit browsing and a shared-position storage map implemented; full geometry/layout editing pending |
 | Create/update a box and its inventory session | Manual entry implemented; prior sessions retained |
 | Review box photos and history | Implemented; draft removal affects only the next session and retains earlier associations |
 | Album inbox and photo selection | Implemented for Immich/PhotoPrism with selected album, roles and unassigned filtering |
-| AI photo roles, analysis, matching and corrections | Single-photo tests and multi-photo new-box draft review/edit/save implemented; manual roles retained; automatic matching and AI updates to existing boxes remain pending |
+| AI photo roles, analysis, matching and corrections | Single-photo tests, multi-photo new-box drafts and selected-photo existing-box updates implemented with explicit review/edit/save; manual roles retained; automatic matching remains pending |
 | AI-generated natural answers | Local search fallback implemented; provider-generated answers pending |
-| Settings, prompts and per-model overrides | Photo source and API-language editing implemented; other imported settings preserved, remaining editing/execution pending |
+| Settings, prompts and per-model overrides | Photo source, independent UI/external/AI language, named AI connections and task extra instructions implemented; per-role/per-model prompt editing and remaining legacy execution pending |
 | Language catalogs and translation tool | API location labels/local answers in en/sv/de; catalog/override editing and separate-file migration pending |
 | Label designer and printer selection/status | Pending; no physical printer contact performed |
-| Excel catalog import/export | Pending; old Python scripts read/write inventory.json directly and cannot run unchanged |
+| Excel catalog import/export | Retired from scope on 2026-10-20 at Erik's request; one-time initial label import, no future use |
 
 ## REST contract
 
@@ -61,15 +61,15 @@ MCP text results contain text JSON and structuredContent. Photo metadata exclude
 
 ## Known differences and acceptance gates
 
-- Search currently provides accent-insensitive substring/token matching, including filenames saved on new attachments. The reference's Swedish stemming, synonym/typo expansion and live album filename lookup have not been ported. Ranking parity is not claimed.
+- Search now includes reference-style Swedish suffix variants, RC/car synonym expansion, short adjacent-letter swaps and weighted field ranking. Retained current/historical filename lookups prioritize exact names. Live album filename enrichment for imported references without saved names remains pending; exhaustive ranking parity is not claimed.
 - Current-session selection retains reference precedence: isCurrent, photo count, then creation date. Import rejects duplicate current sessions or broken references instead of guessing a repair.
 - Malformed `/ask` payloads now return 400 rather than the reference handler's possible 500. Error wording, multiple-match answers and German labels do not yet have complete parity tests.
-- Actual HA client calls and result mapping are verified separately from full HA config-flow, entities, services, conversation agent and frontend card testing.
-- Legacy settings are retained but only appearance language, public security configuration and photo source/album settings are currently consumed. Separate language files require a later migration step.
+- Actual HA client calls and result mapping are verified. The real-HA Docker harness additionally verifies config flow, entities, services, events, conversation, reload persistence, bundled card delivery and signed images. Browser acceptance covers a Swedish question, RC synonym, no-result clearing and thumbnail rendering in the actual Lovelace card. Physical speech/satellites remain outside this isolated test.
+- Legacy settings are retained; appearance response language, public security configuration and photo source/album settings are consumed. New UI-language and task-based AI settings are separate from legacy translation files and legacy AI prompts. Separate language files require a later migration step.
 
 ## Photo management endpoints
 
-All `/api/manage/*` routes require the management header key. `GET/PUT /api/manage/settings` exposes and edits the photo source and default API language, with redacted credentials and an optimistic source revision. `GET /api/manage/albums` discovers albums; `GET /api/manage/album?refresh=true` returns the selected album's image metadata, assignment flags and expiring preview URLs. `POST /api/manage/session` requires the catalog's `photoSourceRevision` when attaching previously unused images, and verifies current album membership before writing.
+All `/api/manage/*` routes require the management header key. `GET/PUT /api/manage/settings` exposes and edits the photo source, with redacted credentials and an optimistic source revision. Independent UI/external-response languages use `GET/PUT /api/manage/languages`. `GET /api/manage/albums` discovers albums; `GET /api/manage/album?refresh=true` returns the selected album's image metadata, assignment flags and expiring preview URLs. `POST /api/manage/session` requires the catalog's `photoSourceRevision` when attaching previously unused images, and verifies current album membership before writing.
 
 Immich album images use paginated `POST /api/search/metadata` with `albumIds`, `size` and `page`, matching the reference rather than relying on embedded album assets. Shared-link mode reads `/api/shared-links/me`. PhotoPrism lists `/api/v1/albums` and searches `/api/v1/photos` with album `s`, `count` and `offset`. All calls are read-only even where the metadata search method is POST. Adapter errors do not expose upstream response bodies or credentials.
 - Physical output, queues, driver/filter behavior and DYMO status remain unverified. Printer tests are deferred at the user's request until access is available.

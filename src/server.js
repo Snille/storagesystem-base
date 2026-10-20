@@ -18,6 +18,10 @@ const assets = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/ai.js', ['ai.js', 'text/javascript; charset=utf-8']],
   ['/box-draft.js', ['box-draft.js', 'text/javascript; charset=utf-8']],
+  ['/location-editor.js', ['location-editor.js', 'text/javascript; charset=utf-8']],
+  ['/storage-map.js', ['storage-map.js', 'text/javascript; charset=utf-8']],
+  ['/i18n.js', ['i18n.js', 'text/javascript; charset=utf-8']],
+  ['/locales/sv.js', ['locales/sv.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']]
 ]);
 
@@ -44,6 +48,11 @@ export function createApp({ store, env = process.env }) {
     const json = (value, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
     try {
       const url = new URL(req.url, 'http://localhost'); const path = url.pathname;
+      if (path === '/api/interface-language' && req.method === 'GET') return json({ language: catalog.settings.languages().uiLanguage });
+      if (path === '/locations.js' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
+        return res.end(readFileSync(new URL('./locations.js', import.meta.url)));
+      }
       if (path === '/healthz' && req.method === 'GET') {
         store.db.prepare('SELECT 1').get(); return json({ ok: true, version });
       }
@@ -116,6 +125,9 @@ export function createApp({ store, env = process.env }) {
         return json(Array.isArray(input) ? results : results[0]);
       }
       if (path === '/api/manage/boxes' && method === 'GET') return json({ boxes: inventory.list(lang).map(withUrls) });
+      if (path === '/api/manage/positions' && method === 'GET') return json({ positions: inventory.positions(lang) });
+      if (path === '/api/manage/storage-map' && method === 'GET') return json(inventory.storageMap(lang));
+      if (path === '/api/manage/positions' && method === 'POST') return json(inventory.addPosition(await body(req), lang));
       const coverMatch = path.match(/^\/api\/manage\/boxes\/([^/]+)\/cover$/);
       if (coverMatch && method === 'PUT') {
         const input = object(await body(req));
@@ -128,6 +140,8 @@ export function createApp({ store, env = process.env }) {
         return json({ query, count: matches.length, matches });
       }
       if (path === '/api/manage/settings' && method === 'GET') return json(catalog.settings.view());
+      if (path === '/api/manage/languages' && method === 'GET') return json(catalog.settings.languages());
+      if (path === '/api/manage/languages' && method === 'PUT') return json(catalog.settings.saveLanguages(await body(req)));
       if (path === '/api/manage/ai/settings' && method === 'GET') return json(ai.view());
       if (path === '/api/manage/ai/settings' && method === 'PUT') return json(ai.save(await body(req)));
       if (path === '/api/manage/ai/models' && method === 'POST') return json(await ai.models(await body(req)));

@@ -14,6 +14,28 @@ function setup(t) {
   return { dir, store };
 }
 
+test('registered and vacated positions survive writes, backup and fresh restore without changing inventory identifiers', async t => {
+  const { store, dir } = setup(t); const inventory = new Inventory(store);
+  assert.deepEqual(inventory.positions(), []);
+  inventory.addPosition({ locationId: 'CABINET:A:H2:P3' });
+  inventory.addPosition({ locationId: 'CABINET:A:H2:P3' });
+  assert.equal(inventory.positions()[0].boxCount, 0);
+  store.importLegacy(structuredClone(fixture));
+  const id = fixture.boxes[0].boxId; const old = fixture.boxes[0].currentLocationId;
+  const before = store.read();
+  inventory.save({ box: { boxId: id, label: 'Moved box', currentLocationId: 'CABINET:A:H2:P3' }, session: { boxId: id, summary: 'Moved', itemKeywords: [] } });
+  assert.equal(inventory.positions().find(p => p.locationId === old).boxCount, 0);
+  assert.equal(inventory.positions().find(p => p.locationId === 'CABINET:A:H2:P3').boxCount, 1);
+  assert.deepEqual(store.read().sessions.filter(s => s.boxId === id && s.sessionId !== inventory.get(id).sessionId).map(s => s.sessionId), before.sessions.filter(s => s.boxId === id).map(s => s.sessionId));
+  assert.deepEqual(store.read().boxes.map(b => b.boxId).sort(), before.boxes.map(b => b.boxId).sort());
+  inventory.addPosition({ locationId: 'Empty corner' });
+  await store.backup(join(dir, 'positions.sqlite'));
+  await restore(join(dir, 'positions.sqlite'), join(dir, 'positions-restored.sqlite'));
+  const restored = new Store(join(dir, 'positions-restored.sqlite'));
+  try { assert.deepEqual(new Inventory(restored).positions(), inventory.positions()); assert.equal(restored.audit().ok, true); } finally { restored.close(); }
+  assert.equal(store.audit().ok, true);
+});
+
 test('chosen cover survives reopen/backup and removing it from a new session falls back without changing history', async t => {
   const { store, dir } = setup(t); store.importLegacy(structuredClone(fixture));
   const inventory = new Inventory(store); const id = fixture.boxes[0].boxId;
@@ -28,7 +50,7 @@ test('chosen cover survives reopen/backup and removing it from a new session fal
 test('legacy import preserves every field, identifier, history and setting through SQLite backup/restore', async t => {
   const { store, dir } = setup(t);
   const data = structuredClone(fixture); data.boxes[0].futureMetadata = { keep: true };
-  const settings = { appearance: { language: 'sv' }, labels: { templates: [{ id: 'existing-template' }] }, translationOverrides: { en: { custom: 'Value' } } };
+  const settings = { appearance: { language: 'sv', uiLanguage: 'en' }, labels: { templates: [{ id: 'existing-template' }] }, translationOverrides: { en: { custom: 'Value' } } };
   const source = join(dir, 'source.json'); writeFileSync(source, JSON.stringify(data));
   assert.deepEqual(store.importLegacy(data, settings), { boxes: 2, sessions: 3, photos: 3 });
   const expected = store.read(); assert.equal(store.audit().ok, true);

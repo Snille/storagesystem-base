@@ -1,5 +1,9 @@
+import { parseLocation, suggestBoxId, locationKey } from './locations.js';
+export { parseLocation } from './locations.js';
 import { randomUUID } from 'node:crypto';
 import { InputError, object, text } from './validation.js';
+import { searchBoxes } from './search.js';
+import { buildStorageMap } from './storage-map.js';
 
 const labels = {
   en: { ivar: 'Shelving unit', bench: 'Bench', cabinet: 'Cabinet', shelf: 'Shelf', slot: 'Slot', surface: 'Surface', top: 'On top', under: 'Under' },
@@ -7,21 +11,7 @@ const labels = {
   de: { ivar: 'Lagerregal', bench: 'Werkbank', cabinet: 'Schrank', shelf: 'Regal', slot: 'Platz', surface: 'Fläche', top: 'Oben', under: 'Unten' }
 };
 
-const normalize = value => value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
-export function parseLocation(id, boxId = '') {
-  let match = id.match(/^(IVAR|CABINET):([A-Z0-9-]+):H(\d+):P(\d+)(?::([A-Z]))?$/i);
-  if (match) return { kind: match[1].toLowerCase() === 'ivar' ? 'ivar' : 'cabinet', unit: match[2].toUpperCase(), row: Number(match[3]), slot: match[4], variant: match[5] || '' };
-  match = id.match(/^([A-Z])-H(\d+)-P(\d+)(?:-([A-Z]))?$/i);
-  if (match) return { kind: 'ivar', unit: match[1].toUpperCase(), row: Number(match[2]), slot: match[3], variant: match[4] || '' };
-  match = id.match(/^BENCH:([A-Z0-9-]+):(TOP|UNDER):P(\d+)(?::([A-Z]))?$/i);
-  if (match) return { kind: 'bench', unit: match[1].toUpperCase(), row: match[2].toUpperCase(), slot: match[3], variant: match[4] || '' };
-  match = boxId.match(/^(IVAR|CABINET)-([A-Z0-9-]+)-H(\d+)-P(\d+)-([A-Z])$/i);
-  if (match) return parseLocation(`${match[1]}:${match[2]}:H${match[3]}:P${match[4]}:${match[5]}`);
-  match = boxId.match(/^BENCH-([A-Z0-9-]+)-(TOP|UNDER)-P(\d+)-([A-Z])$/i);
-  if (match) return parseLocation(`BENCH:${match[1]}:${match[2]}:P${match[3]}:${match[4]}`);
-  return null;
-}
 
 const unitName = p => p.kind === 'ivar' ? p.unit : p.unit.toLowerCase().split('-').map(s => s[0]?.toUpperCase() + s.slice(1)).join(' ');
 const slug = p => `${p.kind === 'ivar' ? '' : p.kind + '-'}${p.unit.toLowerCase()}`;
@@ -71,6 +61,22 @@ export class Inventory {
     return data.boxes.map(b => this.get(b.boxId, language, data));
   }
 
+  positions(language) {
+    const counts = new Map();
+    for (const box of this.store.read().boxes) counts.set(box.currentLocationId, (counts.get(box.currentLocationId) || 0) + 1);
+    return this.store.locationIds().map(locationId => ({
+      locationId, location: presentLocation(locationId, '', this.language(language)), boxCount: counts.get(locationId) || 0
+    })).sort((a, b) => a.locationId.localeCompare(b.locationId, undefined, { numeric: true }));
+  }
+
+  addPosition(payload, language) {
+    object(payload); text(payload.locationId, 'locationId');
+    const id = payload.locationId.trim();
+    if (id.length > 200) throw new InputError('Location IDs must be at most 200 characters.');
+    this.store.addLocation(id);
+    return this.positions(language).find(p => p.locationId === id);
+  }
+
   setCover(boxId, assetId) {
     if (assetId !== null) text(assetId, 'assetId');
     this.store.mutate(data => {
@@ -85,18 +91,18 @@ export class Inventory {
   }
 
   search(query, limit = 10, language) {
-    const q = normalize(query);
-    if (!q) return [];
-    const tokens = q.split(' ').filter(t => t.length > 1 && !['var', 'finns', 'den', 'det', 'och', 'med', 'where', 'are', 'the'].includes(t));
-    return this.list(language).map(box => {
-      const fields = [box.label, box.locationId, box.boxId, box.summary || '', box.boxNotes || '', box.sessionNotes || '', ...box.itemKeywords, ...box.photos.flatMap(p => [p.notes || '', p.originalFileName || ''])].map(normalize);
-      const haystack = fields.join(' ');
-      const overlaps = tokens.filter(t => haystack.includes(t)).length;
-      const phrase = haystack.includes(q);
-      if (!phrase && !overlaps) return null;
-      return { ...box, score: overlaps + (phrase ? 3 : 0) + (fields[0].includes(q) ? 6 : 0) + (normalize(box.summary || '').includes(q) ? 4 : 0) + (box.itemKeywords.some(k => normalize(k).includes(q)) ? 7 : 0) };
-    }).filter(Boolean).sort((a, b) => b.score - a.score || a.boxId.localeCompare(b.boxId)).slice(0, Math.max(1, Math.min(25, Number.isFinite(limit) ? Math.trunc(limit) : 10)));
+    const data = this.store.read();
+    const owners = new Map(data.sessions.map(session => [session.sessionId, session.boxId]));
+    const historical = new Map();
+    for (const photo of data.photos) {
+      const boxId = owners.get(photo.sessionId);
+      if (photo.originalFileName && boxId) { if (!historical.has(boxId)) historical.set(boxId, []); historical.get(boxId).push(photo.originalFileName); }
+    }
+    const boxes = data.boxes.map(box => this.get(box.boxId, language, data));
+    return searchBoxes(boxes, query, historical).slice(0, Math.max(1, Math.min(25, Number.isFinite(limit) ? Math.trunc(limit) : 10)));
   }
+
+  storageMap(language) { return buildStorageMap(this.list(language), this.positions(language)); }
 
   ask(query, language) {
     const lang = this.language(language); const matches = this.search(query, 5, lang);
@@ -122,9 +128,11 @@ export class Inventory {
 
   save(payload) {
     object(payload); object(payload.box, 'box'); object(payload.session, 'session');
-    const { box, session } = payload;
+    const box = { ...payload.box }, session = { ...payload.session };
     if (payload.expectNewBox !== undefined && typeof payload.expectNewBox !== 'boolean') throw new InputError('expectNewBox must be a boolean.');
-    for (const key of ['boxId', 'label', 'currentLocationId']) text(box[key], key);
+    for (const key of ['label', 'currentLocationId']) text(box[key], key);
+    text(box.boxId, 'boxId', { optional: true, empty: true });
+    const generateId = box.boxId === undefined || box.boxId === '';
     if (session.boxId !== box.boxId) throw new InputError('The session must belong to the submitted box.');
     text(session.summary, 'summary', { empty: true });
     if (!Array.isArray(session.itemKeywords)) throw new InputError('itemKeywords must be an array.');
@@ -134,9 +142,16 @@ export class Inventory {
     const assetIds = (payload.photos || []).map(p => p?.immichAssetId);
     if (new Set(assetIds).size !== assetIds.length) throw new InputError('The same image cannot be added twice to a session.');
     this.store.mutate(data => {
-      const owners = new Map(data.sessions.map(s => [s.sessionId, s.boxId]));
-      for (const photo of payload.photos || []) if (data.photos.some(p => p.immichAssetId === photo?.immichAssetId && owners.get(p.sessionId) !== box.boxId)) throw new InputError('A selected image is already linked to another box.', 409);
+      const occupied = data.boxes.find(b => b.boxId !== box.boxId && locationKey(b.currentLocationId) === locationKey(box.currentLocationId));
+      if (occupied) throw new InputError(`This location is occupied by ${occupied.label}. Choose a different position or letter.`, 409);
+      if (generateId) {
+        box.boxId = suggestBoxId(box.currentLocationId, data.boxes.map(b => b.boxId)) || `BOX-${randomUUID()}`;
+        session.boxId = box.boxId;
+      }
+      const owners = new Map(data.boxes.map(b => [currentSession(data, b.boxId)?.sessionId, b.boxId]));
+      for (const photo of payload.photos || []) if (data.photos.some(p => p.immichAssetId === photo?.immichAssetId && owners.has(p.sessionId) && owners.get(p.sessionId) !== box.boxId)) throw new InputError('A selected image is already linked to another box.', 409);
       const old = data.boxes.find(b => b.boxId === box.boxId);
+      if (payload.expectedSessionId !== undefined && (currentSession(data, box.boxId)?.sessionId || null) !== payload.expectedSessionId) throw new InputError('The box inventory changed. Reopen the box before saving your update.', 409);
       if (payload.expectNewBox && old) throw new InputError('This box ID already exists. Choose a new ID or open the existing box to update it.', 409);
       const prior = data.sessions.find(s => s.sessionId === sessionId);
       if (prior && prior.boxId !== box.boxId) throw new InputError('A session cannot be reassigned to another box.', 409);

@@ -20,10 +20,14 @@ All unchecked items are planned, not delivered.
 
 ## 3. Implement interfaces and integrations
 
-AI settings direction: [task-based AI design](AI-DESIGN.md). Named connections, task settings, single-photo tests and multi-photo new-box drafts with review/edit/save are implemented. Other tasks remain planned.
+AI settings direction: [task-based AI design](AI-DESIGN.md). Named connections, task settings, single-photo tests and multi-photo new-box drafts and existing-box photo updates with review/edit/save are implemented. Other tasks remain planned.
 
 - [ ] Implement inventory UI, settings, photo integrations, and AI workflows.
 - [x] Implement manual inventory UI, session history and shared server-side search.
+- [x] Add a storage map from registered positions/current box locations, with search highlighting and box navigation.
+- [x] Restore reference-style Swedish word variants, RC synonyms, short transpositions and retained historical filename search.
+- [x] Separate interface language (English/Swedish), external-response defaults and AI description language; preserve stored inventory text.
+- [x] Release photos removed from current inventories back to the unassigned album while retaining history.
 - [x] Add automatic/selectable box-card photos and in-app photo browsing without opening tabs.
 - [x] Add photo retrieval adapters tested against synthetic HTTP sources.
 - [x] Add redacted photo settings, album discovery/inbox, image selection, roles and validated attachments.
@@ -32,14 +36,18 @@ AI settings direction: [task-based AI design](AI-DESIGN.md). Named connections, 
 - [x] Implement task-based AI connection/settings UI and a single-photo analysis preview without inventory writes.
 - [x] Verify live OpenRouter image analysis from the Immich test album, including a browser-driven preview with isolated inventory.
 - [x] Add multi-photo new-box drafts with explicit review/edit/save through the shared session service.
-- [ ] Add AI-assisted updates to existing boxes, AI answer phrasing and translation drafting.
+- [x] Add AI-assisted updates to existing boxes with selected photos, current-description context and explicit review/apply/save.
+- [ ] Implement and evaluate the [voice-first hybrid retrieval and answer contract](VOICE-SEARCH.md): one supported destination or short clarification/no-match answer, without reading candidate lists.
+- [ ] Add versioned background embeddings in SQLite and a verified production embedding-service route; add compatible bounded clarification context for HA with button activation retained.
+- [ ] Add optional AI answer phrasing and translation drafting; application logic controls destination selection and speech constraints.
 - [ ] Implement compatible REST and MCP endpoints.
 - [x] Implement public REST shapes and all five read-only MCP tools.
 - [ ] Close search/language parity gaps recorded in COMPATIBILITY.md.
-- [ ] Adapt catalog import/export to the new persistence layer.
-- [ ] Verify the actual HA integration against an isolated running instance.
+- Excel catalog import/export is out of scope (one-time initial label import, retired 2026-10-20).
+- [x] Verify the actual HA integration runtime against an isolated real Home Assistant Docker instance.
 - [x] Verify the actual HA HTTP client and result mapper against the development container.
-- [ ] Verify full HA config flow, entities, services, conversation and card in isolated HA.
+- [x] Verify HA config flow, entities, services, events, conversation and Lovelace card in isolated real HA.
+- [ ] Verify physical Assist/speech when available.
 
 ## 4. Package and verify deployment
 

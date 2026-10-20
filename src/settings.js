@@ -7,6 +7,22 @@ const baseUrl = value => value?.trim().replace(/\/+$/, '') || '';
 export class Settings {
   constructor(store) { this.store = store; }
   source() { return this.store.settings().immich || {}; }
+  languages() {
+    const appearance = this.store.settings().appearance || {};
+    const value = { uiLanguage: appearance.uiLanguage || 'en', responseLanguage: appearance.language || 'en' };
+    return { ...value, revision: sourceRevision(value) };
+  }
+  saveLanguages(input) {
+    object(input);
+    for (const field of Object.keys(input)) if (!['uiLanguage', 'responseLanguage', 'revision'].includes(field)) throw new InputError(`Unsupported language setting: ${field}`);
+    if (!['en', 'sv'].includes(input.uiLanguage)) throw new InputError('Choose English or Swedish for the interface.');
+    if (!['en', 'sv', 'de'].includes(input.responseLanguage)) throw new InputError('Choose English, Swedish or German for external responses.');
+    return this.store.transaction(() => {
+      if (input.revision !== this.languages().revision) throw new InputError('Language settings changed. Reopen Languages before saving.', 409);
+      this.store.writeSettings({ appearance: { ...this.store.settings().appearance, uiLanguage: input.uiLanguage, language: input.responseLanguage } });
+      return this.languages();
+    });
+  }
   view() {
     const settings = this.store.settings(); const config = settings.immich || {};
     return {
