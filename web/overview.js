@@ -35,12 +35,64 @@ async function fitted(url) {
   return { url: URL.createObjectURL(blob), ...size };
 }
 
-export function mountOverview() {
-  let viewer = null, observer = null, current = null, blobUrl = null;
+// Clickable points open a storage unit on the storage map. In edit mode a click in the
+// image adds a point and a click on a point removes it; points are saved per image.
+export function mountOverview({ request, units, title, openUnit }) {
+  let viewer = null, observer = null, current = null, blobUrl = null, points = null, ready = false;
+  let editing = false, pending = null, down = null, labels = new Map(), shown = 0;
   function reset() {
-    observer?.disconnect(); observer = null; viewer?.destroy(); viewer = null;
+    observer?.disconnect(); observer = null; viewer?.destroy(); viewer = null; ready = false; shown = 0;
     if (blobUrl) URL.revokeObjectURL(blobUrl); blobUrl = null;
+    setEditing(false);
   }
+  const status = text => { $('overview-point-status').textContent = text; };
+  function hint() {
+    if (editing) $('overview-hint').textContent = t('Click in the image to add a point at that place. Click a point to remove it.');
+  }
+  function setEditing(on) {
+    editing = on; pending = null; $('overview-point-form').hidden = true; status('');
+    $('overview-edit').textContent = t(on ? 'Done' : 'Edit points'); $('overview-pano').classList.toggle('is-editing', on);
+    if (on) hint(); else if (viewer) $('overview-hint').textContent = t('Drag to look around. Scroll or pinch to zoom. Click a point to open that storage unit.');
+  }
+  async function loadLabels() {
+    try { labels = new Map((await units()).map(unit => [unit.slug, title(unit)])); } catch { labels = new Map(); }
+  }
+  function drawPoints() {
+    if (!viewer || !ready) return;
+    for (let i = 0; i < shown; i++) viewer.removeHotSpot(`point-${i}`);
+    points.points.forEach((point, i) => viewer.addHotSpot({
+      id: `point-${i}`, pitch: point.pitch, yaw: point.yaw, cssClass: 'overview-point',
+      createTooltipFunc: (div, label) => { const span = document.createElement('span'); span.textContent = label; div.append(span); },
+      createTooltipArgs: labels.get(point.unit) || point.unit,
+      clickHandlerFunc: () => editing ? removePoint(i) : openUnit(point.unit)
+    }));
+    shown = points.points.length;
+  }
+  async function save(next) {
+    try {
+      points = await (await request('overview/points', { method: 'PUT', body: JSON.stringify({ assetId: current.assetId, revision: points.revision, points: next }) })).json();
+      drawPoints(); status(t('Points saved.'));
+    } catch (error) { status(t(error.message)); }
+  }
+  function removePoint(index) {
+    const point = points.points[index];
+    if (confirm(t('Remove the point for {0}?').replace('{0}', labels.get(point.unit) || point.unit))) save(points.points.filter((_, i) => i !== index));
+  }
+  $('overview-edit').addEventListener('click', async () => { if (!editing) await loadLabels(); setEditing(!editing); });
+  $('overview-pano').addEventListener('pointerdown', event => { down = { x: event.clientX, y: event.clientY }; });
+  $('overview-pano').addEventListener('click', event => {
+    // A drag to look around also ends in a click; only a still click adds a point.
+    if (!editing || !viewer || !down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5 || event.target.closest('.overview-point, .pnlm-controls-container')) return;
+    const [pitch, yaw] = viewer.mouseEventToCoords(event);
+    pending = { pitch: Math.round(pitch * 100) / 100, yaw: Math.round(yaw * 100) / 100 };
+    $('overview-point-unit').replaceChildren(...[...labels].map(([slug, label]) => new Option(label, slug)));
+    $('overview-point-form').hidden = false; status('');
+  });
+  $('overview-point-cancel').addEventListener('click', () => { pending = null; $('overview-point-form').hidden = true; });
+  $('overview-point-save').addEventListener('click', () => {
+    if (!pending || !$('overview-point-unit').value) return;
+    $('overview-point-form').hidden = true; save([...points.points, { ...pending, unit: $('overview-point-unit').value }]); pending = null;
+  });
   async function build(image) {
     if (current !== image || !window.pannellum) return;
     $('overview-hint').textContent = t('Loading the overview…');
@@ -59,14 +111,15 @@ export function mountOverview() {
         strings: { loadingLabel: t('Loading…'), genericWebGLError: t('This browser cannot show the 3D view.'),
           textureSizeError: t('The image is too large for this device.'), unknownError: t('The 3D view could not be shown.') }
       });
-      $('overview-hint').textContent = t(haov === 360 ? 'Drag to look around. Scroll or pinch to zoom.'
+      viewer.on('load', async () => { ready = true; await loadLabels(); drawPoints(); });
+      $('overview-hint').textContent = t(haov === 360 ? 'Drag to look around. Scroll or pinch to zoom. Click a point to open that storage unit.'
         : 'Drag to look around. Scroll or pinch to zoom. This is a 180 degree image; a 360 degree image shows the whole room.');
     } catch { if (current === image) $('overview-hint').textContent = t('The 3D view could not be shown.'); }
   }
   return {
-    show(image) {
-      if (current?.assetId === image?.assetId && viewer) return;
-      reset(); current = image; if (!image) return;
+    show(image, imagePoints) {
+      if (current?.assetId === image?.assetId && viewer) { points = imagePoints; drawPoints(); return; }
+      reset(); current = image; points = imagePoints; if (!image) return;
       // Load the full image only when the overview is on screen.
       observer = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) { observer.disconnect(); build(image); } });
       observer.observe($('overview-pano'));

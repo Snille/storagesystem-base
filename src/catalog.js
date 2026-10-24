@@ -162,7 +162,8 @@ export class Catalog {
     if (!id) return { image: null };
     const revision = sourceRevision(config), expires = String(Date.now() + 15 * 60 * 1000);
     const imageUrl = variant => `/api/album-preview/${encodeURIComponent(id)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(id, expires, revision, variant)}`;
-    return { image: { assetId: id, albumName: typeof album.albumName === 'string' ? album.albumName : '', previewUrl: imageUrl('preview'), originalUrl: imageUrl('original') } };
+    return { image: { assetId: id, albumName: typeof album.albumName === 'string' ? album.albumName : '', previewUrl: imageUrl('preview'), originalUrl: imageUrl('original') },
+      points: this.settings.overviewPoints(id) };
   }
 
   async preview(asset, url) {

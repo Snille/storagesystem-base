@@ -624,5 +624,17 @@ export default {
   "The backup exceeds 512 MiB.": "Backupen är större än 512 MiB.",
   "Upload and check the backup again before restoring.": "Ladda upp och kontrollera backupen igen innan du återställer.",
   "The checked backup expired. Upload it again.": "Den kontrollerade backupen har gått ut. Ladda upp den igen.",
-  "Type RESTORE to confirm.": "Skriv RESTORE för att bekräfta."
+  "Type RESTORE to confirm.": "Skriv RESTORE för att bekräfta.",
+  "Click in the image to add a point at that place. Click a point to remove it.": "Klicka i bilden för att lägga en punkt där. Klicka på en punkt för att ta bort den.",
+  "Drag to look around. Scroll or pinch to zoom. Click a point to open that storage unit.": "Dra för att se dig omkring. Skrolla eller nyp för att zooma. Klicka på en punkt för att öppna den förvaringsenheten.",
+  "Points saved.": "Punkterna är sparade.",
+  "Remove the point for {0}?": "Ta bort punkten för {0}?",
+  "Edit points": "Redigera punkter",
+  "Done": "Klar",
+  "Storage unit for this point": "Förvaringsenhet för punkten",
+  "Save point": "Spara punkten",
+  "Cancel": "Avbryt",
+  "The points changed. Reload the overview before saving.": "Punkterna har ändrats. Ladda om översikten innan du sparar.",
+  "Invalid overview point.": "Ogiltig punkt i översikten.",
+  "Invalid overview points.": "Ogiltiga punkter i översikten."
 };

@@ -57,12 +57,14 @@ export function mountStorageMap(request, getBoxes, openBox, printLocation) {
   }
   $('close-storage-map').addEventListener('click', () => $('storage-map-dialog').close());
   $('storage-map-unit').addEventListener('change', render);
-  return { async open(highlightIds = null, focusedBox = null) {
+  return { units: () => model.units, title, async load() { model = await (await request(`storage-map?lang=${document.documentElement.lang}`)).json(); return model.units; },
+    async open(highlightIds = null, focusedBox = null, focusedUnit = null) {
     const response = await request(`storage-map?lang=${document.documentElement.lang}`); model = await response.json(); matches = highlightIds === null ? null : new Set(highlightIds);
     const previous = $('storage-map-unit').value; $('storage-map-unit').replaceChildren();
     for (const unit of model.units) $('storage-map-unit').add(new Option(title(unit), unit.slug));
     const focused = model.units.find(unit => unit.positions.some(position => position.boxIds.some(id => focusedBox ? id === focusedBox : matches?.has(id))));
-    $('storage-map-unit').value = focused?.slug || (model.units.some(unit => unit.slug === previous) ? previous : model.units[0]?.slug || '');
+    const chosen = model.units.some(unit => unit.slug === focusedUnit) ? focusedUnit : focused?.slug;
+    $('storage-map-unit').value = chosen || (model.units.some(unit => unit.slug === previous) ? previous : model.units[0]?.slug || '');
     $('storage-map-status').textContent = '';
     $('storage-map-query').textContent = matches === null ? t('Choose a storage unit. Click a box to open it. Only registered positions are shown.') : tr('{0} search matches highlighted. Other boxes remain visible for orientation.', matches.size);
     render(); if (!$('storage-map-dialog').open) $('storage-map-dialog').showModal();

@@ -65,6 +65,19 @@ test('the overview image is the album cover, management-only, signed and without
   const response = await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json();
   assert.equal(response.image.assetId, 'cover-asset'); assert.equal(response.image.albumName, 'Verkstad');
   assert.match(response.image.previewUrl, /^\/api\/album-preview\/cover-asset\?variant=preview&.*grant=/); assert.ok(!JSON.stringify(response).includes('photo-key'));
+  // Clickable points are saved per overview image and checked.
+  assert.deepEqual(response.points.points, []);
+  const putPoints = (body, key = 'admin') => fetch(base + '/api/manage/overview/points', { method: 'PUT', headers: { 'x-api-key': key, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const point = { yaw: -42.5, pitch: 3.25, unit: 'cabinet-3' };
+  assert.equal((await putPoints({ assetId: 'cover-asset', revision: response.points.revision, points: [point] }, 'read')).status, 401);
+  for (const bad of [{ ...point, yaw: 181 }, { ...point, pitch: Number.NaN }, { ...point, unit: 'Not A Slug' }, { ...point, extra: 1 }]) {
+    assert.equal((await putPoints({ assetId: 'cover-asset', revision: response.points.revision, points: [bad] })).status, 400);
+  }
+  const saved = await (await putPoints({ assetId: 'cover-asset', revision: response.points.revision, points: [point] })).json();
+  assert.deepEqual(saved.points, [point]);
+  assert.equal((await putPoints({ assetId: 'cover-asset', revision: response.points.revision, points: [] })).status, 409);
+  assert.deepEqual((await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json()).points.points, [point]);
+  assert.deepEqual(store.settings().overviewPoints, { 'cover-asset': [point] }); assert.equal(store.audit().ok, true);
   // The album inbox and photo choices leave the cover out, unless a box already uses it.
   const albumIds = async () => (await (await fetch(base + '/api/manage/album?refresh=true', { headers: { 'x-api-key': 'admin' } })).json()).assets.map(a => a.id);
   assert.deepEqual(await albumIds(), ['box-photo']);

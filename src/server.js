@@ -187,6 +187,7 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/manage/security' && method === 'GET') return json(catalog.settings.security(env));
       if (path === '/api/manage/security' && method === 'PUT') return json(catalog.settings.saveSecurity(await body(req), env));
       if (path === '/api/manage/overview' && method === 'GET') return json(await catalog.overview());
+      if (path === '/api/manage/overview/points' && method === 'PUT') return json(catalog.settings.saveOverviewPoints(await body(req)));
       if (path === '/api/manage/appearance' && method === 'PUT') return json(catalog.settings.saveBackground(await body(req)));
       if (path === '/api/manage/languages' && method === 'GET') return json(catalog.settings.languages());
       if (path === '/api/manage/languages' && method === 'PUT') return json(catalog.settings.saveLanguages(await body(req)));

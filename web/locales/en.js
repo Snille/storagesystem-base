@@ -630,5 +630,17 @@ export default {
   "The backup exceeds 512 MiB.": "The backup exceeds 512 MiB.",
   "Upload and check the backup again before restoring.": "Upload and check the backup again before restoring.",
   "The checked backup expired. Upload it again.": "The checked backup expired. Upload it again.",
-  "Type RESTORE to confirm.": "Type RESTORE to confirm."
+  "Type RESTORE to confirm.": "Type RESTORE to confirm.",
+  "Click in the image to add a point at that place. Click a point to remove it.": "Click in the image to add a point at that place. Click a point to remove it.",
+  "Drag to look around. Scroll or pinch to zoom. Click a point to open that storage unit.": "Drag to look around. Scroll or pinch to zoom. Click a point to open that storage unit.",
+  "Points saved.": "Points saved.",
+  "Remove the point for {0}?": "Remove the point for {0}?",
+  "Edit points": "Edit points",
+  "Done": "Done",
+  "Storage unit for this point": "Storage unit for this point",
+  "Save point": "Save point",
+  "Cancel": "Cancel",
+  "The points changed. Reload the overview before saving.": "The points changed. Reload the overview before saving.",
+  "Invalid overview point.": "Invalid overview point.",
+  "Invalid overview points.": "Invalid overview points."
 };

@@ -1,5 +1,11 @@
 # History
 
+## 0.20.0-dev - 2026-10-24
+
+- **Clickable points in the 3D overview.** A green point shows a storage unit's name on hover and opens that unit on the storage map. **Edit points** turns on an edit mode: a still click in the image (not a drag) asks which storage unit to place there, and a click on a point removes it after confirmation. Points are saved per overview image in the `overviewPoints` settings record (direction and unit slug), so a new 360 degree cover starts empty and the old image's points remain saved.
+- New `PUT /api/manage/overview/points`; `GET /api/manage/overview` also returns the image's points. The storage map can open on a given unit.
+- Verified on the development copy with the current 360 degree cover: placed a point on the cabinets (Skåp 1), it opened Skåp 1 on the map, then removed it again; no points are left saved.
+
 ## 0.19.0-dev - 2026-10-24
 
 - **Restore from backup in the interface.** Under Data & maintenance, upload an SQLite backup. The server checks it (SQLite header, this application's schema 1-3, migration of older schemas, full audit including images) and shows the current and backup totals. Typing `RESTORE` replaces every table in one transaction; a failed audit inside the transaction rolls everything back. The current database is saved first as `restore-backups/before-restore-<time>.sqlite` beside the database. Uploads are limited to 512 MiB, kept only until restore or the next upload, and expire after 10 minutes.

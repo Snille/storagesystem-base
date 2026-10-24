@@ -60,10 +60,25 @@ export function validateInventory(input) {
 // Built-in page backgrounds live in web/backgrounds; custom uses the uploaded image.
 export const backgrounds = ['hills', 'pegboard', 'blueprint', 'none', 'custom'];
 
+// Clickable points in the 3D overview, per overview image: a direction and a storage unit.
+export function validateOverviewPoints(value) {
+  object(value, 'overviewPoints');
+  for (const [assetId, points] of Object.entries(value)) {
+    if (!assetId || assetId.length > 200 || !Array.isArray(points) || points.length > 100) throw new InputError('Invalid overview points.');
+    for (const point of points) {
+      object(point, 'point');
+      if (Object.keys(point).some(k => !['yaw', 'pitch', 'unit'].includes(k)) || !Number.isFinite(point.yaw) || point.yaw < -180 || point.yaw > 180
+        || !Number.isFinite(point.pitch) || point.pitch < -90 || point.pitch > 90 || typeof point.unit !== 'string' || !/^[a-z0-9-]{1,100}$/.test(point.unit)) throw new InputError('Invalid overview point.');
+    }
+  }
+  return value;
+}
+
 export function validateSettings(settings) {
   object(settings, 'settings');
   if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
   if (settings.appearance?.background !== undefined && !backgrounds.includes(settings.appearance.background)) throw new InputError('Unsupported background.');
+  if (settings.overviewPoints !== undefined) validateOverviewPoints(settings.overviewPoints);
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);
   if (settings.searchWorkspace !== undefined) validateSearchWorkspace(settings.searchWorkspace);
   if (settings.printing !== undefined) validateLegacyPrinting(settings.printing);

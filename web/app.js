@@ -109,10 +109,14 @@ async function load() {
   render(); loadOverview();
 }
 
-let overviewImage = null; const overview = mountOverview();
+let overviewImage = null;
+const overview = mountOverview({ request, units: () => storageMap.load(), title: unit => storageMap.title(unit),
+  openUnit: slug => storageMap.open(null, null, slug).catch(error => message(error.message, true)) });
 async function loadOverview() {
-  try { overviewImage = (await (await request('overview')).json()).image; } catch { overviewImage = null; }
-  $('overview').hidden = !overviewImage; overview.show(overviewImage);
+  let result = {};
+  try { result = await (await request('overview')).json(); } catch { /* No overview without a photo source. */ }
+  overviewImage = result.image || null;
+  $('overview').hidden = !overviewImage; overview.show(overviewImage, result.points);
 }
 $('overview-open').addEventListener('click', () => openViewer({ label: overviewImage.albumName || t('Overview image'),
   photos: [{ role: 'location', originalUrl: overviewImage.originalUrl, originalFileName: t('Album cover'), immichAssetId: overviewImage.assetId }] }, 0, true));

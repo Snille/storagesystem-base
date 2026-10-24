@@ -54,6 +54,23 @@ export class Settings {
       return this.appearance();
     });
   }
+  // Points belong to one overview image; a new cover starts without points, and the old
+  // image's points stay saved in case it comes back.
+  overviewPoints(assetId) {
+    const points = this.store.settings().overviewPoints?.[assetId] || [];
+    return { assetId, points, revision: sourceRevision(points) };
+  }
+  saveOverviewPoints(input) {
+    object(input);
+    for (const field of Object.keys(input)) if (!['assetId', 'revision', 'points'].includes(field)) throw new InputError(`Unsupported overview setting: ${field}`);
+    text(input.assetId, 'assetId');
+    return this.store.transaction(() => {
+      if (input.revision !== this.overviewPoints(input.assetId).revision) throw new InputError('The points changed. Reload the overview before saving.', 409);
+      const all = { ...this.store.settings().overviewPoints, [input.assetId]: input.points };
+      this.store.writeSettings({ overviewPoints: all });
+      return this.overviewPoints(input.assetId);
+    });
+  }
   // Keys are never returned, only where the active one comes from. A saved public key and
   // base URL take precedence over the environment like in the reference application,
   // except APP_BASE_URL, which deployment sets on purpose.
