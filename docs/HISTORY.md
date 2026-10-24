@@ -7,6 +7,7 @@
 - Removed direct CUPS/IPP printing, DYMO roll reading, label layout and the CUPS/format/size settings from this application (`ipp.js`, `dymo-roll.js`, `labels.js`, `label-media.js`; the roll endpoint is gone). Roll reading, formats, text sizes and direction live on the label service's page. Their tests moved to the label service.
 - The 0.12-0.14 `printing` settings and `print_jobs` journal stay valid for audit, backup and restore but are no longer used or written.
 - 87 tests pass, including a stand-in label service for previews, submission, deduplication, stale boxes and settings, error mapping and key privacy.
+- End-to-end physical acceptance: the Docker Desktop development app (real inventory) printed the unedited box label for `BENCH-1-UNDER-P1-A` ("Dammsugare") through the live label service 0.3.0 in Portainer on S0722540 / 57 x 32 mm, after reading the roll (672 labels). Label service journal: client `storagesystem`, kind `box`, CUPS job 2, completed. The owner confirmed legible, correctly facing, unclipped text and solid power.
 
 - Each label format now keeps its own text sizes. Switching format shows that format's sizes. Defaults are the owner-accepted values (6-point description only for S0722550 / 19 x 51 mm). A pre-0.14 shared style is read as the style of the format selected when it was saved.
 - Added location labels: a registered location (or test text) printed as one large, centered block that shrinks to fit. Long location codes break after hyphens only when needed. Print journal records store the label kind and location.

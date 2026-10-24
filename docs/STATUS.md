@@ -9,6 +9,11 @@ preview and submits with a request identifier the service deduplicates. Direct
 CUPS printing, roll reading and layout code were removed; their history stays
 below and in PRINTING.md. 87 tests pass.
 
+End to end: the Docker Desktop development app (port 3210, real inventory,
+label service key saved in its settings) printed the box label for
+BENCH-1-UNDER-P1-A through the live label service 0.3.0 (CUPS job 2). The owner
+accepted the physical label: legible, correctly facing, unclipped, solid power.
+
 ### Previous: 0.14.0-dev
 
 Version 0.14.0-dev adds per-format label text sizes and text direction (portrait or

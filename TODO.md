@@ -52,7 +52,8 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [x] Physically accept a rotated location label (S0722550 landscape, CUPS job 121).
 - [x] Run the pinned Docker suite and update the Docker Desktop development stack to 0.14.0-dev.
 - [x] Print through the separate label service (Portainer stack, CUPS + DYMO driver); all five formats accepted there. This app no longer talks to CUPS or the printer.
-- [ ] Physically print a real box label and a location label from this app through the label service.
+- [x] Physically print a real box label from this app through the label service (BENCH-1-UNDER-P1-A, label service CUPS job 2, owner-accepted).
+- [ ] Physically print a location label from this app through the label service when the owner needs one.
 
 ## Out of scope
 

@@ -12,6 +12,8 @@ Choose a **Label type**. A **Box label** uses **Test label** or a current invent
 
 **Print one label** rechecks that the print settings and the box (contents, session and location) are unchanged since the preview, then sends the preview token with a request identifier. The label service prints exactly one copy and deduplicates the identifier, so resending after a lost response returns the original job instead of printing again. **Check print job** and **Recent print submissions** read this system's jobs from the label service. A completed CUPS job proves delivery to the driver, not legibility; check the physical label.
 
+Verified 2026-10-24: a real, unedited box label (`BENCH-1-UNDER-P1-A`, "Dammsugare", 57 x 32 mm) printed from this application through the live label service 0.3.0 as its CUPS job 2; the owner accepted the physical label. Location labels from this application have been previewed against the live service but not yet printed.
+
 ## Management API
 
 All endpoints require the management key and same-origin write protection:
