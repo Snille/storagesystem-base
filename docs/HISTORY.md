@@ -1,5 +1,11 @@
 # History
 
+## 0.21.0-dev - 2026-10-24
+
+- **AI route without the laptop.** Image analysis can use Ollama01 (TowerCube GPU, LAN) with `qwen3-vl:8b-instruct-16k` through an OpenAI-compatible connection; it needs neither GSA nor paid calls and is reachable from Portainer. Server changes are recorded in EMBEDDING-SERVICE.md.
+- OpenAI-compatible connections now get the strict JSON schema too (llama.cpp keeps `json_object`). The schema requires exactly one photo row per selected photo with indices 1..n, and a non-empty name and summary: without these Ollama returned no rows or empty names for single-photo boxes.
+- 15-box evaluation, new box / update (Spark v4, OpenRouter qwen3-vl-8b, Ollama01): failed answers 2 / 3 / **0**; role agreement 18/19, 17/20, **20/23**; update failures 0 / 2 / **0** with no saved keyword lost; average time 25 / 6 / 16 s per box. Weak points of the 8B model remain: wrong model numbers (Hakko FX-889A for FX-888D), occasional English or odd words, a name "inget" for a box of filament plates, colours as keywords. Drafts still need the owner's review.
+
 ## 0.20.1-dev - 2026-10-24
 
 - **Move and turn overview points.** In edit mode a point can be dragged to a new place (the click that ends a drag does not remove it), and **Turn all points** moves every point 1 or 5 degrees left or right, for a new photo taken facing another direction. Turning saves once after the clicks stop.

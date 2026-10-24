@@ -73,7 +73,7 @@ test('one explicit image preview sends only selected bytes, honors language/manu
   assert.ok(!JSON.stringify(preview).includes('private-ai-key')); assert.ok(!JSON.stringify(preview).includes('private-photo-key'));
   const call = c.calls.find(call => call.path.endsWith('completions'));
   assert.equal(call.key, 'Bearer private-ai-key'); assert.equal(call.photoKey, undefined);
-  assert.deepEqual(call.body.chat_template_kwargs, { enable_thinking: false });
+  assert.deepEqual(call.body.chat_template_kwargs, { enable_thinking: false }); assert.deepEqual(call.body.response_format, { type: 'json_object' });
   assert.match(call.body.messages[0].content, /Swedish/); assert.match(call.body.messages[0].content, /Keep codes exactly/);
   assert.equal(call.body.messages[1].content.filter(p => p.type === 'image_url').length, 1);
   assert.equal(call.body.messages[1].content.find(p => p.type === 'image_url').image_url.url, `data:image/png;base64,${png.toString('base64')}`);
@@ -99,7 +99,7 @@ test('multi-photo draft maps indexed interpretations to source assets; explicit 
   assert.equal(draft.result.photos[0].description, 'Screws visible inside.');
   assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
   const call = c.calls.find(call => call.path.endsWith('completions'));
-  assert.equal(call.body.chat_template_kwargs, undefined); assert.deepEqual(call.body.response_format, { type: 'json_object' }); assert.equal(call.body.provider, undefined);
+  assert.equal(call.body.chat_template_kwargs, undefined); assert.equal(call.body.response_format.type, 'json_schema'); assert.equal(call.body.response_format.json_schema.strict, true); assert.equal(call.body.provider, undefined);
   assert.equal(call.body.messages[1].content.filter(p => p.type === 'image_url').length, 2);
   // Evaluation rules: names and keywords describe contents, never the container or shelf.
   assert.match(call.body.messages[0].content, /Never use only a product code/); assert.match(call.body.messages[0].content, /Do not add words about the container or the storage place/);
@@ -130,6 +130,8 @@ test('OpenRouter drafts request the strict schema; duplicate keywords, empty nam
   const call = c.calls.find(call => call.path.endsWith('completions'));
   assert.equal(call.body.response_format.type, 'json_schema'); assert.equal(call.body.response_format.json_schema.strict, true);
   assert.deepEqual(call.body.response_format.json_schema.schema.required, ['label', 'summary', 'keywords', 'uncertainties', 'photos']);
+  const photoRows = call.body.response_format.json_schema.schema.properties.photos;
+  assert.deepEqual([photoRows.minItems, photoRows.maxItems, photoRows.items.properties.index.enum], [2, 2, [1, 2]]);
   assert.deepEqual(call.body.provider, { require_parameters: true });
   for (const bad of [{ ...combined, label: '  ' }, { ...combined, summary: 'Blandade 集成电路 och kondensatorer.' }, { ...combined, photos: [combined.photos[0], { ...combined.photos[1], description: 'ström接触are' }] }]) {
     c.setCompletion(completion(bad)); assert.equal((await c.request('ai/draft', input)).status, 502);

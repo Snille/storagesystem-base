@@ -3,7 +3,29 @@
 Verified on 2026-10-21. Ollama01 runs on TowerCube with RTX 4000 Ada GPU
 acceleration. It will serve both applications after application-specific
 acceptance. Mimers Brain switched on 2026-10-22 (see "Mimers Brain cutover");
-Storage System has not been switched.
+Storage System has not been switched for embeddings. Since 2026-10-24 the same
+service also runs Storage System's image model (see "Vision model for Storage System").
+
+## Vision model for Storage System
+
+Added 2026-10-24 with the owner's approval, on the condition that Mimers Brain keeps working.
+
+- Model `qwen3-vl:8b-instruct-16k`: `qwen3-vl:8b-instruct` (digest starts `70e58e37beb1`, 6.2 GB) with
+  `PARAMETER num_ctx 16384`, so up to six photos and the instructions fit. The thinking variant
+  `qwen3-vl:8b` was tried first and removed: it spent its answer budget on reasoning.
+- `OLLAMA_MAX_LOADED_MODELS=2` (drop-in `40-models.conf`) keeps bge-m3 loaded beside the vision
+  model; both report 100% GPU, about 10 of 20 GB VRAM together.
+- Memory: the container now has 16 GiB and the service `MemoryMax=14G` (drop-in `50-memory.conf`).
+  The old 6 GiB limit killed the whole service when the vision model loaded (peak 7.6 GB, mmap is
+  disabled under memory pressure); one Mimers Brain embedding request failed during that restart.
+- Nginx: `POST /v1/chat/completions` is exposed only for the Storage System key (map
+  `/etc/nginx/chat-auth.map`, 403 for other valid keys), with a 24 MiB body limit and a 180 s read
+  timeout. Embeddings keep their 2 MiB limit. The Mimers Brain key still lists models and embeds.
+- The previous configuration is saved in the container under `/root/config-backup-20261024-220557`.
+- First request after a restart takes about 9-10 s (load plus CUDA JIT); later requests about
+  10-20 s per box with real photos.
+- In the 15-box evaluation (see HISTORY 0.21.0-dev) the model answered every box once the app sent a
+  strict JSON schema with the exact photo count and non-empty name and summary.
 
 ## Instance
 
