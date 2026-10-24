@@ -55,7 +55,7 @@
     <div id="print-paper" class="label-paper"></div>
     <p id="print-status" role="status" aria-live="polite"></p>
     <div class="actions"><button id="print-submit" disabled>Print one label</button><button id="print-job-check" class="quiet" disabled>Check print job</button></div>
-    <p class="hint">A completed CUPS job confirms delivery to the driver. Check the physical label for text and orientation.</p>
+    <p class="hint">A completed job means the label service delivered the label to the printer driver. Check the physical label for text and orientation.</p>
     <details><summary>Recent print submissions</summary><div id="print-history" class="actions"></div></details>
   </dialog>
   <dialog id="storage-map-dialog" aria-labelledby="storage-map-title">
@@ -103,7 +103,7 @@
       <p class="hint box-identity" title="Generated automatically. New boxes show a proposed ID until saved; existing IDs stay unchanged.">Box ID: <output id="box-identity">Assigned automatically on save</output></p>
     </form>
   </dialog>
-  <dialog id="detail"><div class="dialog-title"><h2 id="detail-title"></h2><button id="close-detail" class="quiet" aria-label="Close">✕</button></div><div id="detail-body"></div><div class="actions"><button id="edit">Update inventory</button></div></dialog>
+  <dialog id="detail"><div class="dialog-title"><h2 id="detail-title"></h2><button id="close-detail" class="quiet" aria-label="Close">✕</button></div><div id="detail-body"></div><div class="actions"><button id="print-label" class="quiet">Print label</button><button id="edit">Update inventory</button></div></dialog>
   <dialog id="photo-viewer" class="image-viewer" aria-labelledby="viewer-title">
     <div class="dialog-title"><h2 id="viewer-title"></h2><button id="viewer-close" class="quiet" aria-label="Close photo viewer">✕</button></div>
     <p id="viewer-caption" class="hint"></p>

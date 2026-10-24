@@ -1,6 +1,6 @@
 import { t, tr } from './i18n.js';
 
-export function mountStorageMap(request, getBoxes, openBox) {
+export function mountStorageMap(request, getBoxes, openBox, printLocation) {
   const $ = id => document.getElementById(id);
   const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
   let model = { units: [], unplaced: [] }; let matches = null;
@@ -43,6 +43,9 @@ export function mountStorageMap(request, getBoxes, openBox) {
             button.append(node('small', id)); button.title = box.summary || box.label;
             button.addEventListener('click', () => openBox(box)); place.append(button);
           }
+          // Aliases share one physical place; the first registered identifier names it on the label.
+          const print = node('button', t('Print location label'), 'quiet map-print'); print.type = 'button';
+          print.addEventListener('click', () => printLocation(position.locationIds[0])); place.append(print);
           cell.append(place);
         }
         line.append(cell);

@@ -54,7 +54,7 @@ $('languages-form').addEventListener('submit', async event => {
 
 mountAi(request, message, () => showAlbum());
 mountSearchSettings(request, message);
-mountPrinting(request, message);
+const printing = mountPrinting(request, message);
 const boxDraft = mountBoxDraft(request, draft => {
   if (draft.editorContext) {
     const context = draft.editorContext;
@@ -114,7 +114,7 @@ const locationEditor = mountLocationEditor(() => positions, locationId => {
   if (!selected) $('box-identity').value = suggestBoxId(locationId, boxes.map(b => b.boxId)) || t('Assigned automatically on save');
 });
 
-const storageMap = mountStorageMap(request, () => boxes, box => details(box).catch(error => message(error.message, true)));
+const storageMap = mountStorageMap(request, () => boxes, box => details(box).catch(error => message(error.message, true)), locationId => printing.open({ locationId }));
 $('open-storage-map').addEventListener('click', async () => {
   try {
     await load();
@@ -318,6 +318,7 @@ $('close-editor').addEventListener('click', () => $('editor').close());
 $('editor').addEventListener('close', () => { editorGeneration++; });
 $('close-detail').addEventListener('click', () => $('detail').close());
 $('edit').addEventListener('click', () => { $('detail').close(); edit(selected); });
+$('print-label').addEventListener('click', () => { $('detail').close(); printing.open({ boxId: selected.boxId }); });
 $('box-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!locationEditor.validate()) return;

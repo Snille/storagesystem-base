@@ -103,6 +103,7 @@ test('multi-photo draft maps indexed interpretations to source assets; explicit 
   assert.equal(call.body.messages[1].content.filter(p => p.type === 'image_url').length, 2);
   // Evaluation rules: names and keywords describe contents, never the container or shelf.
   assert.match(call.body.messages[0].content, /Never use only a product code/); assert.match(call.body.messages[0].content, /Do not add words about the container or the storage place/);
+  assert.match(call.body.messages[0].content, /Do not add colours unless/);
   assert.match(call.body.messages[0].content, /inside: Shows the contents: inside an open box, or items standing directly on a shelf/);
   assert.equal(c.calls.filter(call => call.path.startsWith('/api/assets/')).length, 2);
   const payload = { expectNewBox: true, box: { boxId: 'REVIEWED-BOX', label: 'User corrected label', currentLocationId: 'A-H1-P1-A' }, session: { boxId: 'REVIEWED-BOX', summary: draft.result.summary, itemKeywords: draft.result.keywords }, photos: draft.result.photos.map(p => ({ immichAssetId: p.assetId, photoRole: p.role, notes: p.description })), photoSourceRevision: draft.sourceRevision };

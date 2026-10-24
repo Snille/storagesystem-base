@@ -1,4 +1,4 @@
-import { t, uiLanguage } from './i18n.js';
+import { t, tr, uiLanguage } from './i18n.js';
 
 // Labels are previewed and printed by the label service; this dialog chooses the content and the connection.
 export function mountPrinting(request) {
@@ -15,7 +15,9 @@ export function mountPrinting(request) {
     const options = kind() === 'location' ? state.locations.map(id => new Option(id, id)) : state.boxes.map(box => new Option(box.label, box.boxId));
     $('print-box').replaceChildren(new Option(t('Test label'), ''), ...options);
   }
-  const jobText = job => `${new Date(job.createdAt).toLocaleString()} · ${t(job.kind === 'location' ? 'Location label' : 'Box label')} · ${job.state}${job.jobId ? ` · CUPS ${job.jobId}` : ''}`;
+  // jobId is the printer queue's job number inside the label service.
+  const jobText = job => `${new Date(job.createdAt).toLocaleString()} · ${t(job.kind === 'location' ? 'Location label' : 'Box label')} · ${job.state}${job.jobId ? ` · ${tr('printer job {0}', job.jobId)}` : ''}`;
+  const jobStatus = (state, printer) => `${t('Print submission')}: ${state} · ${t('Printer')}: ${printer || t('unknown')}`;
   async function history() {
     const list = $('print-history'); list.replaceChildren();
     if (!state.config.enabled) return;
@@ -24,7 +26,7 @@ export function mountPrinting(request) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'quiet'; button.textContent = jobText(job);
       button.addEventListener('click', () => run(async () => {
         lastJob = job; const result = await api(`/jobs/${job.id}`);
-        status(`${t('Print submission')}: ${result.record.state} · CUPS: ${result.status?.state || t('unknown')}`);
+        status(jobStatus(result.record.state, result.status?.state));
       })); list.append(button);
     }
   }
@@ -56,11 +58,16 @@ export function mountPrinting(request) {
     $('print-paper').replaceChildren(caption, svg);
   }
   async function run(action) { busy = true; controls(); try { await action(); } catch (error) { status(error.message); } finally { busy = false; controls(); } }
-  $('open-printing').addEventListener('click', () => run(async () => {
+  // Opens the dialog, optionally with a box or a registered location already chosen.
+  const open = (target = {}) => run(async () => {
     state = await api(''); state.boxes = (await (await request('boxes')).json()).boxes;
-    sources(); populate(); invalidate(); $('print-fields').hidden = true; $('print-device-result').hidden = true; status(''); $('printing-dialog').showModal();
+    $('print-kind').value = target.locationId ? 'location' : 'box';
+    sources(); $('print-box').value = target.locationId || target.boxId || '';
+    if ($('print-box').selectedIndex < 0) $('print-box').value = '';
+    populate(); invalidate(); $('print-fields').hidden = true; $('print-device-result').hidden = true; status(''); $('printing-dialog').showModal();
     await history();
-  }));
+  });
+  $('open-printing').addEventListener('click', () => open());
   $('close-printing').addEventListener('click', () => $('printing-dialog').close());
   $('print-config').addEventListener('input', () => { invalidate(); $('print-device-result').hidden = true; status(t('Save settings before preparing a label.')); });
   $('print-config').addEventListener('submit', event => { event.preventDefault(); run(async () => {
@@ -107,10 +114,11 @@ export function mountPrinting(request) {
     $('print-device-result').hidden = true;
     // Keep the same identifier after a lost HTTP response: the label service returns the original job instead of printing again.
     lastJob = await api('/submit', { token: preview.token, requestId });
-    status(`${t('Print submission')}: ${lastJob.state}${lastJob.jobId ? ` · CUPS ${lastJob.jobId}` : ''}. ${t('Check the job and the physical label before printing again.')}`);
+    status(`${t('Print submission')}: ${lastJob.state}${lastJob.jobId ? ` · ${tr('printer job {0}', lastJob.jobId)}` : ''}. ${t('Check the job and the physical label before printing again.')}`);
     await history();
   }));
   $('print-job-check').addEventListener('click', () => run(async () => {
-    const job = await api(`/jobs/${lastJob.id}`); status(`${t('Print submission')}: ${job.record.state} · CUPS: ${job.status?.state || t('unknown')}`);
+    const job = await api(`/jobs/${lastJob.id}`); status(jobStatus(job.record.state, job.status?.state));
   }));
+  return { open };
 }
