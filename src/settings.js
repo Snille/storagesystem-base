@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { InputError, object, text, validateSettings } from './validation.js';
+import { InputError, object, text, validateSettings, backgrounds } from './validation.js';
 
 export const sourceRevision = config => createHash('sha256').update(JSON.stringify(config || {})).digest('hex');
 const baseUrl = value => value?.trim().replace(/\/+$/, '') || '';
@@ -21,6 +21,37 @@ export class Settings {
       if (input.revision !== this.languages().revision) throw new InputError('Language settings changed. Reopen Languages before saving.', 409);
       this.store.writeSettings({ appearance: { ...this.store.settings().appearance, uiLanguage: input.uiLanguage, language: input.responseLanguage } });
       return this.languages();
+    });
+  }
+  // The page background is public: the page shows it before anyone enters a key.
+  appearance() {
+    const appearance = this.store.settings().appearance || {}; const image = this.store.media('background');
+    const value = { uiLanguage: appearance.uiLanguage || 'en', background: appearance.background || 'hills', imageRevision: image?.sha256 || null };
+    return { ...value, revision: sourceRevision(value) };
+  }
+  saveBackground(input) {
+    object(input);
+    for (const field of Object.keys(input)) if (!['revision', 'background', 'image', 'clearImage'].includes(field)) throw new InputError(`Unsupported background setting: ${field}`);
+    if (input.background !== undefined && !backgrounds.includes(input.background)) throw new InputError('Choose one of the listed backgrounds.');
+    if (input.clearImage !== undefined && typeof input.clearImage !== 'boolean') throw new InputError('clearImage must be a boolean.');
+    let image;
+    if (input.image !== undefined) {
+      object(input.image, 'image'); text(input.image.mime, 'image.mime'); text(input.image.data, 'image.data');
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.image.data)) throw new InputError('The image must be base64 encoded.');
+      image = { mime: input.image.mime, data: Buffer.from(input.image.data, 'base64') };
+    }
+    return this.store.transaction(() => {
+      if (input.revision !== this.appearance().revision) throw new InputError('Appearance settings changed. Reopen Appearance before saving.', 409);
+      if (image) this.store.setMedia('background', image.mime, image.data);
+      if (input.clearImage) this.store.deleteMedia('background');
+      // Uploading an image selects it; removing the selected image falls back to the default.
+      let background = input.background ?? (image ? 'custom' : this.appearance().background);
+      if (background === 'custom' && !this.store.media('background')) {
+        if (input.background === 'custom') throw new InputError('Upload an image before choosing your own background.');
+        background = 'hills';
+      }
+      this.store.writeSettings({ appearance: { ...this.store.settings().appearance, background } });
+      return this.appearance();
     });
   }
   view() {

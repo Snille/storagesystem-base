@@ -11,7 +11,7 @@
 <body>
   <header>
     <a class="brand" href="/">▦ <span>Storage System<small>Everything has a place.</small></span></a>
-    <div class="header-actions"><span class="badge">Development preview</span><span class="badge" id="app-version" title="Version">v{{version}}</span><button id="open-languages" class="quiet">Languages</button><button id="theme" class="quiet" aria-label="Toggle color theme">◐ Theme</button></div>
+    <div class="header-actions"><span class="badge">Development preview</span><span class="badge" id="app-version" title="Version">v{{version}}</span><button id="open-languages" class="quiet">Appearance</button><button id="theme" class="quiet" aria-label="Toggle color theme">◐ Theme</button></div>
   </header>
   <main>
     <section id="connect" class="panel connection">
@@ -25,7 +25,8 @@
     <p id="message" role="status" aria-live="polite"></p>
     <div id="workspace" hidden>
       <section class="intro"><div><p class="eyebrow">INVENTORY</p><h1>A place for everything.</h1><p class="muted">Your workshop at a glance.</p></div><div class="actions"><button id="open-storage-map" class="quiet">Storage map</button><button id="open-settings" class="quiet">Photo settings</button><button id="open-ai" class="quiet">AI assistance</button><button id="open-search-settings" class="quiet">Search &amp; answers</button><button id="open-printing" class="quiet">Printing</button><button id="open-album" class="quiet">Album inbox</button><button id="new-box">+ Add box</button></div></section>
-      <section class="stats" aria-label="Inventory totals"><div><strong id="box-count">0</strong><span>Boxes</span></div><div><strong id="location-count">0</strong><span>Storage positions</span></div><div><strong id="session-count">0</strong><span>Inventory sessions</span></div><div><strong id="photo-count">0</strong><span>Photo references</span></div></section>
+      <section class="stats" aria-label="Inventory totals"><div><strong id="box-count">0</strong><span>Boxes</span></div><div><strong id="unit-count">0</strong><span>Storage units</span><small id="unit-kinds"></small></div><div><strong id="location-count">0</strong><span>Storage positions</span></div><div><strong id="session-count">0</strong><span>Inventory sessions</span></div><div><strong id="photo-count">0</strong><span>Photo references</span></div><div><strong id="photo-box-count">0</strong><span>Boxes with photos</span><small id="no-photo-count"></small></div></section>
+    <section id="overview" class="panel overview" hidden><h2>Overview image</h2><button type="button" id="overview-open" class="overview-image" aria-label="Open the overview image"><img id="overview-img" alt=""></button><p class="hint">The cover of the photo album, chosen in the photo service.</p></section>
       <section class="toolbar"><label class="search-label">Search inventory<input id="search" type="search" placeholder="Search contents, box names, or locations…"></label><label>Location<select id="location"><option value="">All locations</option></select></label><button class="quiet" id="refresh">↻ Refresh</button></section>
       <p id="result-count" class="muted"></p>
       <section id="boxes" class="grid" aria-label="Inventory boxes"></section>
@@ -67,7 +68,7 @@
   </dialog>
   <dialog id="languages-dialog">
     <form id="languages-form">
-      <div class="dialog-title"><h2>Languages</h2><button type="button" id="close-languages" class="quiet" aria-label="Close languages">✕</button></div>
+      <div class="dialog-title"><h2>Appearance</h2><button type="button" id="close-languages" class="quiet" aria-label="Close appearance">✕</button></div><h3>Languages</h3>
       <label>Interface language<select id="ui-language"><option value="en">English</option><option value="sv">Svenska</option></select></label>
       <p class="hint">Menus, buttons and guidance in this application. Saved inventory descriptions are not translated.</p>
       <label>Default language for external responses<select id="response-language"><option value="en">English</option><option value="sv">Swedish</option><option value="de">German</option></select></label>
@@ -75,6 +76,19 @@
       <h3>AI description language</h3><p class="hint">Choose the language for new AI descriptions in AI assistance → Image inventory. It can be English, Swedish, German, or use the external response language. Existing descriptions are not rewritten.</p>
       <p id="languages-error" role="alert"></p><button id="save-languages">Save language settings</button>
     </form>
+      <section id="background-settings" aria-labelledby="background-title"><h3 id="background-title">Background</h3><p class="hint">Shown behind every page, also before anyone opens the inventory. Changes are saved at once.</p>
+        <div class="background-choices" role="radiogroup" aria-labelledby="background-title">
+          <label class="background-choice"><input type="radio" name="background" value="hills"><img src="/backgrounds/hills.svg" alt=""><span>Green hills</span></label>
+          <label class="background-choice"><input type="radio" name="background" value="pegboard"><img src="/backgrounds/pegboard.svg" alt=""><span>Tool pegboard</span></label>
+          <label class="background-choice"><input type="radio" name="background" value="blueprint"><img src="/backgrounds/blueprint.svg" alt=""><span>Blueprint</span></label>
+          <label class="background-choice"><input type="radio" name="background" value="none"><img alt=""><span>No background</span></label>
+          <label class="background-choice"><input type="radio" name="background" value="custom" id="background-custom"><img id="background-custom-preview" alt=""><span>Your own image</span></label>
+        </div>
+        <label class="upload-button">Upload your own image<input type="file" id="background-file" accept="image/jpeg,image/png,image/webp"></label>
+        <p class="hint">JPEG, PNG or WebP, at most 5 MiB. The image is stored in this application's database and included in backups.</p>
+        <button type="button" id="background-remove" class="quiet">Remove your own image</button>
+        <p id="background-status" role="status"></p>
+      </section>
   </dialog>
   <dialog id="editor">
     <form id="box-form">

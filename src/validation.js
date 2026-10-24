@@ -57,9 +57,13 @@ export function validateInventory(input) {
   return input;
 }
 
+// Built-in page backgrounds live in web/backgrounds; custom uses the uploaded image.
+export const backgrounds = ['hills', 'pegboard', 'blueprint', 'none', 'custom'];
+
 export function validateSettings(settings) {
   object(settings, 'settings');
   if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
+  if (settings.appearance?.background !== undefined && !backgrounds.includes(settings.appearance.background)) throw new InputError('Unsupported background.');
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);
   if (settings.searchWorkspace !== undefined) validateSearchWorkspace(settings.searchWorkspace);
   if (settings.printing !== undefined) validateLegacyPrinting(settings.printing);

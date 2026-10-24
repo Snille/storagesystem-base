@@ -1,13 +1,14 @@
 import { mountLocationEditor } from './location-editor.js';
-import { suggestBoxId } from './locations.js';
+import { suggestBoxId, parseLocation } from './locations.js';
 import { mountAi } from './ai.js';
 import { mountBoxDraft } from './box-draft.js';
 import { mountStorageMap } from './storage-map.js';
 import { mountSearchSettings } from './search-settings.js';
 import { mountPrinting } from './printing.js';
 import { initializeLanguage, setLanguage, uiLanguage, t, tr, roleName } from './i18n.js';
+import { loadAppearance, mountAppearance } from './appearance.js';
 
-await initializeLanguage();
+await Promise.all([initializeLanguage(), loadAppearance()]);
 
 const $ = id => document.getElementById(id);
 let key = ''; let boxes = []; let positions = []; let selected = null;
@@ -34,10 +35,11 @@ async function request(path, options = {}) {
 }
 
 let languageState;
+const appearance = mountAppearance(request);
 $('open-languages').addEventListener('click', async () => {
   if (!key) { message(t('Open inventory before changing shared language settings.'), true); return; }
   try {
-    languageState = await (await request('languages')).json();
+    languageState = await (await request('languages')).json(); await appearance.refresh();
     $('ui-language').value = languageState.uiLanguage; $('response-language').value = languageState.responseLanguage;
     $('languages-error').textContent = ''; $('languages-dialog').showModal();
   } catch (error) { message(error.message, true); }
@@ -92,10 +94,26 @@ async function load() {
   $('box-count').textContent = audit.counts.boxes;
   $('session-count').textContent = audit.counts.sessions;
   $('photo-count').textContent = audit.counts.photos;
+  // Storage units are counted from where boxes are now, like the reference application.
+  const units = { ivar: new Set(), bench: new Set(), cabinet: new Set() };
+  for (const box of boxes) { const p = parseLocation(box.locationId, box.boxId); if (p) units[p.kind].add(p.unit); }
+  $('unit-count').textContent = units.ivar.size + units.bench.size + units.cabinet.size;
+  $('unit-kinds').textContent = tr('{0} shelving · {1} benches · {2} cabinets', units.ivar.size, units.bench.size, units.cabinet.size);
+  const withPhotos = boxes.filter(box => box.photos.length).length;
+  $('photo-box-count').textContent = withPhotos; $('no-photo-count').textContent = tr('{0} without photos', boxes.length - withPhotos);
   renderPositionFilter();
   $('workspace').hidden = false; $('connect').hidden = true;
-  render();
+  render(); loadOverview();
 }
+
+let overviewImage = null;
+async function loadOverview() {
+  try { overviewImage = (await (await request('overview')).json()).image; } catch { overviewImage = null; }
+  $('overview').hidden = !overviewImage;
+  if (overviewImage) { $('overview-img').src = overviewImage.previewUrl; $('overview-img').alt = overviewImage.albumName || t('Overview image'); }
+}
+$('overview-open').addEventListener('click', () => openViewer({ label: overviewImage.albumName || t('Overview image'),
+  photos: [{ role: 'location', originalUrl: overviewImage.originalUrl, originalFileName: t('Album cover'), immichAssetId: overviewImage.assetId }] }, 0, true));
 
 function positionLabel(position) {
   const label = Object.values(position.location).filter(Boolean).join(' · ');

@@ -1,5 +1,13 @@
 # History
 
+## 0.16.0-dev - 2026-10-24
+
+- **Page backgrounds.** The Languages dialog is now **Appearance** and adds a background choice: green hills (new artwork in the style of the reference application, default), tool pegboard, blueprint, none, or an uploaded image. The background shows on every page, also before login, in dark and light themes. Changes save at once.
+- **Schema 3** adds a `media` table for the uploaded image (JPEG, PNG or WebP, at most 5 MiB, bytes checked against the type, SHA-256 stored). Databases from schema 1 and 2 migrate on start; backups and restores include the image; the audit checks it. Older application versions cannot open a schema 3 database.
+- **Start page.** Six totals instead of four: storage units with a shelving/bench/cabinet breakdown and boxes with photos (and without) are new. The photo album's cover is shown as the overview image and opens in the photo viewer, as in the reference application.
+- The file upload uses a translated button instead of the browser's own file control text.
+- Development copy: backed up to `data/docker-dev-backups/before-0.16-20261024.sqlite` before the schema upgrade; the audit passes on schema 3 with 164 boxes. Test uploads were removed again; the background is back to hills.
+
 ## 0.15.2-dev - 2026-10-24
 
 - Built-in image-analysis instructions now say what a good result looks like: a two-to-four-word box name (never only a product code or a generic word), a summary and 6-15 keywords about the contents only (no container, shelf or position words), common synonyms, plain wording, and clearer photo roles (items standing on a shelf are `inside`). Updates of existing boxes keep facts the owner added that photos cannot show, such as quantities and hidden items.

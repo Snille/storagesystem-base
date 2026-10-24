@@ -127,10 +127,10 @@ test('label service errors are reported clearly, and a rejected key is a configu
 test('the legacy CUPS settings and print journal stay valid through migration, backup and restore', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'storage-printing-'));
   const original = new Store(join(dir, 'inventory.sqlite')); original.importLegacy(structuredClone(fixture), { unrelated: { preserve: true } });
-  const before = original.read(); original.db.exec('DROP TABLE print_jobs; PRAGMA user_version = 1'); original.close();
+  const before = original.read(); original.db.exec('DROP TABLE print_jobs; DROP TABLE media; PRAGMA user_version = 1'); original.close();
   const migrated = new Store(join(dir, 'inventory.sqlite'));
   try {
-    assert.deepEqual(migrated.read(), before); assert.equal(migrated.audit().schemaVersion, 2); assert.equal(migrated.settings().unrelated.preserve, true);
+    assert.deepEqual(migrated.read(), before); assert.equal(migrated.audit().schemaVersion, 3); assert.equal(migrated.settings().unrelated.preserve, true);
     // A record and settings exactly as 0.14 wrote them.
     const hex = 'a'.repeat(64), record = { id: randomUUID(), tokenHash: hex, documentHash: hex, settingsRevision: hex, serverUrl: 'http://127.0.0.1:18463', queue: 'DYMO_5XL',
       mediaKey: 'w54h144', createdAt: new Date().toISOString(), state: 'submitted', kind: 'location', locationId: 'A-H6-P1-A', jobId: 121 };

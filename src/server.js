@@ -19,6 +19,7 @@ const assets = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/ai.js', ['ai.js', 'text/javascript; charset=utf-8']],
+  ['/appearance.js', ['appearance.js', 'text/javascript; charset=utf-8']],
   ['/search-settings.js', ['search-settings.js', 'text/javascript; charset=utf-8']],
   ['/printing.js', ['printing.js', 'text/javascript; charset=utf-8']],
   ['/box-draft.js', ['box-draft.js', 'text/javascript; charset=utf-8']],
@@ -27,7 +28,8 @@ const assets = new Map([
   ['/i18n.js', ['i18n.js', 'text/javascript; charset=utf-8']],
   ['/locales/en.js', ['locales/en.js', 'text/javascript; charset=utf-8']],
   ['/locales/sv.js', ['locales/sv.js', 'text/javascript; charset=utf-8']],
-  ['/style.css', ['style.css', 'text/css; charset=utf-8']]
+  ['/style.css', ['style.css', 'text/css; charset=utf-8']],
+  ...['hills', 'pegboard', 'blueprint'].map(name => [`/backgrounds/${name}.svg`, [`backgrounds/${name}.svg`, 'image/svg+xml']])
 ]);
 
 async function body(req) {
@@ -56,6 +58,12 @@ export function createApp({ store, env = process.env }) {
     try {
       const url = new URL(req.url, 'http://localhost'); const path = url.pathname;
       if (path === '/api/interface-language' && req.method === 'GET') return json({ language: catalog.settings.languages().uiLanguage });
+      if (path === '/api/appearance' && req.method === 'GET') return json(catalog.settings.appearance());
+      if (path === '/api/appearance/background-image' && req.method === 'GET') {
+        const image = store.media('background');
+        if (!image) return json({ error: 'No background image.' }, 404);
+        res.writeHead(200, { 'Content-Type': image.mime, 'Content-Length': image.data.length }); return res.end(image.data);
+      }
       if (path === '/locations.js' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
         return res.end(readFileSync(new URL('./locations.js', import.meta.url)));
@@ -169,6 +177,8 @@ export function createApp({ store, env = process.env }) {
         return json({ query, count: matches.length, matches });
       }
       if (path === '/api/manage/settings' && method === 'GET') return json(catalog.settings.view());
+      if (path === '/api/manage/overview' && method === 'GET') return json(await catalog.overview());
+      if (path === '/api/manage/appearance' && method === 'PUT') return json(catalog.settings.saveBackground(await body(req)));
       if (path === '/api/manage/languages' && method === 'GET') return json(catalog.settings.languages());
       if (path === '/api/manage/languages' && method === 'PUT') return json(catalog.settings.saveLanguages(await body(req)));
       if (path === '/api/manage/ai/settings' && method === 'GET') return json(ai.view());

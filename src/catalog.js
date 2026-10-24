@@ -134,6 +134,21 @@ export class Catalog {
     })) };
   }
 
+  // The album cover chosen in Immich is the workshop overview image on the start page.
+  async overview() {
+    const config = this.config(); if (!config.albumId) return { image: null };
+    let album;
+    if (config.provider === 'photoprism') return { image: null };
+    if (config.accessMode === 'shareKey') album = (await this.request(config, '/api/shared-links/me')).album;
+    else album = await this.request(config, `/api/albums/${encodeURIComponent(config.albumId)}?withoutAssets=true`);
+    this.assertCurrent(config);
+    const id = album?.id === config.albumId && typeof album.albumThumbnailAssetId === 'string' ? album.albumThumbnailAssetId : '';
+    if (!id) return { image: null };
+    const revision = sourceRevision(config), expires = String(Date.now() + 15 * 60 * 1000);
+    const imageUrl = variant => `/api/album-preview/${encodeURIComponent(id)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(id, expires, revision, variant)}`;
+    return { image: { assetId: id, albumName: typeof album.albumName === 'string' ? album.albumName : '', previewUrl: imageUrl('preview'), originalUrl: imageUrl('original') } };
+  }
+
   async preview(asset, url) {
     const expires = url.searchParams.get('expires') || ''; const revision = url.searchParams.get('revision') || '';
     const variant = url.searchParams.get('variant') || 'thumbnail';

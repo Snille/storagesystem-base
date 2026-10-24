@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, existsSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { InputError, validateSettings, validateInventory, validatePrintJob } from './validation.js';
 
 const schema = `
@@ -37,6 +38,17 @@ const printSchema = `CREATE TABLE print_jobs (
   record TEXT NOT NULL CHECK(json_valid(record) AND json_extract(record, '$.id') = id AND json_extract(record, '$.tokenHash') = token_hash)
 ) STRICT; PRAGMA user_version = 2;`;
 
+// Small images owned by the application, such as an uploaded page background.
+export const mediaTypes = ['image/jpeg', 'image/png', 'image/webp'];
+export const maxMediaBytes = 5 * 1024 * 1024;
+const mediaSchema = `CREATE TABLE media (
+  id TEXT PRIMARY KEY NOT NULL, mime TEXT NOT NULL CHECK(mime IN ('image/jpeg', 'image/png', 'image/webp')),
+  sha256 TEXT NOT NULL CHECK(length(sha256) = 64), data BLOB NOT NULL CHECK(length(data) BETWEEN 1 AND ${maxMediaBytes})
+) STRICT; PRAGMA user_version = 3;`;
+const signatures = { 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47], 'image/webp': [0x52, 0x49, 0x46, 0x46] };
+export const mediaMatchesType = (mime, data) => signatures[mime]?.every((byte, i) => data[i] === byte)
+  && (mime !== 'image/webp' || data.subarray(8, 12).toString('latin1') === 'WEBP');
+
 export class Store {
   constructor(path, { readOnly = false } = {}) {
     this.path = path;
@@ -46,11 +58,12 @@ export class Store {
     try {
       this.db.exec('PRAGMA foreign_keys = ON; PRAGMA trusted_schema = OFF;');
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 2 || (readOnly && ![1, 2].includes(version))) throw new Error(`Unsupported database schema: ${version}`);
+      if (version > 3 || (readOnly && ![1, 2, 3].includes(version))) throw new Error(`Unsupported database schema: ${version}`);
       if (!readOnly) {
         this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
         if (!version) this.transaction(() => this.db.exec(schema));
         if (version < 2) this.transaction(() => this.db.exec(printSchema));
+        if (version < 3) this.transaction(() => this.db.exec(mediaSchema));
       }
     } catch (error) { this.close(); throw error; }
   }
@@ -73,6 +86,20 @@ export class Store {
     if (this.db.prepare('PRAGMA user_version').get().user_version < 2) return [];
     return this.db.prepare('SELECT record FROM print_jobs ORDER BY id').all().map(row => JSON.parse(row.record));
   }
+
+  media(id) {
+    if (this.db.prepare('PRAGMA user_version').get().user_version < 3) return null;
+    const row = this.db.prepare('SELECT mime, sha256, data FROM media WHERE id = ?').get(id);
+    return row ? { mime: row.mime, sha256: row.sha256, data: Buffer.from(row.data) } : null;
+  }
+  // Callers write media inside their own transaction together with the settings that refer to it.
+  setMedia(id, mime, data) {
+    if (!mediaTypes.includes(mime) || !data.length || data.length > maxMediaBytes || !mediaMatchesType(mime, data)) throw new InputError('Use a JPEG, PNG or WebP image of at most 5 MiB.');
+    const sha256 = createHash('sha256').update(data).digest('hex');
+    this.db.prepare('INSERT INTO media VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET mime = excluded.mime, sha256 = excluded.sha256, data = excluded.data').run(id, mime, sha256, data);
+    return sha256;
+  }
+  deleteMedia(id) { this.db.prepare('DELETE FROM media WHERE id = ?').run(id); }
 
   read() {
     // A consistent snapshot, including when a maintenance CLI runs concurrently.
@@ -134,6 +161,14 @@ export class Store {
     if (this.db.prepare('PRAGMA foreign_key_check').all().length) errors.push('Broken foreign keys.');
     try { validateInventory(this.read()); validateSettings(this.settings()); } catch (error) { errors.push(error.message); }
     try { for (const job of this.printJobs()) validatePrintJob(job); } catch { errors.push('Invalid print job journal.'); }
+    if (this.db.prepare('PRAGMA user_version').get().user_version >= 3) {
+      for (const row of this.db.prepare('SELECT id, mime, sha256, data FROM media').all()) {
+        const data = Buffer.from(row.data);
+        if (createHash('sha256').update(data).digest('hex') !== row.sha256 || !mediaMatchesType(row.mime, data)) errors.push(`Media ${row.id} is damaged.`);
+      }
+      const settings = this.settings();
+      if (settings.appearance?.background === 'custom' && !this.media('background')) errors.push('The custom background has no image.');
+    }
     const counts = Object.fromEntries(['boxes', 'sessions', 'photos', 'locations'].map(t => [t, this.db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n]));
     return { ok: errors.length === 0, schemaVersion: this.db.prepare('PRAGMA user_version').get().user_version, counts, errors };
   }
