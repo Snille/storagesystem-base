@@ -3,7 +3,7 @@
 ## 0.22.0-dev - 2026-10-24
 
 - **Fallback AI connection.** Image settings can name a fallback connection and model. When the first route cannot be reached, is rate limited, rejects its key or returns an unusable answer (429/502), the same analysis is sent to the fallback; changed settings or inventory (409) are never retried. Results show when the fallback answered and why. Both fields are set together or not at all.
-- Owner decision after the comparison: `cx/gpt-6-luna` through OmniRoute as the default image route (with its own OmniRoute key for Storage System) and Ollama01 `qwen3-vl:8b-instruct-16k` as the fallback.
+- Owner decision after the comparison: `cx/gpt-6-luna` through OmniRoute as the default image route (with its own OmniRoute key for Storage System) and Ollama01 `qwen3-vl:8b-instruct-16k` as the fallback. Configured in the development copy: two boxes through Luna in 3-5 s (it read "FX-888D" correctly), and a deliberately wrong model name answered through Ollama01 with the reason shown.
 
 ## 0.21.0-dev - 2026-10-24
 
