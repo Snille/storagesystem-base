@@ -1,6 +1,15 @@
 # Continue development
 
-## Latest verification: 2026-10-24
+## Latest verification: 2026-10-24 (0.15.0-dev)
+
+Printing now goes through the separate label service (Snille/label-service,
+Portainer stack on 10.0.0.25, port 3230), the only program that talks to the
+printer. This app keeps a client key, sends label content, shows the service's
+preview and submits with a request identifier the service deduplicates. Direct
+CUPS printing, roll reading and layout code were removed; their history stays
+below and in PRINTING.md. 87 tests pass.
+
+### Previous: 0.14.0-dev
 
 Version 0.14.0-dev adds per-format label text sizes and text direction (portrait or
 landscape) and location-only labels (see PRINTING.md). Default box-label output is

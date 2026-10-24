@@ -81,11 +81,9 @@ Excel catalog import/export is excluded: Erik retired the one-time label-import 
 
 ## Printing
 
-Separate label layout and document generation from print submission and printer capabilities. Support label printers and ordinary printers through CUPS; A4 label sheets need explicit geometry and start-position handling.
+Decision 2026-10-24: printing belongs to the separate label service (Snille/label-service), its own Portainer stack with a CUPS container (official DYMO driver) and a LAN API. It is the only program that talks to the printer, including roll reading, because two programs that each reserve the printer can collide. It owns label layout, formats, text sizes and direction, preview, one-copy submission, deduplication and the print journal.
 
-Offer an optional CUPS container or a configured existing CUPS server. Ship required printer filters in the print image, with reproducible source versions and patches. DYMO-specific roll detection and remaining-label status are optional capabilities, not requirements for other printers.
-
-The reference repository includes raster2dymolw_nolm.cpp, an adaptation of the DYMO filter that disables post-print LanguageMonitor polling. Its equivalence to the installed production binary has not yet been established. Review and physically verify the working print path before packaging it.
+This application is a client with its own key: it builds label content from inventory data (box or registered location), shows the service's preview, re-checks that the box is unchanged before printing, and submits with a request identifier the service deduplicates. A later label designer will use the same service. The stock DYMO filter (with LanguageMonitor) is used; the reference `raster2dymolw_nolm.cpp` patch was not needed.
 
 ## Deployment
 

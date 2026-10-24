@@ -51,8 +51,8 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [x] Per-format text sizes and location-only labels; preview/overflow/idempotency guards preserved. See PRINTING.md.
 - [x] Physically accept a rotated location label (S0722550 landscape, CUPS job 121).
 - [x] Run the pinned Docker suite and update the Docker Desktop development stack to 0.14.0-dev.
-- [ ] Physically accept a representative long box description and other rotated formats only as the owner needs them.
-- [ ] Give the Docker/Portainer deployment a configurable route to CUPS and the DYMO roll reader, so printing works without the laptop's SSH tunnels.
+- [x] Print through the separate label service (Portainer stack, CUPS + DYMO driver); all five formats accepted there. This app no longer talks to CUPS or the printer.
+- [ ] Physically print a real box label and a location label from this app through the label service.
 
 ## Out of scope
 
@@ -60,10 +60,10 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 
 - [x] Add first 57 x 32 mm CUPS/IPP label workflow and durable print journal; browser test job 114 completed and counter decreased by one.
 - [x] Obtain physical test-label quality/orientation confirmation and inspect the owner photo, including Swedish glyphs and clipping.
-- [ ] Finish designer/media/sheets/QR scope and verify the final LXC CUPS route. See docs/PRINTING.md.
+- [ ] Label designer, sheets and QR codes: build them in the label service (see its README).
 
 - [x] Clarify CUPS queue status/reasons/default media versus app media and physical lamp/roll readiness.
-- [ ] Investigate DYMO raw protocol without reusing lock-acquiring legacy status. Experimental version/status monitoring failed live acceptance (white lamp blinked) and was withdrawn; no further raw queries or recovery actions are automated.
+- [x] DYMO protocol work moved to the label service; this app sends no raw printer commands.
 
 - [x] Implement manual DYMO 5XL roll reading with owner-confirmed solid lamp/no feed and explicit article-backed formats.
 - [x] Accept an actual roll change to S0722520 / 413 labels with solid power and no feed.
@@ -72,4 +72,4 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [x] Physically accept S0722520 / 25 x 54 mm after corrected roll loading: job 118 completed, queue idle/empty, owner-approved output/photo and solid power.
 - [x] Physically accept S0722430 / 54 x 101 mm: job 119 completed, owner-approved output/photo and solid power.
 - [x] Physically accept S0722550 / 19 x 51 mm: job 120 completed with a 6-point description, owner-approved text and solid power.
-- [ ] Add further article mappings only with verified geometry and per-format physical checks.
+- [x] Article mappings live in the label service (shipping labels 2166659 added there).

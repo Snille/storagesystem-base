@@ -36,27 +36,16 @@
   </main>
   <dialog id="printing-dialog" class="wide-dialog">
     <div class="dialog-title"><h2>Printing</h2><button id="close-printing" class="quiet" aria-label="Close">✕</button></div>
-    <p class="hint">One label per job. Check the loaded roll before printing.</p>
-    <details><summary>Printer connection and text sizes</summary><form id="print-config">
+    <p class="hint">Labels are printed by the label service, one label per job.</p>
+    <details><summary>Label service connection</summary><form id="print-config">
       <label class="check-label"><input id="print-enabled" type="checkbox">Enable printing</label>
-      <label>CUPS server origin<input id="print-server" type="url" placeholder="http://cups-server:631"></label>
-      <label>Queue name<input id="print-queue" maxlength="80"></label>
-      <label>Label format<select id="print-media"></select></label>
-      <fieldset><legend>DYMO roll reader</legend><label class="check-label"><input id="print-roll-enabled" type="checkbox">Enable manual roll reading</label>
-        <div class="form-grid"><label>Printer address<input id="print-roll-host" maxlength="253" placeholder="192.168.1.50"></label><label>Printer TCP port<input id="print-roll-port" type="number" min="1" max="65535" required value="9100"></label></div>
-        <p class="hint">Read only while no one is printing. The reader briefly reserves the interface, reads the roll and releases its reservation. No labels are fed.</p>
-      </fieldset>
-      <fieldset><legend>Text layout for the selected label format</legend>
-        <p class="hint">Each label format keeps its own text direction and sizes. Changing the format shows its saved values.</p>
-        <label>Text direction<select id="print-orientation"><option value="landscape">Landscape: along the long side</option><option value="portrait">Portrait: across the long side</option></select></label>
-        <div class="form-grid"><label>Title size<input id="print-title-size" type="number" min="6" max="16" required></label><label>Description size<input id="print-description-size" type="number" min="6" max="16" required></label><label>Location size<input id="print-location-size" type="number" min="6" max="16" required></label><label>Location label size<input id="print-location-label-size" type="number" min="6" max="16" required></label></div>
-        <p class="hint">Location labels use the largest size up to this value that fits.</p>
-      </fieldset>
+      <label>Label service address<input id="print-url" type="url" placeholder="http://10.0.0.25:3230"></label>
+      <label>Label service key<input id="print-key" type="password" autocomplete="off" placeholder="Leave blank to keep the saved key"></label>
+      <label class="check-label"><input id="print-clear-key" type="checkbox">Clear saved key</label>
+      <p class="hint">Use this system's client key. Roll reading, the selected label format, text sizes and text direction are managed on the label service's own page.</p>
       <button id="print-save">Save print settings</button>
     </form></details>
-    <button id="print-check" class="quiet">Check printer connection</button>
-    <button id="print-read-roll" class="quiet" disabled>Read loaded roll</button>
-    <section id="print-roll-result" class="panel" hidden aria-live="polite"><h3>Loaded roll</h3><p id="print-roll-summary"></p><p id="print-roll-observed" class="hint"></p><p id="print-roll-note" class="hint"></p><button id="print-use-roll" class="quiet" disabled>Use detected label format</button></section>
+    <div class="actions"><button id="print-check" class="quiet">Check printer connection</button><a id="print-admin" class="button quiet" target="_blank" rel="noopener noreferrer" hidden>Open label service</a></div>
     <section id="print-device-result" class="panel" hidden aria-live="polite"></section>
     <div class="form-grid"><label>Label type<select id="print-kind"><option value="box">Box label</option><option value="location">Location label</option></select></label>
       <label>Label source<select id="print-box"></select></label></div>

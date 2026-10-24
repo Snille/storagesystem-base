@@ -68,32 +68,10 @@ export class Store {
 
   subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
 
+  // Read-only journal of jobs submitted directly to CUPS by 0.12-0.14. The label service keeps the journal now.
   printJobs() {
     if (this.db.prepare('PRAGMA user_version').get().user_version < 2) return [];
     return this.db.prepare('SELECT record FROM print_jobs ORDER BY id').all().map(row => JSON.parse(row.record));
-  }
-  claimPrint(record) {
-    validatePrintJob(record);
-    return this.transaction(() => {
-      const existing = this.db.prepare('SELECT record FROM print_jobs WHERE id=? OR token_hash=?').get(record.id, record.tokenHash);
-      if (existing) {
-        const job = JSON.parse(existing.record);
-        if (job.id !== record.id || job.tokenHash !== record.tokenHash) throw new InputError('This preview has already been submitted. Check its job status.', 409);
-        return { claimed: false, job };
-      }
-      this.db.prepare('INSERT INTO print_jobs VALUES (?, ?, ?)').run(record.id, record.tokenHash, JSON.stringify(record));
-      return { claimed: true, job: record };
-    });
-  }
-  updatePrint(id, changes) {
-    return this.transaction(() => {
-      const row = this.db.prepare('SELECT record FROM print_jobs WHERE id=?').get(id);
-      if (!row) throw new InputError('Print job not found.', 404);
-      const before = JSON.parse(row.record), record = validatePrintJob({ ...before, ...changes });
-      if (record.id !== before.id || record.tokenHash !== before.tokenHash) throw new InputError('Print job identity cannot change.');
-      this.db.prepare('UPDATE print_jobs SET record=? WHERE id=?').run(JSON.stringify(record), id);
-      return record;
-    });
   }
 
   read() {

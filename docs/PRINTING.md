@@ -1,36 +1,33 @@
 # Label printing
 
-The printing workflow supports one label per job in four explicit formats: S0722540 (57 x 32 mm), S0722550 (19 x 51 mm), S0722520 (25 x 54 mm), and S0722430 (54 x 101 mm) through an existing CUPS queue accepting PostScript. It is disabled by default. No local CUPS binary, shell command or printer driver is required in the application container. CUPS must already have a working printer/driver. This is tested with DYMO LabelWriter 5XL, not a claim that all printers work.
+Since 0.15.0-dev this application prints through the separate **label service** ([Snille/label-service](https://github.com/Snille/label-service)), a LAN service with its own CUPS container and the official DYMO driver. The label service is the only program that talks to the printer. It owns label layout, formats, per-format text sizes and direction, roll reading, preview tokens, one-copy submission, request deduplication and the print journal. This application holds no printer settings and opens no printer or CUPS connection.
 
 ## Operator workflow
 
-Open **Printing**, expand **Printer connection and text sizes**, and save an HTTP(S) CUPS origin and queue name. Credentials in URLs, arbitrary paths and redirects are rejected; authenticated CUPS destinations are not supported in this first slice. Keep CUPS access restricted to the application host/network. Check the printer connection and the actual loaded roll; CUPS media-default is not a physical roll detector.
+Open **Printing**, expand **Label service connection**, enable printing and save the label service address (an HTTP(S) origin such as `http://10.0.0.25:3230`) and this system's client key. The key is never shown again; leave the field blank to keep it, or tick **Clear saved key**. Changing the address drops the saved key. Alternatively set `LABEL_SERVICE_URL` and `LABEL_SERVICE_KEY` in the environment; saved settings take precedence.
 
-Choose a **Label type**. A **Box label** uses **Test label** or a current inventory box; title, description and current location are prefilled. A **Location label** uses **Test label** or a registered location and prints only the location text in one large, centered bold block. Then choose **Prepare label preview**. Edits affect only the label, never saved inventory. Font sizes are 6-16 points.
+**Check printer connection** shows the label service's CUPS queue and the selected label format. The selected format must match the loaded roll. **Open label service** opens the service's own page, where the admin reads the roll, selects the format and sets text sizes and direction.
 
-Each label format keeps its own text sizes: title, description and location for box labels, and a maximum size for location labels. Changing the format (or **Use detected label format**) shows that format's saved sizes. Location labels use the largest size up to that maximum that fits; a long word may break after a hyphen only when it is too wide for a row of its own. Defaults are the owner-accepted values: description 8 points, except 6 points for S0722550 (19 x 51 mm); title 11, location 8, location label 16. Settings saved before 0.14 held one shared style; it is read as the style of the format selected at the time, and other formats start from their defaults. The next save stores per-format `styles`. Older binaries cannot validate those saved settings.
+Choose a **Label type**. A **Box label** uses **Test label** or a current inventory box; title, description and current location are prefilled. A **Location label** uses **Test label** or a registered location and prints only the location text, large. **Prepare label preview** sends the content to the label service and shows its layout. Edits affect only the label, never saved inventory. Text must be Latin-1 (Swedish letters work); text that does not fit cannot be printed.
 
-Each format also keeps a **Text direction**: landscape runs the text along the label's long side, portrait across it. The default is the direction each format was physically accepted in (landscape for S0722540, portrait for the other three), so existing output is unchanged. Choosing the other direction lays the text out on the turned label and rotates the drawing a quarter turn counterclockwise onto the unchanged physical page size. The preview shows the readable text and says when it is rotated on the label. Text sizes stay per format, not per direction: a short turned label (for example S0722550 in landscape) may need smaller box-label sizes, and the normal overflow check blocks printing until they fit.
-
-Physical acceptance on 2026-10-24: one rotated location label, S0722550 (19 x 51 mm) in landscape, location `A-H6-P1-A` with Swedish text, was submitted once as CUPS job 121, which completed with the queue idle/empty. The submitted document's hash matches the regenerated landscape document, not the portrait one. The owner confirmed legible, correctly facing, unclipped text. Other formats in their non-default direction and rotated box labels have not been printed physically. Text supports Latin-1 including Swedish letters. A shared bounded layout produces SVG preview and one-page PostScript with embedded ISO Latin-1 font encoding. Long text must be shortened before printing; overflowing previews cannot be submitted. The first layout has fixed title, description and location regions; it is not the complete legacy label designer.
-
-**Print one label** rechecks current settings and box content, checks the queue, validates explicit media with attribute fidelity, durably claims the request and then submits exactly one copy. Reusing a request ID returns its existing result. A preview token can create only one journal entry. A lost response after submission produces `unknown`, with no automatic retry. Check the existing job/physical printer before intentionally preparing another label. A crash can leave `submitting`; treat it as uncertain too. Queue completion proves driver delivery, not legibility or label orientation. The app never clears or cancels other jobs.
-
-Previews live for ten minutes in process memory. The journal survives restart and SQLite backup/restore. Main schema 2 adds `print_jobs` transactionally to schema 1; inventory-only JSON exports exclude the journal and settings. Preserve a private pre-upgrade backup; older binaries cannot open schema 2. Read-only schema-1 evaluation files remain supported without migration.
+**Print one label** rechecks that the print settings and the box (contents, session and location) are unchanged since the preview, then sends the preview token with a request identifier. The label service prints exactly one copy and deduplicates the identifier, so resending after a lost response returns the original job instead of printing again. **Check print job** and **Recent print submissions** read this system's jobs from the label service. A completed CUPS job proves delivery to the driver, not legibility; check the physical label.
 
 ## Management API
 
-All endpoints require the management key and existing same-origin write protection:
+All endpoints require the management key and same-origin write protection:
 
-- `GET /api/manage/printing`: configuration, optimistic revision, media and latest 20 journal records.
-- `PUT /api/manage/printing`: `{revision,config}`; config has `enabled`, `serverUrl`, `queue`, `mediaKey` from the returned presets, optional `rollReader: {enabled,host,port}`, and `styles` with one entry per media preset key, each containing `titleSize`, `descriptionSize`, `locationSize`, `locationLabelSize` and `orientation` (`portrait` or `landscape`). The GET response also lists registered `locations`.
-- `GET /api/manage/printing/status`: live CUPS attributes, without a print job.
-- `POST /api/manage/printing/roll`: `{revision}`; explicitly reads loaded DYMO roll metadata through the saved TCP destination. It requires an enabled reader, an idle/empty CUPS queue and no concurrent app submission. Five-second cooldown; no automatic polling.
-- `POST /api/manage/printing/preview?lang=sv`: `{revision,kind?,test:true}`, `{revision,kind?:'box',boxId,fields?}` or `{revision,kind:'location',locationId,fields?}`. `kind` defaults to `box`. Box-label fields are `title`, `description`, `location`; location labels accept only `location`. Journal records store `kind` and, for location labels, `locationId`.
-- `POST /api/manage/printing/submit`: `{token,requestId}` using UUIDs; returns the persisted submission record.
-- `GET /api/manage/printing/jobs/<requestId>`: checks only a recorded job against its original destination.
+- `GET /api/manage/printing`: `{config: {enabled, url, apiKeyConfigured}, revision, locations}`. The key is never returned.
+- `PUT /api/manage/printing`: `{revision, config: {enabled, url, apiKey?, clearKey?}}`.
+- `GET /api/manage/printing/status`: the label service's queue status plus the selected format.
+- `POST /api/manage/printing/preview?lang=sv`: `{revision, kind?, test: true}`, `{revision, kind?: 'box', boxId, fields?}` or `{revision, kind: 'location', locationId, fields?}`.
+- `POST /api/manage/printing/submit`: `{token, requestId}` (UUIDs); returns the label service's job record.
+- `GET /api/manage/printing/jobs`, `GET /api/manage/printing/jobs/<requestId>`: this system's jobs from the label service.
 
-The bounded scalar IPP implementation uses Get-Printer-Attributes, Validate-Job, Print-Job and Get-Job-Attributes. See [RFC 8010](https://www.rfc-editor.org/rfc/rfc8010) and [RFC 8011](https://www.rfc-editor.org/rfc/rfc8011). It rejects malformed, oversized, mismatched, substituted and non-IPP responses; it does not accept uploaded PostScript or caller-selected copies.
+Errors from the label service are passed on with their message; a rejected key is reported as a configuration problem (502).
+
+## Earlier direct CUPS printing (0.12-0.14)
+
+Versions 0.12-0.14 printed directly through CUPS and read the roll themselves. The physically accepted layouts, formats and roll-reading protocol moved into the label service. Their settings (`printing`) and the eight-entry `print_jobs` journal (CUPS jobs 114-121) stay in the database for audit, backup and restore; nothing reads or writes them any more. The records below document that implementation.
 
 ## Verification on 2026-10-23
 

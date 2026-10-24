@@ -45,7 +45,7 @@ export function createApp({ store, env = process.env }) {
   const catalog = new Catalog(store, photos, inventory);
   const ai = new Ai(store, catalog, photos);
   const search = new SearchService(inventory, env);
-  const printing = new Printing(inventory);
+  const printing = new Printing(inventory, { env });
   const server = createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -96,9 +96,9 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/manage/printing' && method === 'GET') return json(printing.view());
       if (path === '/api/manage/printing' && method === 'PUT') return json(printing.save(await body(req)));
       if (path === '/api/manage/printing/status' && method === 'GET') return json(await printing.status());
-      if (path === '/api/manage/printing/roll' && method === 'POST') return json(await printing.readRoll(await body(req)));
-      if (path === '/api/manage/printing/preview' && method === 'POST') return json(printing.preview(await body(req), lang));
+      if (path === '/api/manage/printing/preview' && method === 'POST') return json(await printing.preview(await body(req), lang));
       if (path === '/api/manage/printing/submit' && method === 'POST') return json(await printing.submit(await body(req)));
+      if (path === '/api/manage/printing/jobs' && method === 'GET') return json({ jobs: await printing.jobs() });
       const printJobMatch = path.match(/^\/api\/manage\/printing\/jobs\/([a-f0-9-]{36})$/);
       if (printJobMatch && method === 'GET') return json(await printing.job(printJobMatch[1]));
       if (path === '/api/manage/search-settings' && method === 'GET') return json(search.settings.view());

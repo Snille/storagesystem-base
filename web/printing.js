@@ -1,51 +1,44 @@
-import { t, tr, uiLanguage } from './i18n.js';
+import { t, uiLanguage } from './i18n.js';
 
-export function mountPrinting(request, message) {
+// Labels are previewed and printed by the label service; this dialog chooses the content and the connection.
+export function mountPrinting(request) {
   const $ = id => document.getElementById(id);
   const api = async (path, body, method = 'POST') => (await request(`printing${path}${path === "/preview" ? `?lang=${uiLanguage()}` : ""}`, body === undefined ? {} : { method, body: JSON.stringify(body) })).json();
-  let state, preview, requestId, lastJob, roll, styles, shownMedia, busy = false, generation = 0;
+  let state, preview, requestId, lastJob, busy = false, generation = 0;
   const status = text => { $('print-status').textContent = text; };
-  const sizeFields = [['titleSize', 'print-title-size'], ['descriptionSize', 'print-description-size'], ['locationSize', 'print-location-size'], ['locationLabelSize', 'print-location-label-size']];
-  // Each format keeps its own sizes; the inputs show the selected format's copy.
-  const readSizes = () => { styles[shownMedia] = { ...Object.fromEntries(sizeFields.map(([key, id]) => [key, Number($(id).value)])), orientation: $('print-orientation').value }; };
-  const showSizes = mediaKey => { shownMedia = mediaKey; for (const [key, id] of sizeFields) $(id).value = styles[mediaKey][key]; $('print-orientation').value = styles[mediaKey].orientation; };
-  const config = () => {
-    readSizes();
-    return { enabled: $('print-enabled').checked, serverUrl: $('print-server').value.trim(), queue: $('print-queue').value.trim(), mediaKey: $('print-media').value,
-      styles: structuredClone(styles), rollReader: { enabled: $('print-roll-enabled').checked, host: $('print-roll-host').value.trim(), port: Number($('print-roll-port').value) } };
-  };
-  const canonical = value => JSON.stringify(value, (key, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
-  const dirty = () => state && canonical(config()) !== canonical({ ...state.config, rollReader: state.config.rollReader || { enabled: false, host: '', port: 9100 } });
+  const config = () => ({ enabled: $('print-enabled').checked, url: $('print-url').value.trim(), clearKey: $('print-clear-key').checked,
+    ...($('print-key').value.trim() ? { apiKey: $('print-key').value.trim() } : {}) });
+  const dirty = () => state && ($('print-enabled').checked !== state.config.enabled || $('print-url').value.trim() !== state.config.url
+    || Boolean($('print-key').value.trim()) || $('print-clear-key').checked);
   const kind = () => $('print-kind').value;
   function sources() {
     const options = kind() === 'location' ? state.locations.map(id => new Option(id, id)) : state.boxes.map(box => new Option(box.label, box.boxId));
     $('print-box').replaceChildren(new Option(t('Test label'), ''), ...options);
   }
-  function history() {
+  const jobText = job => `${new Date(job.createdAt).toLocaleString()} · ${t(job.kind === 'location' ? 'Location label' : 'Box label')} · ${job.state}${job.jobId ? ` · CUPS ${job.jobId}` : ''}`;
+  async function history() {
     const list = $('print-history'); list.replaceChildren();
-    for (const job of state.jobs) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'quiet';
-      button.textContent = `${new Date(job.createdAt).toLocaleString()} · ${job.state}${job.jobId ? ` · CUPS ${job.jobId}` : ''}`;
+    if (!state.config.enabled) return;
+    const jobs = await api('/jobs');
+    for (const job of jobs.jobs.slice(0, 20)) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'quiet'; button.textContent = jobText(job);
       button.addEventListener('click', () => run(async () => {
         lastJob = job; const result = await api(`/jobs/${job.id}`);
-        status(`${t('Print submission')}: ${job.state} · CUPS: ${result.status?.state || t('unknown')}`);
+        status(`${t('Print submission')}: ${result.record.state} · CUPS: ${result.status?.state || t('unknown')}`);
       })); list.append(button);
     }
   }
   function controls() {
-    $('print-submit').disabled = busy || dirty() || !state?.config.enabled || !preview || preview.layout.warnings.length > 0 || Boolean(lastJob);
-    $('print-preview').disabled = busy || dirty(); $('print-check').disabled = busy || dirty() || !state?.config.enabled;
+    const ready = state?.config.enabled && !dirty();
+    $('print-submit').disabled = busy || !ready || !preview?.printable || Boolean(lastJob);
+    $('print-preview').disabled = busy || !ready; $('print-check').disabled = busy || !ready;
     $('print-save').disabled = busy; $('print-job-check').disabled = busy || !lastJob;
-    $('print-read-roll').disabled = busy || dirty() || !state?.config.enabled || !state?.config.rollReader?.enabled;
-    $('print-use-roll').disabled = busy || !roll?.media || dirty();
   }
   function invalidate() { generation++; preview = null; requestId = null; lastJob = null; $('print-paper').replaceChildren(); controls(); }
   function populate() {
-    $('print-enabled').checked = state.config.enabled; $('print-server').value = state.config.serverUrl; $('print-queue').value = state.config.queue;
-    $('print-media').replaceChildren(...state.mediaPresets.map(media => new Option(media.name, media.key))); $('print-media').value = state.config.mediaKey;
-    const reader = state.config.rollReader || { enabled: false, host: '', port: 9100 };
-    $('print-roll-enabled').checked = reader.enabled; $('print-roll-host').value = reader.host; $('print-roll-port').value = reader.port;
-    styles = structuredClone(state.config.styles); showSizes(state.config.mediaKey);
+    $('print-enabled').checked = state.config.enabled; $('print-url').value = state.config.url; $('print-key').value = ''; $('print-clear-key').checked = false;
+    $('print-key').placeholder = t(state.config.apiKeyConfigured ? 'Leave blank to keep the saved key' : 'Enter the client key');
+    $('print-admin').hidden = !state.config.url; if (state.config.url) $('print-admin').href = state.config.url;
     controls();
   }
   function draw(layout) {
@@ -65,48 +58,32 @@ export function mountPrinting(request, message) {
   async function run(action) { busy = true; controls(); try { await action(); } catch (error) { status(error.message); } finally { busy = false; controls(); } }
   $('open-printing').addEventListener('click', () => run(async () => {
     state = await api(''); state.boxes = (await (await request('boxes')).json()).boxes;
-    sources(); populate(); invalidate(); history(); $('print-fields').hidden = true; $('print-device-result').hidden = true; $('print-roll-result').hidden = true; roll = null; status(''); $('printing-dialog').showModal();
+    sources(); populate(); invalidate(); $('print-fields').hidden = true; $('print-device-result').hidden = true; status(''); $('printing-dialog').showModal();
+    await history();
   }));
   $('close-printing').addEventListener('click', () => $('printing-dialog').close());
-  // Registered on the select, so it runs before the form's input handler below.
-  $('print-media').addEventListener('input', () => { readSizes(); showSizes($('print-media').value); });
-  $('print-config').addEventListener('input', () => { invalidate(); roll = null; $('print-roll-result').hidden = true; $('print-device-result').hidden = true; status(t('Save settings before preparing a label.')); });
+  $('print-config').addEventListener('input', () => { invalidate(); $('print-device-result').hidden = true; status(t('Save settings before preparing a label.')); });
   $('print-config').addEventListener('submit', event => { event.preventDefault(); run(async () => {
     state = { ...await api('', { revision: state.revision, config: config() }, 'PUT'), boxes: state.boxes }; invalidate(); populate(); status(t('Print settings saved.'));
+    await history();
   }); });
   $('print-check').addEventListener('click', () => run(async () => {
     const stamp = ++generation, result = $('print-device-result'); result.hidden = true;
     const s = await api('/status'); if (stamp !== generation) return;
-    const heading = document.createElement('h3'); heading.textContent = t('CUPS queue status');
+    const heading = document.createElement('h3'); heading.textContent = t('Label service and printer queue');
     const list = document.createElement('dl');
     for (const [key, value] of [
       ['Queue name', s.queue], ['Printer', s.model || t('unknown')], ['Queue state', t(s.state)],
       ['Accepting jobs', t(s.acceptingJobs ? 'Yes' : 'No')], ['Queued jobs', s.queuedJobs === undefined ? t('unknown') : String(s.queuedJobs)],
       ['Queue reasons', s.reasons.length ? s.reasons.join(', ') : t('unknown')],
-      ['Queue default media', s.defaultMedia || t('unknown')], ['Label format for this application', state.media.name],
-      ['Observed at', new Date().toLocaleString()]
+      ['Selected label format', s.media?.name || t('unknown')], ['Observed at', new Date().toLocaleString()]
     ]) {
       const term = document.createElement('dt'), text = document.createElement('dd'); term.textContent = t(key); text.textContent = value; list.append(term, text);
     }
     const note = document.createElement('p'); note.className = 'hint';
-    note.textContent = t('Queue status comes from CUPS. It does not confirm the physical printer lamp, loaded roll, temperature or labels remaining.');
+    note.textContent = t('The selected format must match the loaded roll. Read the roll and change the format on the label service page.');
     result.replaceChildren(heading, list, note); result.hidden = false; status('');
   }));
-  $('print-read-roll').addEventListener('click', () => run(async () => {
-    const stamp = ++generation; roll = null; $('print-roll-result').hidden = true;
-    const result = await api('/roll', { revision: state.revision }); if (stamp !== generation) return;
-    roll = result.roll;
-    $('print-roll-summary').textContent = `${roll.sku} · ${tr('{0} labels remaining', roll.labelsRemaining)} · ${roll.media ? roll.media.name : t('Unknown label format')}`;
-    $('print-roll-observed').textContent = `${t('Observed at')}: ${new Date(roll.observedAt).toLocaleString()}`;
-    $('print-roll-note').textContent = t(!roll.media ? 'The article is recognized, but its size has no preset. Do not infer size from the queue default.'
-      : roll.media.key !== state.config.mediaKey ? 'The loaded roll differs from the selected label format. Use its format and save before preparing a label.'
-        : 'The loaded roll matches the selected format. This is a snapshot; read again after changing rolls.');
-    $('print-roll-result').hidden = false; status(t('Roll read; release requested. No label was printed or fed.'));
-  }));
-  $('print-use-roll').addEventListener('click', () => {
-    if (!roll?.media) return;
-    readSizes(); $('print-media').value = roll.media.key; showSizes(roll.media.key); invalidate(); status(t('Save print settings to use the detected format.'));
-  });
   $('print-box').addEventListener('change', () => { invalidate(); $('print-fields').hidden = true; status(''); });
   $('print-kind').addEventListener('change', () => { sources(); invalidate(); $('print-fields').hidden = true; status(''); });
   $('print-fields').addEventListener('input', invalidate);
@@ -121,15 +98,14 @@ export function mountPrinting(request, message) {
     for (const key of names) $(`print-${key}`).value = result.fields[key];
     $('print-title-row').hidden = $('print-description-row').hidden = labelKind === 'location';
     $('print-fields').hidden = !source;
-    status(t(result.layout.warnings.length ? 'Text does not fit. Shorten the label text before printing.' : 'Preview ready. Print sends one label.'));
+    status(t(result.printable ? 'Preview ready. Print sends one label.' : 'Text does not fit. Shorten the label text before printing.'));
   }));
   $('print-submit').addEventListener('click', () => run(async () => {
-    $('print-roll-result').hidden = true; roll = null;
     $('print-device-result').hidden = true;
-    // Keep the same identifier after a lost HTTP response: a retry can only inspect the original submission.
+    // Keep the same identifier after a lost HTTP response: the label service returns the original job instead of printing again.
     lastJob = await api('/submit', { token: preview.token, requestId });
-    state.jobs = [lastJob, ...state.jobs.filter(job => job.id !== lastJob.id)].slice(0, 20); history();
     status(`${t('Print submission')}: ${lastJob.state}${lastJob.jobId ? ` · CUPS ${lastJob.jobId}` : ''}. ${t('Check the job and the physical label before printing again.')}`);
+    await history();
   }));
   $('print-job-check').addEventListener('click', () => run(async () => {
     const job = await api(`/jobs/${lastJob.id}`); status(`${t('Print submission')}: ${job.record.state} · CUPS: ${job.status?.state || t('unknown')}`);

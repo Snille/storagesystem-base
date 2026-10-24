@@ -9,6 +9,8 @@ services:
       STORAGE_ADMIN_KEY: ${STORAGE_ADMIN_KEY:?Set a separate management key}
       STORAGE_API_KEY: ${STORAGE_API_KEY:-}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3210}
+      LABEL_SERVICE_URL: ${LABEL_SERVICE_URL:-}
+      LABEL_SERVICE_KEY: ${LABEL_SERVICE_KEY:-}
     volumes:
       - app-data:/data
     restart: unless-stopped

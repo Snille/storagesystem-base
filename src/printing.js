@@ -1,91 +1,82 @@
-import { randomUUID, createHash } from 'node:crypto';
-import { InputError, object, validatePrinting } from './validation.js';
+import { InputError, object, validateLabelService } from './validation.js';
 import { sourceRevision } from './settings.js';
-import { CupsPrinter } from './ipp.js';
-import { defaultLabelStyles, labelKinds, labelMedia, labelMediaPresets, labelLayout, labelPostScript, testLabel } from './labels.js';
 import { presentLocation } from './inventory.js';
-import { readDymoRoll } from './dymo-roll.js';
-const hash = input => createHash('sha256').update(input).digest('hex');
-const fingerprint = box => sourceRevision({ boxId: box.boxId, sessionId: box.sessionId, label: box.label, locationId: box.locationId, summary: box.summary });
+import { LabelServiceClient } from './label-client.js';
 
+const fingerprint = box => sourceRevision({ boxId: box.boxId, sessionId: box.sessionId, label: box.label, locationId: box.locationId, summary: box.summary });
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+
+// Labels are laid out, previewed and printed by the label service. This side chooses the content
+// (a box or a registered location) and makes sure it has not changed between preview and print.
 export class Printing {
-  constructor(inventory, { printerFactory = config => new CupsPrinter(config), rollReader = readDymoRoll } = {}) {
-    this.inventory = inventory; this.store = inventory.store; this.printerFactory = printerFactory; this.previews = new Map(); this.busy = false;
-    this.rollReader = rollReader; this.lastRollCheck = 0;
+  constructor(inventory, { env = {}, clientFactory = config => new LabelServiceClient(config) } = {}) {
+    this.inventory = inventory; this.store = inventory.store; this.env = env; this.clientFactory = clientFactory; this.previews = new Map();
   }
   config() {
-    const saved = this.store.settings().printing;
-    if (!saved) return { enabled: false, serverUrl: '', queue: '', mediaKey: labelMedia.key, styles: defaultLabelStyles() };
-    if (!saved.style) return saved;
-    // A pre-0.14 shared style belonged to the format selected at the time; other formats start from their defaults.
-    const { style, ...rest } = saved, styles = defaultLabelStyles();
-    styles[saved.mediaKey] = { ...styles[saved.mediaKey], ...style };
-    return { ...rest, styles };
+    return this.store.settings().labelService || {
+      enabled: Boolean(this.env.LABEL_SERVICE_URL && this.env.LABEL_SERVICE_KEY), url: this.env.LABEL_SERVICE_URL || '',
+      ...(this.env.LABEL_SERVICE_KEY ? { apiKey: this.env.LABEL_SERVICE_KEY } : {})
+    };
   }
+  revision() { return sourceRevision(this.config()); }
   view() {
-    const config = this.config();
-    return { config, revision: sourceRevision(config), media: labelMediaPresets.find(p => p.key === config.mediaKey), mediaPresets: labelMediaPresets,
-      locations: this.store.locationIds(), jobs: this.store.printJobs().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20) };
+    const { apiKey, ...config } = this.config();
+    return { config: { ...config, apiKeyConfigured: Boolean(apiKey) }, revision: this.revision(), locations: this.store.locationIds(),
+      usingEnvironment: !this.store.settings().labelService && Boolean(this.env.LABEL_SERVICE_URL) };
   }
-  assertRevision(revision) { if (revision !== sourceRevision(this.config())) throw new InputError('Print settings changed. Create a new preview before printing.', 409); }
+  assertRevision(revision) { if (revision !== this.revision()) throw new InputError('Print settings changed. Create a new preview before printing.', 409); }
   save(input) {
     object(input);
     if (Object.keys(input).some(k => !['revision', 'config'].includes(k))) throw new InputError('Unsupported print setting.');
+    const submitted = object(input.config, 'config');
+    if (Object.keys(submitted).some(k => !['enabled', 'url', 'apiKey', 'clearKey'].includes(k))) throw new InputError('Unsupported label service setting.');
+    if (submitted.apiKey !== undefined && typeof submitted.apiKey !== 'string') throw new InputError('Invalid label service key.');
     return this.store.transaction(() => {
-      this.assertRevision(input.revision); const config = validatePrinting(input.config);
-      if (config.style) throw new InputError('Save text sizes for each label format.');
-      this.store.writeSettings({ printing: config }); return this.view();
+      this.assertRevision(input.revision);
+      const old = this.config(), url = typeof submitted.url === 'string' ? submitted.url.trim().replace(/\/+$/, '') : submitted.url;
+      const config = { enabled: submitted.enabled, url };
+      // Keep the saved key for the same service unless a new one is typed or it is cleared on purpose.
+      if (old.apiKey && old.url === url && !submitted.clearKey) config.apiKey = old.apiKey;
+      if (submitted.apiKey?.trim()) config.apiKey = submitted.apiKey.trim();
+      this.store.writeSettings({ labelService: validateLabelService(config) });
+      return this.view();
     });
   }
-  printer(config = this.config()) { if (!config.enabled) throw new InputError('Printing is disabled. Save and enable the CUPS connection first.', 409); return this.printerFactory(config); }
+  client(config = this.config()) {
+    if (!config.enabled || !config.url || !config.apiKey) throw new InputError('Printing is disabled. Save the label service address and key first.', 409);
+    return this.clientFactory(config);
+  }
   async status() {
-    const config = this.config(), revision = sourceRevision(config);
-    const status = await this.printer(config).status(); this.assertRevision(revision);
-    return { ...status, revision, queue: config.queue };
+    const client = this.client(), [status, formats] = await Promise.all([client.status(), client.formats()]);
+    return { ...status, media: formats.media };
   }
-  async readRoll(input) {
-    object(input);
-    if (Object.keys(input).some(k => k !== 'revision')) throw new InputError('Unsupported roll-reading request.');
-    this.assertRevision(input.revision); const config = this.config();
-    if (!config.rollReader?.enabled) throw new InputError('Enable and save the DYMO roll reader first.', 409);
-    if (this.busy || Date.now() - this.lastRollCheck < 5000) throw new InputError('Wait before reading the roll again.', 429);
-    this.busy = true; this.lastRollCheck = Date.now();
-    try {
-      const queue = await this.printer(config).status(); this.assertRevision(input.revision);
-      if (queue.state !== 'idle' || queue.queuedJobs !== 0) throw new InputError('Read the roll only while the CUPS queue is idle and empty.', 409);
-      const roll = await this.rollReader(config.rollReader); this.assertRevision(input.revision);
-      return { roll, revision: input.revision };
-    } finally { this.busy = false; }
-  }
-  preview(input, language) {
+  async preview(input, language) {
     object(input);
     if (Object.keys(input).some(k => !['revision', 'kind', 'test', 'boxId', 'locationId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
-      || (input.kind !== undefined && !labelKinds.includes(input.kind))) throw new InputError('Unsupported label preview request.');
+      || (input.kind !== undefined && !['box', 'location'].includes(input.kind))) throw new InputError('Unsupported label preview request.');
     this.assertRevision(input.revision);
-    const kind = input.kind || 'box', config = this.config(), media = labelMediaPresets.find(p => p.key === config.mediaKey);
-    let box, locationId, fields;
+    const kind = input.kind || 'box';
+    let box, locationId, fields, reference;
     if (input.test === true) {
       if (input.boxId || input.locationId || input.fields) throw new InputError('Test labels use fixed sample text.');
-      const location = `TEST - ${media.widthMm} x ${media.heightMm} mm`;
-      fields = kind === 'box' ? { ...testLabel, location } : { location };
-    }
-    else if (kind === 'location') {
+    } else if (kind === 'location') {
       if (input.boxId !== undefined || typeof input.locationId !== 'string') throw new InputError('Choose a registered location or a test label.');
       if (!this.store.locationIds().includes(input.locationId)) throw new InputError('Location not found.', 404);
-      locationId = input.locationId;
+      locationId = input.locationId; reference = `location:${locationId}`.slice(0, 200);
       fields = input.fields || { location: Object.values(presentLocation(locationId, '', this.inventory.language(language))).filter(Boolean).join(', ') };
-    }
-    else {
+    } else {
       if (input.locationId !== undefined || typeof input.boxId !== 'string') throw new InputError('Choose an inventory box or a test label.');
       box = this.inventory.get(input.boxId, language); if (!box) throw new InputError('Box not found.', 404);
+      reference = `box:${box.boxId}`.slice(0, 200);
       fields = input.fields || { title: box.label, description: box.summary || '', location: Object.values(box.location).filter(Boolean).join(', ') };
     }
-    const layout = labelLayout(fields, config.styles[config.mediaKey], config.mediaKey, kind), token = randomUUID();
+    const result = await this.client().preview({ kind, ...(input.test === true ? { test: true } : { fields, reference }) });
+    this.assertRevision(input.revision);
     const now = Date.now(); for (const [id, p] of this.previews) if (p.expires <= now) this.previews.delete(id);
     if (this.previews.size >= 100) throw new InputError('Too many label previews. Wait for an older preview to expire.', 429);
-    this.previews.set(token, { config, revision: input.revision, kind, fields, layout, document: labelPostScript(layout),
-      expires: now + 10 * 60 * 1000, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, locationId, language });
-    return { token, revision: input.revision, kind, layout, fields, boxId: box?.boxId, locationId, test: input.test === true };
+    this.previews.set(result.token, { revision: input.revision, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, locationId, language,
+      expires: Math.min(Date.parse(result.expiresAt) || now, now + 10 * 60 * 1000) });
+    return { token: result.token, kind, fields: result.fields, layout: result.layout, printable: result.printable, boxId: box?.boxId, locationId, test: input.test === true };
   }
   assertPreview(preview) {
     this.assertRevision(preview.revision);
@@ -98,41 +89,13 @@ export class Printing {
   }
   async submit(input) {
     object(input);
-    if (Object.keys(input).some(k => !['token', 'requestId'].includes(k)) || !/^[a-f0-9-]{36}$/.test(input.requestId)
-      || typeof input.token !== 'string' || !/^[a-f0-9-]{36}$/.test(input.token)) throw new InputError('Use a valid preview token and print request identifier.');
-    const tokenHash = hash(input.token), existing = this.store.printJobs().find(j => j.id === input.requestId);
-    if (existing) {
-      if (existing.tokenHash !== tokenHash) throw new InputError('Print request identifier is already used by another preview.', 409);
-      return existing;
-    }
+    if (Object.keys(input).some(k => !['token', 'requestId'].includes(k)) || typeof input.requestId !== 'string' || !uuid.test(input.requestId)
+      || typeof input.token !== 'string' || !uuid.test(input.token)) throw new InputError('Use a valid preview token and print request identifier.');
     const preview = this.previews.get(input.token); if (!preview) throw new InputError('Create a new label preview before printing.', 409);
     this.assertPreview(preview);
-    if (preview.layout.warnings.length) throw new InputError('Label text does not fit. Shorten the label text or reduce font sizes before printing.', 409);
-    if (this.busy) throw new InputError('Another print submission is in progress. Check its status first.', 429);
-    this.busy = true; let claimed = false, sent = false;
-    try {
-      const printer = this.printer(preview.config), status = await printer.status(); this.assertPreview(preview);
-      if (!status.acceptingJobs || status.state === 'stopped' || !status.formats.includes('application/postscript')) throw new InputError('The queue is stopped, not accepting jobs or does not support PostScript.', 409);
-      await printer.validate(preview.config.mediaKey, 'Storage System Base label'); this.assertPreview(preview);
-      const claim = this.store.claimPrint({ id: input.requestId, tokenHash, documentHash: hash(preview.document), settingsRevision: preview.revision,
-        serverUrl: preview.config.serverUrl, queue: preview.config.queue, mediaKey: preview.config.mediaKey, createdAt: new Date().toISOString(), state: 'submitting', kind: preview.kind,
-        ...(preview.boxId ? { boxId: preview.boxId } : {}), ...(preview.locationId ? { locationId: preview.locationId } : {}) });
-      if (!claim.claimed) return claim.job;
-      claimed = true; sent = true;
-      const jobId = await printer.print(preview.config.mediaKey, 'Storage System Base label', preview.document);
-      return this.store.updatePrint(input.requestId, { state: 'submitted', jobId });
-    } catch (error) {
-      if (claimed) {
-        // A lost response may follow a successful physical submission. Never retry it.
-        return this.store.updatePrint(input.requestId, { state: sent ? 'unknown' : 'rejected' });
-      }
-      throw error;
-    } finally { this.busy = false; }
+    // The label service deduplicates by request identifier, so resending after a lost response cannot print twice.
+    return this.client().submit({ token: input.token, requestId: input.requestId });
   }
-  async job(id) {
-    const record = this.store.printJobs().find(job => job.id === id); if (!record) throw new InputError('Print job not found.', 404);
-    if (!record.jobId) return { record, status: null };
-    const status = await this.printerFactory(record).job(record.jobId);
-    return { record, status };
-  }
+  async jobs() { return (await this.client().jobs()).jobs; }
+  async job(id) { return this.client().job(id); }
 }

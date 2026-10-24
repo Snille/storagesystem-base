@@ -27,3 +27,4 @@ input[readonly]{color:var(--muted);cursor:default}button[aria-busy="true"]{curso
 
 .label-paper { max-width: 570px; margin: 1.5rem auto; }
 .label-paper svg { max-width: 100%; display: block; margin: auto; border: 1px solid #777; border-radius: 5px; }
+a.button{display:inline-block;border:1px solid transparent;border-radius:7px;padding:11px 16px;font-size:13px;font-weight:650;text-decoration:none}a.button.quiet{border-color:var(--line);background:var(--panel);color:var(--text)}

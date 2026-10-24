@@ -23,8 +23,8 @@ The existing application is the functional reference. This repository has indepe
 - Downloadable backup and restore, readable JSON export, and migration from the existing JSON files.
 - Compatible public REST API for the existing [Home Assistant integration](https://github.com/Snille/storagesystem-ha).
 - Read-only MCP tools compatible with the existing application.
-- Label design and general printing through CUPS, with optional printer-specific capabilities such as DYMO roll status.
-- A prebuilt application image and Compose stack suitable for Portainer; optional CUPS service or connection to an existing print server.
+- Label printing through the separate label service (CUPS and the DYMO driver live there); label design in a later designer on the same service.
+- A prebuilt application image and Compose stack suitable for Portainer.
 
 ## Run locally
 
@@ -179,6 +179,6 @@ Excel catalog import/export is retired from scope (2026-10-20): the historical o
 
 ## Label printing preview
 
-Version 0.12.0-dev adds **Printing**: CUPS connection settings/status, current-box or test-label preview, editable label-only text and an explicit one-label print action. Version 0.13.0-dev adds four article-backed label formats and explicit DYMO 5XL roll reading with remaining count. All four explicit formats (57 x 32, 25 x 54, 54 x 101 and 19 x 51 mm), plus manual roll reading, have owner-observed acceptance on the tested DYMO 5XL/CUPS route. The smallest test used a 6-point description. Printing is disabled by default. Main SQLite schema 2 adds a durable submission journal; back up before upgrading. See [printing setup, verification and limits](docs/PRINTING.md).
+Since 0.15.0-dev, **Printing** goes through the separate [label service](https://github.com/Snille/label-service), the only program that talks to the label printer. This application chooses the content (a box label, a location-only label for a registered location, or a test label), lets you edit the label text, shows the service's preview and sends one print. It checks that the box has not changed between preview and print. Save the label service address and this system's client key under **Label service connection** (or set `LABEL_SERVICE_URL` and `LABEL_SERVICE_KEY`). Roll reading, the selected format, text sizes and text direction are managed on the label service's own page. Printing is disabled until configured. See [printing](docs/PRINTING.md).
 
-CUPS queue status and explicit manual DYMO roll reading are separate actions. The older experimental status adapter was withdrawn; its replacement manual roll reader has owner-observed acceptance. A backwards roll caused the initial S0722520 test failures; after corrected loading, unchanged job 118 completed and its physical output was owner-approved. See docs/PRINTING.md for current evidence and limits.
+Versions 0.12-0.14 printed directly through CUPS. Their settings and print journal remain in the database (schema 2) for audit, backup and restore, but are no longer used.

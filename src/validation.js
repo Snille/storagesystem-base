@@ -62,7 +62,8 @@ export function validateSettings(settings) {
   if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);
   if (settings.searchWorkspace !== undefined) validateSearchWorkspace(settings.searchWorkspace);
-  if (settings.printing !== undefined) validatePrinting(settings.printing);
+  if (settings.printing !== undefined) validateLegacyPrinting(settings.printing);
+  if (settings.labelService !== undefined) validateLabelService(settings.labelService);
   for (const [section, fields] of Object.entries({
     appearance: ['language'], security: ['publicApiKey', 'appBaseUrl'],
     immich: ['provider', 'baseUrl', 'accountLabel', 'accessMode', 'apiKey', 'shareKey', 'albumId']
@@ -157,39 +158,28 @@ export function validateSearchWorkspace(config) {
   return config;
 }
 
-export function validatePrinting(config) {
+// Printer settings now live in the label service. Databases from 0.12-0.14 still hold the old CUPS settings and
+// journal; they stay readable for audit, backup and restore, but nothing uses or writes them any more.
+export function validateLegacyPrinting(config) {
   object(config, 'printing');
-  if (Object.keys(config).some(key => !['enabled', 'serverUrl', 'queue', 'mediaKey', 'style', 'styles', 'rollReader'].includes(key))) throw new InputError('Unsupported printing setting.');
-  if (typeof config.enabled !== 'boolean' || !labelMediaPresets.some(p => p.key === config.mediaKey)) throw new InputError('Choose a supported label format.');
-  for (const key of ['serverUrl', 'queue']) text(config[key], key, { empty: !config.enabled });
-  if (config.serverUrl.length > 1000) throw new InputError('CUPS server URL is too long.');
-  if (config.serverUrl) {
-    let url; try { url = new URL(config.serverUrl); } catch { throw new InputError('Enter a CUPS HTTP(S) origin.'); }
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new InputError('Use a CUPS origin without paths or credentials.');
+  if (Object.keys(config).some(key => !['enabled', 'serverUrl', 'queue', 'mediaKey', 'style', 'styles', 'rollReader'].includes(key))
+    || typeof config.enabled !== 'boolean' || typeof config.serverUrl !== 'string' || typeof config.queue !== 'string' || typeof config.mediaKey !== 'string') {
+    throw new InputError('Invalid legacy printing settings.');
   }
-  if (config.queue && !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(config.queue)) throw new InputError('Invalid CUPS queue name.');
-  // Settings saved before 0.14 hold one shared `style`; newer settings hold one style per label format.
-  if ((config.style === undefined) === (config.styles === undefined)) throw new InputError('Save text sizes for each label format.');
-  const sizes = (style, keys, extra = []) => {
-    object(style, 'style');
-    if (Object.keys(style).sort().join(',') !== [...keys, ...extra].sort().join(',')
-      || keys.some(key => !Number.isInteger(style[key]) || style[key] < 6 || style[key] > 16)) throw new InputError('Label font sizes must be 6-16 points.');
-  };
-  if (config.style !== undefined) sizes(config.style, labelSizeKeys.filter(key => key !== 'locationLabelSize'));
-  else {
-    object(config.styles, 'styles');
-    if (Object.keys(config.styles).sort().join(',') !== labelMediaPresets.map(p => p.key).sort().join(',')) throw new InputError('Save text sizes for each label format.');
-    for (const style of Object.values(config.styles)) {
-      sizes(style, labelSizeKeys, ['orientation']);
-      if (!labelOrientations.includes(style.orientation)) throw new InputError('Choose portrait or landscape label orientation.');
-    }
+  return config;
+}
+
+export function validateLabelService(config) {
+  object(config, 'labelService');
+  if (Object.keys(config).some(key => !['enabled', 'url', 'apiKey'].includes(key)) || typeof config.enabled !== 'boolean') throw new InputError('Unsupported label service setting.');
+  text(config.url, 'url', { empty: !config.enabled });
+  if (config.url.length > 1000) throw new InputError('Label service URL is too long.');
+  if (config.url) {
+    let url; try { url = new URL(config.url); } catch { throw new InputError('Enter the label service as an HTTP(S) origin, for example http://10.0.0.25:3230.'); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new InputError('Use a label service origin without paths or credentials.');
   }
-  if (config.rollReader !== undefined) {
-    const r = object(config.rollReader, 'rollReader');
-    if (Object.keys(r).sort().join(',') !== 'enabled,host,port' || typeof r.enabled !== 'boolean' || typeof r.host !== 'string'
-      || r.host.length > 253 || (r.host && !/^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(r.host)) || (r.enabled && !r.host)
-      || !Number.isInteger(r.port) || r.port < 1 || r.port > 65535) throw new InputError('Use a roll-reader hostname or IPv4 address and a valid TCP port.');
-  }
+  if (config.apiKey !== undefined && (typeof config.apiKey !== 'string' || config.apiKey.length < 16 || config.apiKey.length > 500)) throw new InputError('The label service key must be 16-500 characters.');
+  if (config.enabled && !config.apiKey) throw new InputError('Save the label service key before enabling printing.');
   return config;
 }
 
@@ -198,9 +188,8 @@ export function validatePrintJob(record) {
   if (!/^[a-f0-9-]{36}$/.test(record.id) || !/^[a-f0-9]{64}$/.test(record.tokenHash) || !/^[a-f0-9]{64}$/.test(record.documentHash)
     || !/^[a-f0-9]{64}$/.test(record.settingsRevision) || typeof record.createdAt !== 'string' || !Number.isFinite(Date.parse(record.createdAt))
     || !['submitting', 'submitted', 'unknown', 'rejected'].includes(record.state)
-    || (record.jobId !== undefined && (!Number.isInteger(record.jobId) || record.jobId < 1))) throw new InputError('Invalid print job record.');
-  validatePrinting({ enabled: true, serverUrl: record.serverUrl, queue: record.queue, mediaKey: record.mediaKey, styles: defaultLabelStyles() });
-  if (record.kind !== undefined && !['box', 'location'].includes(record.kind)) throw new InputError('Invalid print job record.');
+    || (record.jobId !== undefined && (!Number.isInteger(record.jobId) || record.jobId < 1))
+    || typeof record.serverUrl !== 'string' || typeof record.queue !== 'string' || typeof record.mediaKey !== 'string'
+    || (record.kind !== undefined && !['box', 'location'].includes(record.kind))) throw new InputError('Invalid print job record.');
   return record;
 }
-import { labelMediaPresets, labelSizeKeys, labelOrientations, defaultLabelStyles } from './label-media.js';

@@ -9,6 +9,9 @@ services:
       STORAGE_ADMIN_KEY: ${STORAGE_ADMIN_KEY:?Set a separate management key}
       STORAGE_API_KEY: ${STORAGE_API_KEY:?Set a public read API key}
       APP_BASE_URL: ${APP_BASE_URL:?Set the browser and HA accessible application URL}
+      # Optional: the label service and this system's client key. Settings saved in the app take precedence.
+      LABEL_SERVICE_URL: ${LABEL_SERVICE_URL:-}
+      LABEL_SERVICE_KEY: ${LABEL_SERVICE_KEY:-}
     volumes:
       - app-data:/data
     restart: unless-stopped
