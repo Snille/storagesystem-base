@@ -47,32 +47,74 @@ export function mountOverview({ request, units, title, openUnit }) {
   }
   const status = text => { $('overview-point-status').textContent = text; };
   function hint() {
-    if (editing) $('overview-hint').textContent = t('Click in the image to add a point at that place. Click a point to remove it.');
+    if (editing) $('overview-hint').textContent = t('Click in the image to add a point. Drag a point to move it. Click a point to remove it.');
   }
   function setEditing(on) {
-    editing = on; pending = null; $('overview-point-form').hidden = true; status('');
+    editing = on; pending = null; $('overview-point-form').hidden = true; status(''); $('overview-edit-tools').hidden = !on;
     $('overview-edit').textContent = t(on ? 'Done' : 'Edit points'); $('overview-pano').classList.toggle('is-editing', on);
     if (on) hint(); else if (viewer) $('overview-hint').textContent = t('Drag to look around. Scroll or pinch to zoom. Click a point to open that storage unit.');
   }
   async function loadLabels() {
     try { labels = new Map((await units()).map(unit => [unit.slug, title(unit)])); } catch { labels = new Map(); }
   }
+  let spots = [], draggedAt = 0, turnTimer = null;
+  const round = value => Math.round(value * 100) / 100;
+  const wrapYaw = yaw => round(((yaw + 540) % 360) - 180);
+  // In edit mode a point can be dragged. Pannellum draws hotspots from their pitch and yaw
+  // on every frame, so changing them moves the point.
+  function draggable(div, spot, index) {
+    div.addEventListener('pointerdown', event => {
+      if (!editing || event.button !== 0) return;
+      event.stopPropagation(); event.preventDefault();
+      const start = { x: event.clientX, y: event.clientY }; let moved = false;
+      div.setPointerCapture(event.pointerId);
+      const move = e => {
+        if (!moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5) return;
+        moved = true; [spot.pitch, spot.yaw] = viewer.mouseEventToCoords(e); viewer.setUpdate(true);
+      };
+      const up = () => {
+        div.removeEventListener('pointermove', move); viewer.setUpdate(false);
+        if (!moved) return;
+        draggedAt = Date.now();
+        save(points.points.map((point, i) => i === index ? { ...point, pitch: round(spot.pitch), yaw: round(spot.yaw) } : point));
+      };
+      div.addEventListener('pointermove', move); div.addEventListener('pointerup', up, { once: true });
+    });
+    // Pannellum would otherwise start turning the view.
+    div.addEventListener('mousedown', event => { if (editing) event.stopPropagation(); });
+  }
   function drawPoints() {
     if (!viewer || !ready) return;
     for (let i = 0; i < shown; i++) viewer.removeHotSpot(`point-${i}`);
-    points.points.forEach((point, i) => viewer.addHotSpot({
-      id: `point-${i}`, pitch: point.pitch, yaw: point.yaw, cssClass: 'overview-point',
-      createTooltipFunc: (div, label) => { const span = document.createElement('span'); span.textContent = label; div.append(span); },
-      createTooltipArgs: labels.get(point.unit) || point.unit,
-      clickHandlerFunc: () => editing ? removePoint(i) : openUnit(point.unit)
-    }));
+    spots = points.points.map((point, i) => {
+      const spot = {
+        id: `point-${i}`, pitch: point.pitch, yaw: point.yaw, cssClass: 'overview-point',
+        createTooltipFunc: (div, label) => { const span = document.createElement('span'); span.textContent = label; div.append(span); draggable(div, spot, i); },
+        createTooltipArgs: labels.get(point.unit) || point.unit,
+        // The click that ends a drag must not remove the point.
+        clickHandlerFunc: () => { if (Date.now() - draggedAt < 400) return; if (editing) removePoint(i); else openUnit(point.unit); }
+      };
+      viewer.addHotSpot(spot); return spot;
+    });
     shown = points.points.length;
+    $('overview-copied').hidden = !points.copiedFrom;
   }
   async function save(next) {
     try {
       points = await (await request('overview/points', { method: 'PUT', body: JSON.stringify({ assetId: current.assetId, revision: points.revision, points: next }) })).json();
       drawPoints(); status(t('Points saved.'));
     } catch (error) { status(t(error.message)); }
+  }
+  // Turning all points helps when a new photo was taken facing another direction.
+  function turn(degrees) {
+    if (!points?.points.length) return;
+    spots.forEach(spot => { spot.yaw = wrapYaw(spot.yaw + degrees); });
+    viewer.setUpdate(true); viewer.setUpdate(false);
+    clearTimeout(turnTimer);
+    turnTimer = setTimeout(() => save(points.points.map((point, i) => ({ ...point, yaw: wrapYaw(spots[i].yaw) }))), 700);
+  }
+  for (const [id, degrees] of [['overview-turn-left-5', -5], ['overview-turn-left-1', -1], ['overview-turn-right-1', 1], ['overview-turn-right-5', 5]]) {
+    $(id).addEventListener('click', () => turn(degrees));
   }
   function removePoint(index) {
     const point = points.points[index];

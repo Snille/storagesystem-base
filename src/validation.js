@@ -79,6 +79,7 @@ export function validateSettings(settings) {
   if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
   if (settings.appearance?.background !== undefined && !backgrounds.includes(settings.appearance.background)) throw new InputError('Unsupported background.');
   if (settings.overviewPoints !== undefined) validateOverviewPoints(settings.overviewPoints);
+  if (settings.overviewPointsSource !== undefined) { object(settings.overviewPointsSource, 'overviewPointsSource'); text(settings.overviewPointsSource.assetId, 'overviewPointsSource.assetId'); }
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);
   if (settings.searchWorkspace !== undefined) validateSearchWorkspace(settings.searchWorkspace);
   if (settings.printing !== undefined) validateLegacyPrinting(settings.printing);

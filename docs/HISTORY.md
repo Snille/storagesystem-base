@@ -1,5 +1,11 @@
 # History
 
+## 0.20.1-dev - 2026-10-24
+
+- **Move and turn overview points.** In edit mode a point can be dragged to a new place (the click that ends a drag does not remove it), and **Turn all points** moves every point 1 or 5 degrees left or right, for a new photo taken facing another direction. Turning saves once after the clicks stop.
+- **Points follow a new image.** An overview image that never had points saved is offered the points of the image saved most recently (`copiedFrom`, shown as a note); they are saved for the new image at the first change. Saving an empty list counts as the image's own choice. The settings record `overviewPointsSource` remembers that latest image.
+- Verified on the development copy, which already held the owner's 15 points on the new 360 degree cover: a test point was dragged (yaw 42.85 -> 48.44, the owner's points unchanged), turning moved every point exactly 5 degrees, and the owner's 15 points were then saved back identically (checked against a copy taken first).
+
 ## 0.20.0-dev - 2026-10-24
 
 - **Clickable points in the 3D overview.** A green point shows a storage unit's name on hover and opens that unit on the storage map. **Edit points** turns on an edit mode: a still click in the image (not a drag) asks which storage unit to place there, and a click on a point removes it after confirmation. Points are saved per overview image in the `overviewPoints` settings record (direction and unit slug), so a new 360 degree cover starts empty and the old image's points remain saved.

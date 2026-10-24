@@ -636,5 +636,12 @@ export default {
   "Cancel": "Avbryt",
   "The points changed. Reload the overview before saving.": "Punkterna har ändrats. Ladda om översikten innan du sparar.",
   "Invalid overview point.": "Ogiltig punkt i översikten.",
-  "Invalid overview points.": "Ogiltiga punkter i översikten."
+  "Invalid overview points.": "Ogiltiga punkter i översikten.",
+  "Click in the image to add a point. Drag a point to move it. Click a point to remove it.": "Klicka i bilden för att lägga en punkt. Dra en punkt för att flytta den. Klicka på en punkt för att ta bort den.",
+  "These points come from the previous overview image. Move them where needed; they are saved for this image at your first change.": "Punkterna kommer från den förra översiktsbilden. Flytta dem där det behövs; de sparas för den här bilden vid din första ändring.",
+  "Turn all points": "Vrid alla punkter",
+  "Turn all points 5 degrees left": "Vrid alla punkter 5 grader åt vänster",
+  "Turn all points 1 degree left": "Vrid alla punkter 1 grad åt vänster",
+  "Turn all points 1 degree right": "Vrid alla punkter 1 grad åt höger",
+  "Turn all points 5 degrees right": "Vrid alla punkter 5 grader åt höger"
 };

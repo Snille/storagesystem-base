@@ -78,6 +78,15 @@ test('the overview image is the album cover, management-only, signed and without
   assert.equal((await putPoints({ assetId: 'cover-asset', revision: response.points.revision, points: [] })).status, 409);
   assert.deepEqual((await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json()).points.points, [point]);
   assert.deepEqual(store.settings().overviewPoints, { 'cover-asset': [point] }); assert.equal(store.audit().ok, true);
+  // A new cover is offered the previous image's points until its own are saved, even when empty.
+  cover = 'new-cover';
+  const offered = (await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json()).points;
+  assert.deepEqual([offered.copiedFrom, offered.points], ['cover-asset', [point]]);
+  assert.equal((await putPoints({ assetId: 'new-cover', revision: offered.revision, points: [] })).status, 200);
+  const own = (await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json()).points;
+  assert.deepEqual([own.copiedFrom, own.points], [undefined, []]);
+  assert.deepEqual(store.settings().overviewPoints['cover-asset'], [point], 'the old image keeps its points');
+  cover = 'cover-asset';
   // The album inbox and photo choices leave the cover out, unless a box already uses it.
   const albumIds = async () => (await (await fetch(base + '/api/manage/album?refresh=true', { headers: { 'x-api-key': 'admin' } })).json()).assets.map(a => a.id);
   assert.deepEqual(await albumIds(), ['box-photo']);

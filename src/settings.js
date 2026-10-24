@@ -56,9 +56,14 @@ export class Settings {
   }
   // Points belong to one overview image; a new cover starts without points, and the old
   // image's points stay saved in case it comes back.
+  // An image that never had points saved is offered the latest saved image's points as a
+  // starting point (copiedFrom); they are saved with the first change.
   overviewPoints(assetId) {
-    const points = this.store.settings().overviewPoints?.[assetId] || [];
-    return { assetId, points, revision: sourceRevision(points) };
+    const settings = this.store.settings(), all = settings.overviewPoints || {};
+    const saved = all[assetId], source = settings.overviewPointsSource?.assetId;
+    const revision = sourceRevision(saved ?? null);
+    if (saved === undefined && source && source !== assetId && all[source]?.length) return { assetId, points: all[source], copiedFrom: source, revision };
+    return { assetId, points: saved || [], revision };
   }
   saveOverviewPoints(input) {
     object(input);
@@ -67,7 +72,7 @@ export class Settings {
     return this.store.transaction(() => {
       if (input.revision !== this.overviewPoints(input.assetId).revision) throw new InputError('The points changed. Reload the overview before saving.', 409);
       const all = { ...this.store.settings().overviewPoints, [input.assetId]: input.points };
-      this.store.writeSettings({ overviewPoints: all });
+      this.store.writeSettings({ overviewPoints: all, overviewPointsSource: { assetId: input.assetId } });
       return this.overviewPoints(input.assetId);
     });
   }

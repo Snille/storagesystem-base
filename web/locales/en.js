@@ -642,5 +642,12 @@ export default {
   "Cancel": "Cancel",
   "The points changed. Reload the overview before saving.": "The points changed. Reload the overview before saving.",
   "Invalid overview point.": "Invalid overview point.",
-  "Invalid overview points.": "Invalid overview points."
+  "Invalid overview points.": "Invalid overview points.",
+  "Click in the image to add a point. Drag a point to move it. Click a point to remove it.": "Click in the image to add a point. Drag a point to move it. Click a point to remove it.",
+  "These points come from the previous overview image. Move them where needed; they are saved for this image at your first change.": "These points come from the previous overview image. Move them where needed; they are saved for this image at your first change.",
+  "Turn all points": "Turn all points",
+  "Turn all points 5 degrees left": "Turn all points 5 degrees left",
+  "Turn all points 1 degree left": "Turn all points 1 degree left",
+  "Turn all points 1 degree right": "Turn all points 1 degree right",
+  "Turn all points 5 degrees right": "Turn all points 5 degrees right"
 };
