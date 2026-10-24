@@ -141,7 +141,8 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/public/ask' && method === 'POST') {
         const input = object(await body(req)); text(input.query, 'query'); text(input.language, 'language', { optional: true });
         const result = inventory.ask(input.query.trim(), input.language);
-        return json({ ...result, matches: result.matches.map(withUrls) });
+        const phrased = await ai.phraseAnswer(result.query, result.matches, inventory.language(input.language));
+        return json({ ...result, ...(phrased ? { answer: phrased.answer, source: 'ai' } : {}), matches: result.matches.map(withUrls) });
       }
       const boxMatch = path.match(/^\/api\/public\/boxes\/([^/]+)$/);
       if (boxMatch && method === 'GET') {

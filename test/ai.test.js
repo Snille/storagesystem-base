@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { Store } from '../src/store.js';
 import { createApp } from '../src/server.js';
 import { Inventory } from '../src/inventory.js';
+import { fixture } from './fixture.js';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1sAAAAASUVORK5CYII=', 'base64');
 const result = { role: 'detail', label: 'Fasteners', summary: 'Visible screws and washers.', keywords: ['screws', 'washers'], uncertainties: 'Size is not readable.' };
@@ -158,6 +159,28 @@ test('the fallback connection answers when the first one is unreachable or unusa
   const failed = await c.request('ai/draft', { ...input, revision: second.revision });
   assert.equal(failed.status, 502); assert.match((await failed.json()).error, /could not be reached/);
   assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
+});
+
+test('public ask phrases a short answer with the image task route, never speaks IDs and keeps the local answer as fallback', async t => {
+  const c = await setup(t); c.store.transaction(() => c.store.insert(structuredClone(fixture)));
+  const ask = async query => (await c.request('../public/ask', { query, language: 'sv' }, 'POST', 'read-fixture')).json();
+  // Without an AI route the local answer is used, as before.
+  const local = await ask('lodtenn'); assert.equal(local.source, 'search');
+  await c.configure();
+  c.setCompletion(completion({ answer: 'Lödtennet ligger i Lagerhylla G, hylla 6.' }));
+  const phrased = await ask('lodtenn');
+  assert.deepEqual([phrased.source, phrased.answer, phrased.count], ['ai', 'Lödtennet ligger i Lagerhylla G, hylla 6.', local.count]);
+  const call = c.calls.filter(call => call.path.endsWith('completions')).at(-1);
+  assert.match(call.body.messages[0].content, /Swedish/); assert.match(call.body.messages[0].content, /Never mention internal IDs/); assert.match(call.body.messages[0].content, /word for word/);
+  assert.equal(call.body.response_format.json_schema.name, 'spoken_answer'); assert.ok(!call.body.messages[1].content.includes('IVAR-G-H6-P1-A'));
+  // An answer that speaks an internal ID, an empty answer or an unreachable service falls back to the local answer.
+  for (const content of [{ answer: 'Den finns i IVAR-G-H6-P1-A.' }, { answer: '' }]) {
+    c.setCompletion(completion(content)); assert.equal((await ask('lodtenn')).source, 'search');
+  }
+  c.setCompletion((req, res) => { res.writeHead(500); res.end('{}'); }); assert.equal((await ask('lodtenn')).answer, local.answer);
+  // No matches: no AI call at all.
+  const before = c.calls.length; assert.equal((await ask('zzzzqqqq')).source, 'search');
+  assert.equal(c.calls.filter((call, i) => i >= before && call.path.endsWith('completions')).length, 0);
 });
 
 test('multi-photo draft rejects duplicate/missing assets, bad roles, excess photos and mismatched model photo rows without writes', async t => {

@@ -1,5 +1,10 @@
 # History
 
+## Unreleased (after 0.22.0)
+
+- **Spoken answers for Home Assistant.** `POST /api/public/ask` now has the answer phrased by AI from the top five matches, like the reference application: in the requested language, one or two short sentences, locations repeated word for word, no internal IDs. It uses the image task's route and fallback (OmniRoute `cx/gpt-6-luna`, then Ollama01) with 15 s per route. An answer that speaks a box or location ID, is empty or fails falls back to the local answer (`source: "search"`); the response contract is unchanged.
+- Owner gate for the switch: voice answers at least as good as the old system's. Compared on the 50 owner-reviewed questions against the live system (read-only `/ask` calls): the expected place was named in 32 of 43 answerable questions (old 30), both used AI for 40 answers, about 1.2 s (old 0.9 s) per answer. New answers are full sentences (about 89 characters, old 55). Both systems miss the same 11 questions where lexical search finds nothing (for example "Ikeapåsar", "Skrivdragare", descriptions without the item's word); semantic search is the next improvement there. Clarification questions (several kinds of cables or screws) get a short list of places in both.
+
 ## 0.22.0-dev - 2026-10-24
 
 - **Fallback AI connection.** Image settings can name a fallback connection and model. When the first route cannot be reached, is rate limited, rejects its key or returns an unusable answer (429/502), the same analysis is sent to the fallback; changed settings or inventory (409) are never retried. Results show when the fallback answered and why. Both fields are set together or not at all.

@@ -58,6 +58,11 @@ falls back to a local answer. This application currently answers with a local te
 list several boxes, so voice answers would get worse at the switch. Decide before step 11 whether
 spoken answers must match or improve first (see VOICE-SEARCH.md and ANSWER-POLICY.md).
 
+Owner decision: switch only when voice answers are at least as good. Status 2026-10-24: `/ask` now
+phrases answers with AI like the old system and named the expected place in 32 of 43 reviewed
+questions against the old system's 30 (see HISTORY). The gate is met on the measured questions; the
+owner confirms by listening through Home Assistant after the rehearsal.
+
 ## D. Switch over
 
 11. **Owner decides the time.** Stop editing in the old system, take a final read-only copy and
