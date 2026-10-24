@@ -649,5 +649,6 @@ export default {
   "Turn all points 5 degrees left": "Turn all points 5 degrees left",
   "Turn all points 1 degree left": "Turn all points 1 degree left",
   "Turn all points 1 degree right": "Turn all points 1 degree right",
-  "Turn all points 5 degrees right": "Turn all points 5 degrees right"
+  "Turn all points 5 degrees right": "Turn all points 5 degrees right",
+  "A place for everything": "A place for everything"
 };

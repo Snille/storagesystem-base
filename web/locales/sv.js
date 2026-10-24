@@ -643,5 +643,6 @@ export default {
   "Turn all points 5 degrees left": "Vrid alla punkter 5 grader åt vänster",
   "Turn all points 1 degree left": "Vrid alla punkter 1 grad åt vänster",
   "Turn all points 1 degree right": "Vrid alla punkter 1 grad åt höger",
-  "Turn all points 5 degrees right": "Vrid alla punkter 5 grader åt höger"
+  "Turn all points 5 degrees right": "Vrid alla punkter 5 grader åt höger",
+  "A place for everything": "En plats för allt"
 };

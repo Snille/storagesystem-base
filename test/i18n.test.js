@@ -6,8 +6,8 @@ import swedish from '../web/locales/sv.js';
 
 const web = new URL('../web/', import.meta.url);
 // Names, addresses and sample input stay the same in every language.
-const untranslated = new Set(['Storage System', 'Svenska', 'Immich', 'PhotoPrism', 'OpenRouter', 'http://10.0.0.25:3230', 'https://photos.example.com',
-  'https://openrouter.ai/api/v1', 'https://storage.example.com','http://ollama-host:11434', 'bge-m3:cpu4', 'Ska det vara en färdig nätverkskabel?', 'Var finns tejpen?']);
+const untranslated = new Set(['Storage System', 'Storage System –', 'Svenska', 'Immich', 'PhotoPrism', 'OpenRouter', 'http://10.0.0.25:3230', 'https://photos.example.com',
+  'https://openrouter.ai/api/v1', 'https://storage.example.com', 'http://ollama-host:11434', 'bge-m3:cpu4', 'Ska det vara en färdig nätverkskabel?', 'Var finns tejpen?']);
 
 function interfaceStrings() {
   const found = new Set();
