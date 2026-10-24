@@ -99,14 +99,24 @@ export function createApp({ store, env = process.env }) {
       }
       const key = publicKey(store, env);
       const imageMatch = path.match(/^\/api\/public\/assets\/([^/]+)\/(thumbnail|original|preview)$/);
+      // Hosts this application answers to. A configured list also stops DNS rebinding: a foreign
+      // name pointed at this server cannot read or change data through a visitor's browser.
+      // The check applies only when APP_ALLOWED_HOSTS is set, so existing deployments keep working.
+      const listed = (env.APP_ALLOWED_HOSTS || '').split(',').map(h => h.trim().toLowerCase()).filter(Boolean);
+      const hosts = listed.length ? [...listed, ...(env.APP_BASE_URL ? [new URL(env.APP_BASE_URL).host.toLowerCase()] : [])] : [];
+      if (hosts.length && !hosts.includes(String(req.headers.host).toLowerCase())) throw new InputError('Host is not allowed.', 403);
+      // Open management trusts the network and the proxy in front (for example Authelia), like the
+      // reference application; the host list and the origin check below still block other websites.
+      const open = admin && env.STORAGE_MANAGEMENT_ACCESS === 'open';
+      if (open && !hosts.length) throw new InputError('Open management requires APP_ALLOWED_HOSTS.', 503);
       const expected = admin ? env.STORAGE_ADMIN_KEY?.trim() : key;
-      if (admin && !expected) throw new InputError('Management is disabled. Configure STORAGE_ADMIN_KEY.', 503);
-      const authenticated = !expected || equal(requestKey(req, url, !admin), expected);
+      if (admin && !expected && !open) throw new InputError('Management is disabled. Configure STORAGE_ADMIN_KEY.', 503);
+      const authenticated = open || !expected || equal(requestKey(req, url, !admin), expected);
       const signed = imageMatch && key && equal(url.searchParams.get('sig') || '', signature(decodeURIComponent(imageMatch[1]), imageMatch[2], key));
       if (!authenticated && !signed) throw new InputError('Invalid or missing API key.', 401);
       if (req.headers.origin) {
-        const allowed = env.APP_BASE_URL || `http://${req.headers.host}`;
-        if (new URL(req.headers.origin).host !== new URL(allowed).host) throw new InputError('Origin is not allowed.', 403);
+        const allowed = hosts.length ? hosts : [new URL(env.APP_BASE_URL || `http://${req.headers.host}`).host.toLowerCase()];
+        if (!allowed.includes(new URL(req.headers.origin).host.toLowerCase())) throw new InputError('Origin is not allowed.', 403);
       }
       const base = (env.APP_BASE_URL || store.settings().security?.appBaseUrl || '').replace(/\/+$/, '');
       const withUrls = box => ({ ...box, photos: box.photos.map(p => ({ ...p, thumbnailUrl: assetUrl(p.immichAssetId, 'thumbnail', key, base), previewUrl: assetUrl(p.immichAssetId, 'preview', key, base), originalUrl: assetUrl(p.immichAssetId, 'original', key, base) })) });

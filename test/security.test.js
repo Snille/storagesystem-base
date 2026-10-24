@@ -34,6 +34,30 @@ test('the public API key can be set, replaced and removed in the interface, and 
   assert.equal(await health('environment-key'), 200); assert.equal(store.audit().ok, true);
 });
 
+test('open management needs no key but only answers listed hosts and same-site origins', async t => {
+  const store = new Store(':memory:'); store.importLegacy(structuredClone(fixture));
+  const app = createApp({ store, env: { STORAGE_MANAGEMENT_ACCESS: 'open', STORAGE_API_KEY: 'read', APP_BASE_URL: 'https://verkstad.example', APP_ALLOWED_HOSTS: 'hylla.example, 127.0.0.1:' } });
+  app.listen(0, '127.0.0.1'); await once(app, 'listening');
+  t.after(async () => { app.closeAllConnections(); await new Promise(r => app.close(r)); store.close(); });
+  const port = app.address().port, base = `http://127.0.0.1:${port}`;
+  // node's fetch cannot set Host, so check the listed LAN address with a second app below.
+  assert.equal((await fetch(base + '/api/manage/audit')).status, 403, 'an unlisted host is refused');
+  const lan = createApp({ store, env: { STORAGE_MANAGEMENT_ACCESS: 'open', STORAGE_API_KEY: 'read', APP_ALLOWED_HOSTS: `127.0.0.1:${port + 1}` } });
+  lan.listen(port + 1, '127.0.0.1'); await once(lan, 'listening');
+  t.after(async () => { lan.closeAllConnections(); await new Promise(r => lan.close(r)); });
+  const lanBase = `http://127.0.0.1:${port + 1}`;
+  assert.equal((await fetch(lanBase + '/api/manage/audit')).status, 200, 'no key needed on a listed host');
+  const save = origin => fetch(lanBase + '/api/manage/positions', { method: 'POST', headers: { 'content-type': 'application/json', origin }, body: JSON.stringify({ locationId: 'Z-H1-P1-A' }) });
+  assert.equal((await save('https://evil.example')).status, 403, 'another website cannot change data');
+  assert.equal((await save(lanBase)).status, 200);
+  assert.equal((await fetch(lanBase + '/api/public/health')).status, 401, 'the public API still needs its key');
+  // Open management without a host list is refused.
+  const unsafe = createApp({ store, env: { STORAGE_MANAGEMENT_ACCESS: 'open' } });
+  unsafe.listen(0, '127.0.0.1'); await once(unsafe, 'listening');
+  t.after(async () => { unsafe.closeAllConnections(); await new Promise(r => unsafe.close(r)); });
+  assert.equal((await fetch(`http://127.0.0.1:${unsafe.address().port}/api/manage/audit`)).status, 503);
+});
+
 test('the public base URL is checked, and APP_BASE_URL on the server takes precedence', async t => {
   const plain = await setup(t, {});
   assert.equal((await plain.view()).publicKeySource, 'none');

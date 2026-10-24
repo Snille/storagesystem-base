@@ -47,7 +47,9 @@ Configuration:
 | `STORAGE_DB` | Database file; default `./data/storage.sqlite`, `/data/storage.sqlite` in Docker |
 | `HOST` | Default `127.0.0.1`, `0.0.0.0` inside Docker |
 | `PORT` | Application port, default `3210` |
-| `STORAGE_ADMIN_KEY` | Separate key for browser management, imports, exports and backups; management is disabled when empty |
+| `STORAGE_ADMIN_KEY` | Separate key for browser management, imports, exports and backups; management is disabled when empty, unless `STORAGE_MANAGEMENT_ACCESS` is `open` |
+| `STORAGE_MANAGEMENT_ACCESS` | `open` lets anyone who reaches the app manage it without a key, like the reference application. Use it only on a trusted LAN with an authenticating proxy for outside access; it requires `APP_ALLOWED_HOSTS`. Other websites still cannot change data (origin check) |
+| `APP_ALLOWED_HOSTS` | Comma-separated `host[:port]` names the app answers to besides `APP_BASE_URL`, for example `hylla.snille.net,10.0.0.25:3210`. When set, requests for other host names are refused (protects against DNS rebinding) |
 | `STORAGE_API_KEY` | Public read API/MCP key; empty permits unauthenticated public reads, matching the legacy behavior |
 | `APP_BASE_URL` | Externally reachable base URL used for image links; required for HA outside the same origin |
 

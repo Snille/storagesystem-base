@@ -652,5 +652,7 @@ export default {
   "Exact model ID": "Exakt modell-ID",
   "Used only when the first connection cannot be reached, is rate limited or returns an unusable answer. The result shows when the fallback answered.": "Används bara när den första anslutningen inte svarar, är spärrad eller ger ett oanvändbart svar. Resultatet visar när reserven svarade.",
   "The fallback must use an existing connection.": "Reserven måste använda en befintlig anslutning.",
-  "Choose both a fallback connection and a fallback model, or neither.": "Välj både reservanslutning och reservmodell, eller ingen av dem."
+  "Choose both a fallback connection and a fallback model, or neither.": "Välj både reservanslutning och reservmodell, eller ingen av dem.",
+  "Host is not allowed.": "Adressen är inte tillåten.",
+  "Open management requires APP_ALLOWED_HOSTS.": "Öppen administration kräver APP_ALLOWED_HOSTS."
 };

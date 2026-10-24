@@ -342,6 +342,8 @@ function edit(box = null) {
   $('editor').showModal();
 }
 
+// With open management (STORAGE_MANAGEMENT_ACCESS=open) the inventory opens without a key.
+fetch('/api/manage/audit').then(response => { if (response.ok && !key) load().catch(() => { }); }, () => { });
 $('connect-form').addEventListener('submit', async event => {
   event.preventDefault(); key = $('key').value.trim();
   try { await load(); $('key').value = ''; message(''); } catch (error) { message(error.message, true); }

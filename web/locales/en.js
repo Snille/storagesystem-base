@@ -658,5 +658,7 @@ export default {
   "Exact model ID": "Exact model ID",
   "Used only when the first connection cannot be reached, is rate limited or returns an unusable answer. The result shows when the fallback answered.": "Used only when the first connection cannot be reached, is rate limited or returns an unusable answer. The result shows when the fallback answered.",
   "The fallback must use an existing connection.": "The fallback must use an existing connection.",
-  "Choose both a fallback connection and a fallback model, or neither.": "Choose both a fallback connection and a fallback model, or neither."
+  "Choose both a fallback connection and a fallback model, or neither.": "Choose both a fallback connection and a fallback model, or neither.",
+  "Host is not allowed.": "Host is not allowed.",
+  "Open management requires APP_ALLOWED_HOSTS.": "Open management requires APP_ALLOWED_HOSTS."
 };

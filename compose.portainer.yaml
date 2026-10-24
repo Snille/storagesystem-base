@@ -6,7 +6,12 @@ services:
     ports:
       - "${STORAGE_PORT:-3210}:3210"
     environment:
-      STORAGE_ADMIN_KEY: ${STORAGE_ADMIN_KEY:?Set a separate management key}
+      # Management needs this key unless STORAGE_MANAGEMENT_ACCESS is "open".
+      STORAGE_ADMIN_KEY: ${STORAGE_ADMIN_KEY:-}
+      # "open": no management key, for a trusted LAN with an authenticating proxy (e.g. Authelia) outside.
+      STORAGE_MANAGEMENT_ACCESS: ${STORAGE_MANAGEMENT_ACCESS:-}
+      # Comma-separated host[:port] names the app answers to besides APP_BASE_URL; required for "open".
+      APP_ALLOWED_HOSTS: ${APP_ALLOWED_HOSTS:-}
       STORAGE_API_KEY: ${STORAGE_API_KEY:?Set a public read API key}
       APP_BASE_URL: ${APP_BASE_URL:?Set the browser and HA accessible application URL}
       # Optional: the label service and this system's client key. Settings saved in the app take precedence.
