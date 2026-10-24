@@ -123,8 +123,29 @@ export class Catalog {
     return createHmac('sha256', this.signingKey).update(JSON.stringify([asset, expires, revision, variant])).digest('base64url');
   }
 
+  // The album cover is the overview image, not a box photo, so album choices leave it out
+  // unless a box already uses it. The cover lookup is cached like the asset list.
+  async coverAssetId(config, refresh = false) {
+    const revision = sourceRevision(config);
+    if (!refresh && this.coverCache?.revision === revision && this.coverCache.expires > Date.now()) return this.coverCache.id;
+    // Without cover information the album still lists every photo.
+    const id = await this.overviewAlbum(config).then(album => album?.albumThumbnailAssetId, () => '');
+    this.coverCache = { revision, id: typeof id === 'string' ? id : '', expires: Date.now() + 10000 };
+    return this.coverCache.id;
+  }
+  async overviewAlbum(config) {
+    if (config.provider === 'photoprism' || !config.albumId) return null;
+    const album = config.accessMode === 'shareKey' ? (await this.request(config, '/api/shared-links/me')).album
+      : await this.request(config, `/api/albums/${encodeURIComponent(config.albumId)}?withoutAssets=true`);
+    this.assertCurrent(config);
+    return album?.id === config.albumId ? album : null;
+  }
+
   async album(refresh = false) {
-    const config = this.config(); const revision = sourceRevision(config); const assets = await this.assets(config, { refresh });
+    const config = this.config(); const revision = sourceRevision(config);
+    const [all, cover] = await Promise.all([this.assets(config, { refresh }), this.coverAssetId(config, refresh)]);
+    const used = new Set(this.store.read().photos.map(p => p.immichAssetId));
+    const assets = all.filter(a => a.id !== cover || used.has(a.id));
     const data = this.store.read(); const sessionBoxes = new Map(data.boxes.map(b => [currentSession(data, b.boxId)?.sessionId, b.boxId]));
     const expires = String(Date.now() + 15 * 60 * 1000);
     const imageUrl = (asset, variant) => `/api/album-preview/${encodeURIComponent(asset)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(asset, expires, revision, variant)}`;
@@ -136,13 +157,8 @@ export class Catalog {
 
   // The album cover chosen in Immich is the workshop overview image on the start page.
   async overview() {
-    const config = this.config(); if (!config.albumId) return { image: null };
-    let album;
-    if (config.provider === 'photoprism') return { image: null };
-    if (config.accessMode === 'shareKey') album = (await this.request(config, '/api/shared-links/me')).album;
-    else album = await this.request(config, `/api/albums/${encodeURIComponent(config.albumId)}?withoutAssets=true`);
-    this.assertCurrent(config);
-    const id = album?.id === config.albumId && typeof album.albumThumbnailAssetId === 'string' ? album.albumThumbnailAssetId : '';
+    const config = this.config(); const album = await this.overviewAlbum(config);
+    const id = typeof album?.albumThumbnailAssetId === 'string' ? album.albumThumbnailAssetId : '';
     if (!id) return { image: null };
     const revision = sourceRevision(config), expires = String(Date.now() + 15 * 60 * 1000);
     const imageUrl = variant => `/api/album-preview/${encodeURIComponent(id)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(id, expires, revision, variant)}`;

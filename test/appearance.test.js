@@ -54,6 +54,7 @@ test('the overview image is the album cover, management-only, signed and without
   const immich = createServer((req, res) => {
     res.setHeader('content-type', 'application/json');
     if (req.url === '/api/albums/album?withoutAssets=true' && req.headers['x-api-key'] === 'photo-key') return res.end(JSON.stringify({ id: 'album', albumName: 'Verkstad', albumThumbnailAssetId: cover }));
+    if (req.url === '/api/search/metadata') return res.end(JSON.stringify({ assets: { items: ['cover-asset', 'box-photo'].map(id => ({ id, type: 'IMAGE', originalFileName: `${id}.jpg` })), nextPage: null } }));
     res.writeHead(404); res.end('{}');
   });
   immich.listen(0, '127.0.0.1'); await once(immich, 'listening'); t.after(() => new Promise(r => immich.close(r)));
@@ -64,6 +65,13 @@ test('the overview image is the album cover, management-only, signed and without
   const response = await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json();
   assert.equal(response.image.assetId, 'cover-asset'); assert.equal(response.image.albumName, 'Verkstad');
   assert.match(response.image.previewUrl, /^\/api\/album-preview\/cover-asset\?variant=preview&.*grant=/); assert.ok(!JSON.stringify(response).includes('photo-key'));
+  // The album inbox and photo choices leave the cover out, unless a box already uses it.
+  const albumIds = async () => (await (await fetch(base + '/api/manage/album?refresh=true', { headers: { 'x-api-key': 'admin' } })).json()).assets.map(a => a.id);
+  assert.deepEqual(await albumIds(), ['box-photo']);
+  store.transaction(() => store.insert({ boxes: [{ boxId: 'B', label: 'Box', currentLocationId: 'A-H1-P1-A' }],
+    sessions: [{ sessionId: 'S', boxId: 'B', isCurrent: true, createdAt: new Date().toISOString(), summary: '', itemKeywords: [] }],
+    photos: [{ photoId: 'S:1', sessionId: 'S', immichAssetId: 'cover-asset', photoRole: 'location' }] }));
+  assert.deepEqual(await albumIds(), ['cover-asset', 'box-photo']);
   cover = null;
   assert.deepEqual(await (await fetch(base + '/api/manage/overview', { headers: { 'x-api-key': 'admin' } })).json(), { image: null });
 });

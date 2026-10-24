@@ -42,7 +42,7 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [x] Appearance: page backgrounds (three built-in, none, or an uploaded image) in the Appearance dialog. Theme stays a per-tab toggle.
 - [ ] Security settings in the interface (API keys).
 - [x] Overview page parity: album-cover overview image and storage statistics (units by type, boxes with and without photos).
-- [ ] The album inbox still lists the album cover; the reference excluded it there and from box photo choices.
+- [x] The album inbox and photo choices leave out the album cover (the overview image), unless a box already uses it.
 - [ ] Check smaller reference behaviors not yet compared in detail: hover analysis text and the green "analysis saved" mark on photos, releasing a photo from a box, `?lang=` URL override for shared devices.
 - Location management is **not** a reference feature: the reference derives storage units from box locations and has no editor. This app already registers empty positions and shows them on the storage map. Further management (removing unused positions, renaming units) is new scope.
 

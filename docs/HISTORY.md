@@ -1,5 +1,9 @@
 # History
 
+## 0.16.1-dev - 2026-10-24
+
+- The album inbox, the editor's album picker and the AI test photos leave out the album cover, since it is the start page's overview image, as in the reference application. A cover that a box already uses stays listed. If the cover cannot be read, every photo is listed. Development copy: 294 -> 293 album photos.
+
 ## 0.16.0-dev - 2026-10-24
 
 - **Page backgrounds.** The Languages dialog is now **Appearance** and adds a background choice: green hills (new artwork in the style of the reference application, default), tool pegboard, blueprint, none, or an uploaded image. The background shows on every page, also before login, in dark and light themes. Changes save at once.
