@@ -538,6 +538,9 @@ export default {
   "Search settings changed. Reopen Search & answers before saving or testing.": "Sökinställningarna har ändrats. Öppna Sökning och svar igen innan du sparar eller provar.",
   "An answer rule refers to a box that no longer exists. Reload the inventory.": "En svarsregel hänvisar till en låda som saknas. Läs in inventeringen igen.",
   "printer job {0}": "skrivarjobb {0}",
+  "Loading models…": "Läser in modeller…",
+  "Your photos stay in your photo service. Review AI suggestions before saving. Preview labels before printing.": "Dina foton stannar i din fototjänst. Granska AI-förslag innan du sparar. Förhandsgranska etiketter innan du skriver ut.",
+  "Version": "Version",
   "Print label": "Skriv ut etikett",
   "Print location label": "Skriv ut platsetikett",
   "A completed job means the label service delivered the label to the printer driver. Check the physical label for text and orientation.": "Ett slutfört jobb betyder att etikettjänsten har lämnat etiketten till skrivarens drivrutin. Kontrollera text och riktning på den fysiska etiketten."

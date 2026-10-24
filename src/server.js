@@ -25,6 +25,7 @@ const assets = new Map([
   ['/location-editor.js', ['location-editor.js', 'text/javascript; charset=utf-8']],
   ['/storage-map.js', ['storage-map.js', 'text/javascript; charset=utf-8']],
   ['/i18n.js', ['i18n.js', 'text/javascript; charset=utf-8']],
+  ['/locales/en.js', ['locales/en.js', 'text/javascript; charset=utf-8']],
   ['/locales/sv.js', ['locales/sv.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']]
 ]);

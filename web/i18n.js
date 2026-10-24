@@ -1,9 +1,10 @@
+import english from './locales/en.js';
 import swedish from './locales/sv.js';
 
 let language = 'en';
 const staticText = [], staticAttributes = [];
 export const uiLanguage = () => language;
-export function t(value) { return language === 'sv' ? swedish[value] ?? value : value; }
+export function t(value) { return (language === 'sv' ? swedish : english)[value] ?? value; }
 export function tr(source, ...values) { return t(source).replace(/\{(\d+)\}/g, (_, index) => String(values[Number(index)] ?? '')); }
 export function roleName(role) { return t({ label: 'Label photo', location: 'Storage location', inside: 'Inside', spread: 'Spread', detail: 'Detail', auto: 'Suggest a role' }[role] || role); }
 
