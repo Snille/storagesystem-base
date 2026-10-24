@@ -7,10 +7,23 @@ landscape) and location-only labels (see PRINTING.md). Default box-label output 
 unchanged (old/new output comparison is identical). All 101 tests pass locally.
 The owner physically accepted one rotated location label: S0722550 / 19 x 51 mm
 landscape, CUPS job 121 (queue idle/empty afterward). The preview was checked in the browser against a synthetic
-in-memory fixture with no printer. Not yet done: pinned Docker run. The 3212 preview
-now runs 0.14.0-dev with temporary SSH tunnels (18463 CUPS, 18464 printer) and has
-saved per-format settings, which older images cannot validate. A private backup
-taken before that change is `preview-before-0.14-20261024.sqlite` in the same directory.
+in-memory fixture with no printer. The 3212 preview has saved per-format settings, which
+older images cannot validate; it and its temporary SSH tunnels are stopped. A
+private backup taken before that change is `preview-before-0.14-20261024.sqlite`
+in `data/search-settings-preview-20261023/`.
+
+The Docker Desktop development stack (`storagesystem-base-dev`, port 3210) now runs
+0.14.0-dev. Its image build ran the full pinned Node 24.14 test suite, and
+`verify-container.ps1` passes. At the owner's request, its database was then
+replaced with a consistent copy of the port-3212 preview database: the 2026-10-20
+live inventory snapshot (164 boxes, 249 sessions, 306 photo references, 164
+locations), its photo/search/printing settings and the 8-entry print journal.
+Audit and SQLite integrity pass, all 164 boxes list, search answers and the real
+Immich album (294 assets) is reachable from the container. The earlier small test
+database is kept privately in `data/docker-dev-backups/` (before and after the
+0.14 migration), together with the imported copy. The previous image is tagged
+`storagesystem-base:0.9.1-rollback`; it cannot open schema 2. Printing settings
+still point at the laptop's stopped SSH tunnels, so the container has no CUPS route yet.
 
 ### Previous verification: 2026-10-23
 

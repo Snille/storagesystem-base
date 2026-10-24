@@ -8,6 +8,7 @@
 - Existing box-label layouts are unchanged: an old/new comparison over all four formats, three size sets and three texts produced identical output.
 - Three new tests cover per-format sizes and direction, legacy migration, rotated PostScript, location layout on every format and location-label submission. All 101 tests pass. Browser preview checked against a synthetic in-memory fixture with no printer.
 - Physically accepted one rotated location label: S0722550 / 19 x 51 mm in landscape, CUPS job 121, from the isolated port-3212 preview. The owner confirmed legible, correctly facing, unclipped text. The preview database was backed up privately before its settings moved to the per-format format.
+- Updated the Docker Desktop development stack to 0.14.0-dev with its named volume kept (schema 1 -> 2 migration, audit passing, private backup first). The pinned Docker test stage and `verify-container.ps1` pass. The stack's database was then replaced with a consistent copy of the isolated preview database (2026-10-20 live snapshot, 164 boxes); audit and integrity pass and the real Immich album is reachable from the container.
 
 ## 0.13.1-dev - 2026-10-23
 

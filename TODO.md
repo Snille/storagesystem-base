@@ -50,7 +50,9 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [x] Implement initial CUPS printing and optional manual DYMO roll reading; all four configured formats have owner-accepted physical output.
 - [x] Per-format text sizes and location-only labels; preview/overflow/idempotency guards preserved. See PRINTING.md.
 - [x] Physically accept a rotated location label (S0722550 landscape, CUPS job 121).
-- [ ] Physically accept a representative long box description and other rotated formats only as the owner needs them; run the pinned Docker suite.
+- [x] Run the pinned Docker suite and update the Docker Desktop development stack to 0.14.0-dev.
+- [ ] Physically accept a representative long box description and other rotated formats only as the owner needs them.
+- [ ] Give the Docker/Portainer deployment a configurable route to CUPS and the DYMO roll reader, so printing works without the laptop's SSH tunnels.
 
 ## Out of scope
 
