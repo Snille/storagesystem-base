@@ -1,5 +1,14 @@
 # History
 
+## 0.14.0-dev - 2026-10-24
+
+- Each label format now keeps its own text sizes. Switching format shows that format's sizes. Defaults are the owner-accepted values (6-point description only for S0722550 / 19 x 51 mm). A pre-0.14 shared style is read as the style of the format selected when it was saved.
+- Added location labels: a registered location (or test text) printed as one large, centered block that shrinks to fit. Long location codes break after hyphens only when needed. Print journal records store the label kind and location.
+- Each format also keeps a text direction (landscape along the long side, portrait across it). Defaults match each format's accepted output; the other direction lays text out on the turned label and rotates only the PostScript drawing, keeping the physical page size.
+- Existing box-label layouts are unchanged: an old/new comparison over all four formats, three size sets and three texts produced identical output.
+- Three new tests cover per-format sizes and direction, legacy migration, rotated PostScript, location layout on every format and location-label submission. All 101 tests pass. Browser preview checked against a synthetic in-memory fixture with no printer.
+- Physically accepted one rotated location label: S0722550 / 19 x 51 mm in landscape, CUPS job 121, from the isolated port-3212 preview. The owner confirmed legible, correctly facing, unclipped text. The preview database was backed up privately before its settings moved to the per-format format.
+
 ## 0.13.1-dev - 2026-10-23
 
 - Corrected manual roll-reader cleanup for a granted error response (engine 2, no active job). Report the device error and release the same connection's reservation; never release an active/foreign job or feed/reset.

@@ -48,7 +48,9 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [ ] Before the server LXC migration, compare OpenRouter candidates, including Qwen models and GPT-6 Luna, against the current Qwen workflows and select the lowest measured cost among models that pass quality, safety and latency gates. Evaluate real inventory photos, OCR and multiple-photo requests separately from text-only item identity verification. Different models may serve these roles. Measure full request cost, including image/reasoning tokens and retries; listed token prices or image support alone do not establish equivalence. Keep BGE-M3 embeddings on their separate Ollama route. This is planned evaluation, not a model selection or authorization for paid benchmarks.
 - [ ] Plan removal of Open WebUI after checking all consumers and verifying direct replacement routes. Read-only production settings inspection on 2026-10-23 found both legacy AI roles already select OpenRouter: primary `qwen/qwen3-vl-8b-instruct`, translation `qwen/qwen3.5-flash-02-23`. An unselected Open WebUI configuration remains saved. This does not establish that other services no longer use Open WebUI. Ollama embeddings alone do not replace image/text generation; verify suitable generation models and each application's direct API compatibility before retirement. No production settings or service state were changed.
 - [x] Implement initial CUPS printing and optional manual DYMO roll reading; all four configured formats have owner-accepted physical output.
-- [ ] Next printing slice: per-format layout/text profiles and practical box/location labels; preserve preview/overflow/idempotency guards. See HANDOFF-2026-10-23.md.
+- [x] Per-format text sizes and location-only labels; preview/overflow/idempotency guards preserved. See PRINTING.md.
+- [x] Physically accept a rotated location label (S0722550 landscape, CUPS job 121).
+- [ ] Physically accept a representative long box description and other rotated formats only as the owner needs them; run the pinned Docker suite.
 
 ## Out of scope
 

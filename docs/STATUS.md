@@ -1,6 +1,18 @@
 # Continue development
 
-## Latest verification: 2026-10-23
+## Latest verification: 2026-10-24
+
+Version 0.14.0-dev adds per-format label text sizes and text direction (portrait or
+landscape) and location-only labels (see PRINTING.md). Default box-label output is
+unchanged (old/new output comparison is identical). All 101 tests pass locally.
+The owner physically accepted one rotated location label: S0722550 / 19 x 51 mm
+landscape, CUPS job 121 (queue idle/empty afterward). The preview was checked in the browser against a synthetic
+in-memory fixture with no printer. Not yet done: pinned Docker run. The 3212 preview
+now runs 0.14.0-dev with temporary SSH tunnels (18463 CUPS, 18464 printer) and has
+saved per-format settings, which older images cannot validate. A private backup
+taken before that change is `preview-before-0.14-20261024.sqlite` in the same directory.
+
+### Previous verification: 2026-10-23
 
 Read [the session handoff](HANDOFF-2026-10-23.md) first for verified results, current runtime state and the recommended next slice.
 

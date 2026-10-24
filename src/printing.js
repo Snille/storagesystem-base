@@ -2,7 +2,8 @@ import { randomUUID, createHash } from 'node:crypto';
 import { InputError, object, validatePrinting } from './validation.js';
 import { sourceRevision } from './settings.js';
 import { CupsPrinter } from './ipp.js';
-import { defaultLabelStyle, labelMedia, labelMediaPresets, labelLayout, labelPostScript, testLabel } from './labels.js';
+import { defaultLabelStyles, labelKinds, labelMedia, labelMediaPresets, labelLayout, labelPostScript, testLabel } from './labels.js';
+import { presentLocation } from './inventory.js';
 import { readDymoRoll } from './dymo-roll.js';
 const hash = input => createHash('sha256').update(input).digest('hex');
 const fingerprint = box => sourceRevision({ boxId: box.boxId, sessionId: box.sessionId, label: box.label, locationId: box.locationId, summary: box.summary });
@@ -12,14 +13,27 @@ export class Printing {
     this.inventory = inventory; this.store = inventory.store; this.printerFactory = printerFactory; this.previews = new Map(); this.busy = false;
     this.rollReader = rollReader; this.lastRollCheck = 0;
   }
-  config() { return this.store.settings().printing || { enabled: false, serverUrl: '', queue: '', mediaKey: labelMedia.key, style: defaultLabelStyle }; }
-  view() { return { config: this.config(), revision: sourceRevision(this.config()), media: labelMediaPresets.find(p => p.key === this.config().mediaKey), mediaPresets: labelMediaPresets, jobs: this.store.printJobs().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20) }; }
+  config() {
+    const saved = this.store.settings().printing;
+    if (!saved) return { enabled: false, serverUrl: '', queue: '', mediaKey: labelMedia.key, styles: defaultLabelStyles() };
+    if (!saved.style) return saved;
+    // A pre-0.14 shared style belonged to the format selected at the time; other formats start from their defaults.
+    const { style, ...rest } = saved, styles = defaultLabelStyles();
+    styles[saved.mediaKey] = { ...styles[saved.mediaKey], ...style };
+    return { ...rest, styles };
+  }
+  view() {
+    const config = this.config();
+    return { config, revision: sourceRevision(config), media: labelMediaPresets.find(p => p.key === config.mediaKey), mediaPresets: labelMediaPresets,
+      locations: this.store.locationIds(), jobs: this.store.printJobs().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20) };
+  }
   assertRevision(revision) { if (revision !== sourceRevision(this.config())) throw new InputError('Print settings changed. Create a new preview before printing.', 409); }
   save(input) {
     object(input);
     if (Object.keys(input).some(k => !['revision', 'config'].includes(k))) throw new InputError('Unsupported print setting.');
     return this.store.transaction(() => {
       this.assertRevision(input.revision); const config = validatePrinting(input.config);
+      if (config.style) throw new InputError('Save text sizes for each label format.');
       this.store.writeSettings({ printing: config }); return this.view();
     });
   }
@@ -45,29 +59,38 @@ export class Printing {
   }
   preview(input, language) {
     object(input);
-    if (Object.keys(input).some(k => !['revision', 'test', 'boxId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')) throw new InputError('Unsupported label preview request.');
+    if (Object.keys(input).some(k => !['revision', 'kind', 'test', 'boxId', 'locationId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
+      || (input.kind !== undefined && !labelKinds.includes(input.kind))) throw new InputError('Unsupported label preview request.');
     this.assertRevision(input.revision);
-    let box, fields;
+    const kind = input.kind || 'box', config = this.config(), media = labelMediaPresets.find(p => p.key === config.mediaKey);
+    let box, locationId, fields;
     if (input.test === true) {
-      if (input.boxId || input.fields) throw new InputError('Test labels use fixed sample text.');
-      const media = this.view().media;
-      fields = { ...testLabel, location: `TEST - ${media.widthMm} x ${media.heightMm} mm` };
+      if (input.boxId || input.locationId || input.fields) throw new InputError('Test labels use fixed sample text.');
+      const location = `TEST - ${media.widthMm} x ${media.heightMm} mm`;
+      fields = kind === 'box' ? { ...testLabel, location } : { location };
+    }
+    else if (kind === 'location') {
+      if (input.boxId !== undefined || typeof input.locationId !== 'string') throw new InputError('Choose a registered location or a test label.');
+      if (!this.store.locationIds().includes(input.locationId)) throw new InputError('Location not found.', 404);
+      locationId = input.locationId;
+      fields = input.fields || { location: Object.values(presentLocation(locationId, '', this.inventory.language(language))).filter(Boolean).join(', ') };
     }
     else {
-      if (typeof input.boxId !== 'string') throw new InputError('Choose an inventory box or a test label.');
+      if (input.locationId !== undefined || typeof input.boxId !== 'string') throw new InputError('Choose an inventory box or a test label.');
       box = this.inventory.get(input.boxId, language); if (!box) throw new InputError('Box not found.', 404);
       fields = input.fields || { title: box.label, description: box.summary || '', location: Object.values(box.location).filter(Boolean).join(', ') };
     }
-    const config = this.config(), layout = labelLayout(fields, config.style, config.mediaKey), token = randomUUID();
+    const layout = labelLayout(fields, config.styles[config.mediaKey], config.mediaKey, kind), token = randomUUID();
     const now = Date.now(); for (const [id, p] of this.previews) if (p.expires <= now) this.previews.delete(id);
     if (this.previews.size >= 100) throw new InputError('Too many label previews. Wait for an older preview to expire.', 429);
-    this.previews.set(token, { config, revision: input.revision, fields, layout, document: labelPostScript(layout),
-      expires: now + 10 * 60 * 1000, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, language });
-    return { token, revision: input.revision, layout, fields, boxId: box?.boxId, test: input.test === true };
+    this.previews.set(token, { config, revision: input.revision, kind, fields, layout, document: labelPostScript(layout),
+      expires: now + 10 * 60 * 1000, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, locationId, language });
+    return { token, revision: input.revision, kind, layout, fields, boxId: box?.boxId, locationId, test: input.test === true };
   }
   assertPreview(preview) {
     this.assertRevision(preview.revision);
     if (Date.now() >= preview.expires) throw new InputError('Label preview expired. Create a new preview.', 409);
+    if (preview.locationId && !this.store.locationIds().includes(preview.locationId)) throw new InputError('Location is no longer registered. Create a new label preview.', 409);
     if (preview.boxId) {
       const current = this.inventory.get(preview.boxId, preview.language);
       if (!current || fingerprint(current) !== preview.boxFingerprint) throw new InputError('Box contents or location changed. Create a new label preview.', 409);
@@ -92,8 +115,8 @@ export class Printing {
       if (!status.acceptingJobs || status.state === 'stopped' || !status.formats.includes('application/postscript')) throw new InputError('The queue is stopped, not accepting jobs or does not support PostScript.', 409);
       await printer.validate(preview.config.mediaKey, 'Storage System Base label'); this.assertPreview(preview);
       const claim = this.store.claimPrint({ id: input.requestId, tokenHash, documentHash: hash(preview.document), settingsRevision: preview.revision,
-        serverUrl: preview.config.serverUrl, queue: preview.config.queue, mediaKey: preview.config.mediaKey, createdAt: new Date().toISOString(), state: 'submitting',
-        ...(preview.boxId ? { boxId: preview.boxId } : {}) });
+        serverUrl: preview.config.serverUrl, queue: preview.config.queue, mediaKey: preview.config.mediaKey, createdAt: new Date().toISOString(), state: 'submitting', kind: preview.kind,
+        ...(preview.boxId ? { boxId: preview.boxId } : {}), ...(preview.locationId ? { locationId: preview.locationId } : {}) });
       if (!claim.claimed) return claim.job;
       claimed = true; sent = true;
       const jobId = await printer.print(preview.config.mediaKey, 'Storage System Base label', preview.document);

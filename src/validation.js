@@ -159,7 +159,7 @@ export function validateSearchWorkspace(config) {
 
 export function validatePrinting(config) {
   object(config, 'printing');
-  if (Object.keys(config).some(key => !['enabled', 'serverUrl', 'queue', 'mediaKey', 'style', 'rollReader'].includes(key))) throw new InputError('Unsupported printing setting.');
+  if (Object.keys(config).some(key => !['enabled', 'serverUrl', 'queue', 'mediaKey', 'style', 'styles', 'rollReader'].includes(key))) throw new InputError('Unsupported printing setting.');
   if (typeof config.enabled !== 'boolean' || !labelMediaPresets.some(p => p.key === config.mediaKey)) throw new InputError('Choose a supported label format.');
   for (const key of ['serverUrl', 'queue']) text(config[key], key, { empty: !config.enabled });
   if (config.serverUrl.length > 1000) throw new InputError('CUPS server URL is too long.');
@@ -168,9 +168,22 @@ export function validatePrinting(config) {
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new InputError('Use a CUPS origin without paths or credentials.');
   }
   if (config.queue && !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(config.queue)) throw new InputError('Invalid CUPS queue name.');
-  object(config.style, 'style');
-  if (Object.keys(config.style).sort().join(',') !== 'descriptionSize,locationSize,titleSize'
-    || Object.values(config.style).some(n => !Number.isInteger(n) || n < 6 || n > 16)) throw new InputError('Label font sizes must be 6-16 points.');
+  // Settings saved before 0.14 hold one shared `style`; newer settings hold one style per label format.
+  if ((config.style === undefined) === (config.styles === undefined)) throw new InputError('Save text sizes for each label format.');
+  const sizes = (style, keys, extra = []) => {
+    object(style, 'style');
+    if (Object.keys(style).sort().join(',') !== [...keys, ...extra].sort().join(',')
+      || keys.some(key => !Number.isInteger(style[key]) || style[key] < 6 || style[key] > 16)) throw new InputError('Label font sizes must be 6-16 points.');
+  };
+  if (config.style !== undefined) sizes(config.style, labelSizeKeys.filter(key => key !== 'locationLabelSize'));
+  else {
+    object(config.styles, 'styles');
+    if (Object.keys(config.styles).sort().join(',') !== labelMediaPresets.map(p => p.key).sort().join(',')) throw new InputError('Save text sizes for each label format.');
+    for (const style of Object.values(config.styles)) {
+      sizes(style, labelSizeKeys, ['orientation']);
+      if (!labelOrientations.includes(style.orientation)) throw new InputError('Choose portrait or landscape label orientation.');
+    }
+  }
   if (config.rollReader !== undefined) {
     const r = object(config.rollReader, 'rollReader');
     if (Object.keys(r).sort().join(',') !== 'enabled,host,port' || typeof r.enabled !== 'boolean' || typeof r.host !== 'string'
@@ -186,7 +199,8 @@ export function validatePrintJob(record) {
     || !/^[a-f0-9]{64}$/.test(record.settingsRevision) || typeof record.createdAt !== 'string' || !Number.isFinite(Date.parse(record.createdAt))
     || !['submitting', 'submitted', 'unknown', 'rejected'].includes(record.state)
     || (record.jobId !== undefined && (!Number.isInteger(record.jobId) || record.jobId < 1))) throw new InputError('Invalid print job record.');
-  validatePrinting({ enabled: true, serverUrl: record.serverUrl, queue: record.queue, mediaKey: record.mediaKey, style: { titleSize: 11, descriptionSize: 8, locationSize: 8 } });
+  validatePrinting({ enabled: true, serverUrl: record.serverUrl, queue: record.queue, mediaKey: record.mediaKey, styles: defaultLabelStyles() });
+  if (record.kind !== undefined && !['box', 'location'].includes(record.kind)) throw new InputError('Invalid print job record.');
   return record;
 }
-import { labelMediaPresets } from './label-media.js';
+import { labelMediaPresets, labelSizeKeys, labelOrientations, defaultLabelStyles } from './label-media.js';

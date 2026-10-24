@@ -46,15 +46,21 @@
         <div class="form-grid"><label>Printer address<input id="print-roll-host" maxlength="253" placeholder="192.168.1.50"></label><label>Printer TCP port<input id="print-roll-port" type="number" min="1" max="65535" required value="9100"></label></div>
         <p class="hint">Read only while no one is printing. The reader briefly reserves the interface, reads the roll and releases its reservation. No labels are fed.</p>
       </fieldset>
-      <div class="form-grid"><label>Title size<input id="print-title-size" type="number" min="6" max="16" required></label><label>Description size<input id="print-description-size" type="number" min="6" max="16" required></label><label>Location size<input id="print-location-size" type="number" min="6" max="16" required></label></div>
+      <fieldset><legend>Text layout for the selected label format</legend>
+        <p class="hint">Each label format keeps its own text direction and sizes. Changing the format shows its saved values.</p>
+        <label>Text direction<select id="print-orientation"><option value="landscape">Landscape: along the long side</option><option value="portrait">Portrait: across the long side</option></select></label>
+        <div class="form-grid"><label>Title size<input id="print-title-size" type="number" min="6" max="16" required></label><label>Description size<input id="print-description-size" type="number" min="6" max="16" required></label><label>Location size<input id="print-location-size" type="number" min="6" max="16" required></label><label>Location label size<input id="print-location-label-size" type="number" min="6" max="16" required></label></div>
+        <p class="hint">Location labels use the largest size up to this value that fits.</p>
+      </fieldset>
       <button id="print-save">Save print settings</button>
     </form></details>
     <button id="print-check" class="quiet">Check printer connection</button>
     <button id="print-read-roll" class="quiet" disabled>Read loaded roll</button>
     <section id="print-roll-result" class="panel" hidden aria-live="polite"><h3>Loaded roll</h3><p id="print-roll-summary"></p><p id="print-roll-observed" class="hint"></p><p id="print-roll-note" class="hint"></p><button id="print-use-roll" class="quiet" disabled>Use detected label format</button></section>
     <section id="print-device-result" class="panel" hidden aria-live="polite"></section>
-    <label>Label source<select id="print-box"></select></label>
-    <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label>Title<input id="print-title" maxlength="240"></label><label>Description<textarea id="print-description" maxlength="2000"></textarea></label><label>Location<input id="print-location" maxlength="240"></label></div>
+    <div class="form-grid"><label>Label type<select id="print-kind"><option value="box">Box label</option><option value="location">Location label</option></select></label>
+      <label>Label source<select id="print-box"></select></label></div>
+    <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label>Location<input id="print-location" maxlength="240"></label></div>
     <button id="print-preview" class="quiet">Prepare label preview</button>
     <div id="print-paper" class="label-paper"></div>
     <p id="print-status" role="status" aria-live="polite"></p>

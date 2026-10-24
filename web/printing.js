@@ -3,12 +3,24 @@ import { t, tr, uiLanguage } from './i18n.js';
 export function mountPrinting(request, message) {
   const $ = id => document.getElementById(id);
   const api = async (path, body, method = 'POST') => (await request(`printing${path}${path === "/preview" ? `?lang=${uiLanguage()}` : ""}`, body === undefined ? {} : { method, body: JSON.stringify(body) })).json();
-  let state, preview, requestId, lastJob, roll, busy = false, generation = 0;
+  let state, preview, requestId, lastJob, roll, styles, shownMedia, busy = false, generation = 0;
   const status = text => { $('print-status').textContent = text; };
-  const config = () => ({ enabled: $('print-enabled').checked, serverUrl: $('print-server').value.trim(), queue: $('print-queue').value.trim(), mediaKey: $('print-media').value,
-    style: Object.fromEntries(['title', 'description', 'location'].map(key => [`${key}Size`, Number($(`print-${key}-size`).value)])),
-    rollReader: { enabled: $('print-roll-enabled').checked, host: $('print-roll-host').value.trim(), port: Number($('print-roll-port').value) } });
-  const dirty = () => state && JSON.stringify(config()) !== JSON.stringify({ ...state.config, rollReader: state.config.rollReader || { enabled: false, host: '', port: 9100 } });
+  const sizeFields = [['titleSize', 'print-title-size'], ['descriptionSize', 'print-description-size'], ['locationSize', 'print-location-size'], ['locationLabelSize', 'print-location-label-size']];
+  // Each format keeps its own sizes; the inputs show the selected format's copy.
+  const readSizes = () => { styles[shownMedia] = { ...Object.fromEntries(sizeFields.map(([key, id]) => [key, Number($(id).value)])), orientation: $('print-orientation').value }; };
+  const showSizes = mediaKey => { shownMedia = mediaKey; for (const [key, id] of sizeFields) $(id).value = styles[mediaKey][key]; $('print-orientation').value = styles[mediaKey].orientation; };
+  const config = () => {
+    readSizes();
+    return { enabled: $('print-enabled').checked, serverUrl: $('print-server').value.trim(), queue: $('print-queue').value.trim(), mediaKey: $('print-media').value,
+      styles: structuredClone(styles), rollReader: { enabled: $('print-roll-enabled').checked, host: $('print-roll-host').value.trim(), port: Number($('print-roll-port').value) } };
+  };
+  const canonical = value => JSON.stringify(value, (key, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
+  const dirty = () => state && canonical(config()) !== canonical({ ...state.config, rollReader: state.config.rollReader || { enabled: false, host: '', port: 9100 } });
+  const kind = () => $('print-kind').value;
+  function sources() {
+    const options = kind() === 'location' ? state.locations.map(id => new Option(id, id)) : state.boxes.map(box => new Option(box.label, box.boxId));
+    $('print-box').replaceChildren(new Option(t('Test label'), ''), ...options);
+  }
   function history() {
     const list = $('print-history'); list.replaceChildren();
     for (const job of state.jobs) {
@@ -33,7 +45,7 @@ export function mountPrinting(request, message) {
     $('print-media').replaceChildren(...state.mediaPresets.map(media => new Option(media.name, media.key))); $('print-media').value = state.config.mediaKey;
     const reader = state.config.rollReader || { enabled: false, host: '', port: 9100 };
     $('print-roll-enabled').checked = reader.enabled; $('print-roll-host').value = reader.host; $('print-roll-port').value = reader.port;
-    for (const key of ['title', 'description', 'location']) $(`print-${key}-size`).value = state.config.style[`${key}Size`];
+    styles = structuredClone(state.config.styles); showSizes(state.config.mediaKey);
     controls();
   }
   function draw(layout) {
@@ -47,19 +59,20 @@ export function mountPrinting(request, message) {
       for (const [key, value] of Object.entries({ x: line.x, y: line.y, 'font-size': line.size, 'font-family': 'Arial, sans-serif', 'font-weight': line.bold ? 'bold' : 'normal', fill: 'black', 'text-anchor': 'middle', textLength: line.width, lengthAdjust: 'spacingAndGlyphs' })) text.setAttribute(key, value);
       svg.append(text);
     }
-    const caption = document.createElement('p'); caption.className = 'hint'; caption.textContent = layout.name;
+    const caption = document.createElement('p'); caption.className = 'hint'; caption.textContent = `${layout.name} · ${t(layout.orientation === 'landscape' ? 'Landscape' : 'Portrait')}${layout.rotated ? ` · ${t('rotated on the label')}` : ''}`;
     $('print-paper').replaceChildren(caption, svg);
   }
   async function run(action) { busy = true; controls(); try { await action(); } catch (error) { status(error.message); } finally { busy = false; controls(); } }
   $('open-printing').addEventListener('click', () => run(async () => {
-    state = await api(''); const { boxes } = await (await request('boxes')).json();
-    $('print-box').replaceChildren(new Option(t('Test label'), ''), ...boxes.map(box => new Option(box.label, box.boxId)));
-    invalidate(); populate(); history(); $('print-fields').hidden = true; $('print-device-result').hidden = true; $('print-roll-result').hidden = true; roll = null; status(''); $('printing-dialog').showModal();
+    state = await api(''); state.boxes = (await (await request('boxes')).json()).boxes;
+    sources(); populate(); invalidate(); history(); $('print-fields').hidden = true; $('print-device-result').hidden = true; $('print-roll-result').hidden = true; roll = null; status(''); $('printing-dialog').showModal();
   }));
   $('close-printing').addEventListener('click', () => $('printing-dialog').close());
+  // Registered on the select, so it runs before the form's input handler below.
+  $('print-media').addEventListener('input', () => { readSizes(); showSizes($('print-media').value); });
   $('print-config').addEventListener('input', () => { invalidate(); roll = null; $('print-roll-result').hidden = true; $('print-device-result').hidden = true; status(t('Save settings before preparing a label.')); });
   $('print-config').addEventListener('submit', event => { event.preventDefault(); run(async () => {
-    state = await api('', { revision: state.revision, config: config() }, 'PUT'); invalidate(); populate(); status(t('Print settings saved.'));
+    state = { ...await api('', { revision: state.revision, config: config() }, 'PUT'), boxes: state.boxes }; invalidate(); populate(); status(t('Print settings saved.'));
   }); });
   $('print-check').addEventListener('click', () => run(async () => {
     const stamp = ++generation, result = $('print-device-result'); result.hidden = true;
@@ -92,18 +105,22 @@ export function mountPrinting(request, message) {
   }));
   $('print-use-roll').addEventListener('click', () => {
     if (!roll?.media) return;
-    $('print-media').value = roll.media.key; invalidate(); status(t('Save print settings to use the detected format.'));
+    readSizes(); $('print-media').value = roll.media.key; showSizes(roll.media.key); invalidate(); status(t('Save print settings to use the detected format.'));
   });
   $('print-box').addEventListener('change', () => { invalidate(); $('print-fields').hidden = true; status(''); });
+  $('print-kind').addEventListener('change', () => { sources(); invalidate(); $('print-fields').hidden = true; status(''); });
   $('print-fields').addEventListener('input', invalidate);
   $('print-preview').addEventListener('click', () => run(async () => {
-    const stamp = ++generation, boxId = $('print-box').value;
-    const fields = Object.fromEntries(['title', 'description', 'location'].map(key => [key, $(`print-${key}`).value]));
-    const result = await api('/preview', { revision: state.revision, ...(boxId ? { boxId, ...($('print-fields').hidden ? {} : { fields }) } : { test: true }) });
+    const stamp = ++generation, source = $('print-box').value, labelKind = kind();
+    const names = labelKind === 'location' ? ['location'] : ['title', 'description', 'location'];
+    const fields = Object.fromEntries(names.map(key => [key, $(`print-${key}`).value]));
+    const target = labelKind === 'location' ? { locationId: source } : { boxId: source };
+    const result = await api('/preview', { revision: state.revision, kind: labelKind, ...(source ? { ...target, ...($('print-fields').hidden ? {} : { fields }) } : { test: true }) });
     if (stamp !== generation) return;
     preview = result; requestId = crypto.randomUUID(); lastJob = null; draw(result.layout);
-    for (const key of ['title', 'description', 'location']) $(`print-${key}`).value = result.fields[key];
-    $('print-fields').hidden = !boxId;
+    for (const key of names) $(`print-${key}`).value = result.fields[key];
+    $('print-title-row').hidden = $('print-description-row').hidden = labelKind === 'location';
+    $('print-fields').hidden = !source;
     status(t(result.layout.warnings.length ? 'Text does not fit. Shorten the label text before printing.' : 'Preview ready. Print sends one label.'));
   }));
   $('print-submit').addEventListener('click', () => run(async () => {

@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { Store, restore } from '../src/store.js';
 import { Inventory } from '../src/inventory.js';
 import { Printing } from '../src/printing.js';
-import { labelLayout, labelPostScript, testLabel } from '../src/labels.js';
+import { labelLayout, labelMediaPresets, labelPostScript, testLabel } from '../src/labels.js';
 import { CupsPrinter, encodeIpp, decodeIpp, ippAttribute as attr, ippTags as tag, ippValues } from '../src/ipp.js';
 import { createApp } from '../src/server.js';
 import { fixture } from './fixture.js';
@@ -58,6 +58,80 @@ test('label generation shares bounded layout, preserves Swedish glyphs and escap
   assert.equal(ps.match(/^showpage$/gm).length, 1);
   assert.ok(labelLayout({ ...testLabel, description: 'a long description '.repeat(30) }).warnings.includes('description'));
   assert.throws(() => labelLayout({ ...testLabel, title: '漢字' }));
+});
+
+test('each label format keeps its own text sizes and a pre-0.14 shared style migrates to its format only', t => {
+  const { store, printing } = setup(t);
+  // The shared style saved before 0.14: description 6 was chosen for the 19 x 51 mm roll.
+  const legacy = { ...printing.config(), mediaKey: 'w54h144', style: { titleSize: 11, descriptionSize: 6, locationSize: 8 } }; delete legacy.styles;
+  store.writeSettings({ printing: legacy }); assert.equal(store.audit().ok, true);
+  let view = printing.view();
+  assert.equal(view.config.style, undefined);
+  assert.deepEqual(view.config.styles.w54h144, { titleSize: 11, descriptionSize: 6, locationSize: 8, locationLabelSize: 16, orientation: 'portrait' });
+  assert.equal(view.config.styles.w162h90.orientation, 'landscape');
+  for (const key of ['w162h90', 'w72h154', 'w154h286']) assert.equal(view.config.styles[key].descriptionSize, 8);
+  assert.throws(() => printing.save({ revision: view.revision, config: legacy }), /each label format/);
+  const styles = structuredClone(view.config.styles); styles.w162h90.descriptionSize = 7;
+  printing.save({ revision: view.revision, config: { ...view.config, mediaKey: 'w162h90', styles } });
+  view = printing.view(); assert.equal(store.settings().printing.style, undefined);
+  const sizes = p => new Set(p.layout.lines.filter(line => !line.bold).map(line => line.size));
+  assert.deepEqual(sizes(preview(printing)), new Set([7]));
+  printing.save({ revision: view.revision, config: { ...view.config, mediaKey: 'w54h144' } });
+  assert.deepEqual(sizes(preview(printing)), new Set([6]));
+  view = printing.view(); const partial = structuredClone(view.config.styles); delete partial.w72h154;
+  assert.throws(() => printing.save({ revision: view.revision, config: { ...view.config, styles: partial } }), /each label format/);
+  assert.throws(() => printing.save({ revision: view.revision, config: { ...view.config, styles: { ...view.config.styles, w162h90: { ...styles.w162h90, locationLabelSize: 17 } } } }), /6-16/);
+});
+
+test('a chosen text direction lays text out on the turned label and rotates only that PostScript page', t => {
+  for (const media of labelMediaPresets) {
+    const natural = labelLayout(testLabel, media.style, media.key), ps = labelPostScript(natural).toString('ascii');
+    assert.equal(natural.rotated, false); assert.equal(natural.orientation, media.style.orientation);
+    assert.doesNotMatch(ps, /rotate/); assert.match(ps, new RegExp(`PageSize \\[${media.widthPt} ${media.heightPt}\\]`));
+    const other = media.style.orientation === 'portrait' ? 'landscape' : 'portrait';
+    const turned = labelLayout({ location: 'IVAR-A-H2-P1-A' }, { ...media.style, orientation: other }, media.key, 'location');
+    assert.equal(turned.rotated, true); assert.equal(turned.orientation, other);
+    assert.deepEqual([turned.widthPt, turned.heightPt], [media.heightPt, media.widthPt]); assert.deepEqual(turned.warnings, []);
+    const turnedPs = labelPostScript(turned).toString('ascii');
+    // The page keeps the roll's physical size; only the drawing is turned onto it.
+    assert.match(turnedPs, new RegExp(`PageSize \\[${media.widthPt} ${media.heightPt}\\]`));
+    assert.match(turnedPs, new RegExp(`^${media.widthPt} 0 translate 90 rotate$`, 'm'));
+    assert.ok(turned.lines.every(line => line.width <= media.heightPt - 17));
+  }
+  // Landscape on the 19 x 51 mm roll leaves short regions: default box sizes overflow and block printing.
+  assert.ok(labelLayout(testLabel, { ...labelMediaPresets[1].style, orientation: 'landscape' }, 'w54h144').warnings.includes('title'));
+  const { printing } = setup(t), view = printing.view(), styles = structuredClone(view.config.styles);
+  styles.w162h90.orientation = 'sideways';
+  assert.throws(() => printing.save({ revision: view.revision, config: { ...view.config, styles } }), /portrait or landscape/);
+  styles.w162h90.orientation = 'portrait'; printing.save({ revision: view.revision, config: { ...view.config, styles } });
+  const p = preview(printing); assert.equal(p.layout.rotated, true); assert.equal(p.layout.widthPt, 90);
+});
+
+test('location labels fit compact location codes on every format and are recorded as location jobs', async t => {
+  for (const media of labelMediaPresets) {
+    const layout = labelLayout({ location: 'IVAR-A-H2-P1-A' }, media.style, media.key, 'location');
+    assert.deepEqual(layout.warnings, [], media.key); assert.equal(layout.kind, 'location');
+    // Rows only break between words or after hyphens, so joining them restores the code.
+    assert.equal(layout.lines.map(line => line.text).join(''), 'IVAR-A-H2-P1-A');
+    assert.ok(layout.lines.every(line => line.bold && line.width <= media.widthPt - 17));
+  }
+  const wide = labelLayout({ location: 'IVAR-A-H2-P1-A' }, labelMediaPresets[0].style, 'w162h90', 'location');
+  assert.equal(wide.lines.length, 1); assert.equal(wide.lines[0].size, 16);
+  assert.ok(labelLayout({ location: 'Lagerhylla A '.repeat(18) }, labelMediaPresets[1].style, 'w54h144', 'location').warnings.includes('location'));
+  assert.throws(() => labelLayout({ title: 'x', location: 'A' }, null, 'w162h90', 'location'), /Unsupported label field/);
+
+  const { store, state, printing } = setup(t), locationId = store.locationIds()[0], revision = printing.view().revision;
+  assert.ok(printing.view().locations.includes(locationId));
+  assert.throws(() => printing.preview({ revision, kind: 'location', locationId: 'IVAR-Z-H9-P9' }), { status: 404 });
+  assert.throws(() => printing.preview({ revision, kind: 'location', boxId: fixture.boxes[0].boxId }), /registered location/);
+  assert.throws(() => printing.preview({ revision, kind: 'shelf', test: true }), /Unsupported label preview/);
+  const test = printing.preview({ revision, kind: 'location', test: true });
+  assert.deepEqual(Object.keys(test.fields), ['location']);
+  const p = printing.preview({ revision, kind: 'location', locationId }, 'sv');
+  assert.match(p.fields.location, /Lagerhylla|Skåp|Bänk/); assert.deepEqual(p.layout.warnings, []);
+  const job = await printing.submit({ token: p.token, requestId: randomUUID() });
+  assert.equal(job.kind, 'location'); assert.equal(job.locationId, locationId); assert.equal(job.boxId, undefined);
+  assert.equal(state.printCalls, 1); assert.equal(store.audit().ok, true);
 });
 
 test('management queue status reads only IPP attributes and preserves queue/device distinction', async t => {
