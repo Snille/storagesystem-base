@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, existsSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { InputError, validateSettings, validateInventory } from './validation.js';
+import { InputError, validateSettings, validateInventory, validatePrintJob } from './validation.js';
 
 const schema = `
 CREATE TABLE locations (id TEXT PRIMARY KEY NOT NULL CHECK(length(trim(id)) > 0)) STRICT;
@@ -32,18 +32,25 @@ CREATE TABLE settings (id TEXT PRIMARY KEY NOT NULL, record TEXT NOT NULL CHECK(
 PRAGMA user_version = 1;
 `;
 
+const printSchema = `CREATE TABLE print_jobs (
+  id TEXT PRIMARY KEY NOT NULL, token_hash TEXT UNIQUE NOT NULL,
+  record TEXT NOT NULL CHECK(json_valid(record) AND json_extract(record, '$.id') = id AND json_extract(record, '$.tokenHash') = token_hash)
+) STRICT; PRAGMA user_version = 2;`;
+
 export class Store {
   constructor(path, { readOnly = false } = {}) {
     this.path = path;
+    this.listeners = new Set();
     if (!readOnly && path !== ':memory:') mkdirSync(dirname(resolve(path)), { recursive: true });
     this.db = new DatabaseSync(path, { readOnly, timeout: 5000 });
     try {
       this.db.exec('PRAGMA foreign_keys = ON; PRAGMA trusted_schema = OFF;');
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 1 || (readOnly && version !== 1)) throw new Error(`Unsupported database schema: ${version}`);
+      if (version > 2 || (readOnly && ![1, 2].includes(version))) throw new Error(`Unsupported database schema: ${version}`);
       if (!readOnly) {
         this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
         if (!version) this.transaction(() => this.db.exec(schema));
+        if (version < 2) this.transaction(() => this.db.exec(printSchema));
       }
     } catch (error) { this.close(); throw error; }
   }
@@ -52,8 +59,41 @@ export class Store {
 
   transaction(work) {
     this.db.exec('BEGIN IMMEDIATE');
-    try { const result = work(); this.db.exec('COMMIT'); return result; }
+    let result;
+    try { result = work(); this.db.exec('COMMIT'); }
     catch (error) { this.db.exec('ROLLBACK'); throw error; }
+    for (const listener of this.listeners) { try { listener(); } catch { /* A background task cannot fail a committed inventory write. */ } }
+    return result;
+  }
+
+  subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+
+  printJobs() {
+    if (this.db.prepare('PRAGMA user_version').get().user_version < 2) return [];
+    return this.db.prepare('SELECT record FROM print_jobs ORDER BY id').all().map(row => JSON.parse(row.record));
+  }
+  claimPrint(record) {
+    validatePrintJob(record);
+    return this.transaction(() => {
+      const existing = this.db.prepare('SELECT record FROM print_jobs WHERE id=? OR token_hash=?').get(record.id, record.tokenHash);
+      if (existing) {
+        const job = JSON.parse(existing.record);
+        if (job.id !== record.id || job.tokenHash !== record.tokenHash) throw new InputError('This preview has already been submitted. Check its job status.', 409);
+        return { claimed: false, job };
+      }
+      this.db.prepare('INSERT INTO print_jobs VALUES (?, ?, ?)').run(record.id, record.tokenHash, JSON.stringify(record));
+      return { claimed: true, job: record };
+    });
+  }
+  updatePrint(id, changes) {
+    return this.transaction(() => {
+      const row = this.db.prepare('SELECT record FROM print_jobs WHERE id=?').get(id);
+      if (!row) throw new InputError('Print job not found.', 404);
+      const before = JSON.parse(row.record), record = validatePrintJob({ ...before, ...changes });
+      if (record.id !== before.id || record.tokenHash !== before.tokenHash) throw new InputError('Print job identity cannot change.');
+      this.db.prepare('UPDATE print_jobs SET record=? WHERE id=?').run(JSON.stringify(record), id);
+      return record;
+    });
   }
 
   read() {
@@ -115,6 +155,7 @@ export class Store {
     if (integrity.some(r => r.integrity_check !== 'ok')) errors.push('SQLite integrity check failed.');
     if (this.db.prepare('PRAGMA foreign_key_check').all().length) errors.push('Broken foreign keys.');
     try { validateInventory(this.read()); validateSettings(this.settings()); } catch (error) { errors.push(error.message); }
+    try { for (const job of this.printJobs()) validatePrintJob(job); } catch { errors.push('Invalid print job journal.'); }
     const counts = Object.fromEntries(['boxes', 'sessions', 'photos', 'locations'].map(t => [t, this.db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n]));
     return { ok: errors.length === 0, schemaVersion: this.db.prepare('PRAGMA user_version').get().user_version, counts, errors };
   }

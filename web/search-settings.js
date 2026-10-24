@@ -1,0 +1,166 @@
+import { t, tr, uiLanguage } from './i18n.js';
+
+export function mountSearchSettings(request, message) {
+  const $ = id => document.getElementById(id);
+  let state, boxes = [], models = [], editingId = null, generation = 0, busy = false, timer;
+  const dialog = $('search-settings-dialog');
+  const node = (tag, value, className) => { const e = document.createElement(tag); if (value !== undefined) e.textContent = value; if (className) e.className = className; return e; };
+  const api = async (path, payload, method = 'POST') => (await request(path, payload === undefined ? {} : { method, body: JSON.stringify(payload) })).json();
+  const status = (value, error = false) => { $('search-settings-status').textContent = value; $('search-settings-status').classList.toggle('error', error); };
+  const location = box => Object.values(box.location || {}).filter(Boolean).join(' · ');
+  const boxName = id => { const box = boxes.find(b => b.boxId === id); return box ? `${box.label} · ${location(box)}` : tr('Unavailable box: {0}', id); };
+  const actionNames = { any: 'Either location is fine', all: 'Return both locations', clarify: 'Ask which type' };
+  const fields = () => ({ enabled: $('search-enabled').checked, baseUrl: $('search-server').value.trim().replace(/\/+$/, ''), model: $('search-model').value.trim(),
+    modelRevision: $('search-model-revision').value.trim(), dimensions: Number($('search-dimensions').value) });
+  const savedFields = () => Object.fromEntries(Object.keys(fields()).map(key => [key, state.embedding[key]]));
+  const modelDirty = () => state && (JSON.stringify(fields()) !== JSON.stringify(savedFields()) || $('search-key').value !== '' || $('search-clear-key').checked);
+  function updateDirty() {
+    const dirty = modelDirty();
+    for (const button of dialog.querySelectorAll('button[type="submit"]')) button.disabled = busy;
+    $('search-load-models').disabled = busy || dirty || !state?.embedding.baseUrl;
+    $('search-run-preview').disabled = busy || dirty;
+    $('search-retry-index').disabled = busy || dirty || !state?.embedding.enabled;
+    for (const button of document.querySelectorAll('[data-rule-action], #search-add-rule')) button.disabled = busy || dirty;
+    if (dirty) { generation++; $('search-preview-result').hidden = true; }
+  }
+  function page(name) {
+    for (const id of ['rules', 'model', 'preview']) $(`search-page-${id}`).hidden = name !== id;
+    for (const button of document.querySelectorAll('[data-search-page]')) {
+      const active = button.dataset.searchPage === name; button.classList.toggle('quiet', !active);
+      if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+    }
+  }
+  async function refreshStatus() {
+    clearTimeout(timer);
+    if (!dialog.open) return;
+    try {
+      const result = await api('semantic');
+      if (!dialog.open) return;
+      $('search-index-status').textContent = !result.enabled ? t('Embeddings are disabled. Saved answer rules can still be tried.')
+        : result.ready !== undefined ? tr('Index: {0} · {1} of {2} boxes current.', t(result.state), result.ready, result.total)
+          : tr('Index: {0}', t(result.state));
+      if (result.enabled && ['building', 'configuring', 'pending'].includes(result.state)) timer = setTimeout(refreshStatus, 1000);
+    } catch (error) { if (dialog.open) $('search-index-status').textContent = t(error.message); }
+  }
+  function ruleList() {
+    const list = $('search-rules-list'); list.replaceChildren();
+    if (!state.rules.length) list.append(node('p', t('No answer rules saved yet.'), 'hint'));
+    for (const rule of state.rules) {
+      const card = node('article', undefined, 'search-rule-card');
+      card.append(node('h4', rule.queries.join(' / ')), node('p', t(actionNames[rule.action])), node('p', rule.boxIds.map(boxName).join('\n'), 'hint'));
+      if (rule.question) card.append(node('p', rule.question[uiLanguage()] || rule.question.en || Object.values(rule.question)[0]));
+      const actions = node('div', undefined, 'actions');
+      for (const [action, text] of [['edit', 'Edit rule'], ['remove', 'Remove rule']]) {
+        const button = node('button', t(text), 'quiet'); button.type = 'button'; button.dataset.ruleAction = action;
+        button.addEventListener('click', async () => {
+          if (modelDirty()) return status(t('Save embedding changes before editing rules.'), true);
+          if (action === 'edit') { editRule(rule); return; }
+          try { await save(savedFields(), state.rules.filter(r => r.id !== rule.id)); status(t('Answer rule removed.')); }
+          catch (error) { status(t(error.message), true); }
+        }); actions.append(button);
+      }
+      card.append(actions); list.append(card);
+    }
+  }
+  function populate() {
+    const e = state.embedding;
+    $('search-enabled').checked = e.enabled; $('search-server').value = e.baseUrl; $('search-model').value = e.model;
+    $('search-model-revision').value = e.modelRevision; $('search-dimensions').value = e.dimensions;
+    $('search-key').value = ''; $('search-clear-key').checked = false;
+    $('search-key-status').textContent = t(e.apiKeyConfigured ? 'A key is saved. Its value is never returned to this page.' : 'No key saved for this connection.');
+    $('search-environment-note').hidden = !state.usingEnvironment;
+    $('search-rule-form').hidden = true; $('search-preview-result').hidden = true; editingId = null;
+    ruleList(); updateDirty();
+  }
+  async function save(embedding, rules) {
+    busy = true; updateDirty(); generation++;
+    try {
+      state = await api('search-settings', { revision: state.revision, embedding, rules }, 'PUT');
+      models = []; $('search-models').replaceChildren(); populate(); await refreshStatus();
+    } finally { busy = false; updateDirty(); }
+  }
+  function editRule(rule) {
+    editingId = rule?.id || crypto.randomUUID(); $('search-rule-form').reset();
+    $('search-rule-queries').value = (rule?.queries || []).join('\n'); $('search-rule-action').value = rule?.action || 'any';
+    for (const lang of ['sv', 'en', 'de']) $(`search-rule-${lang}`).value = rule?.question?.[lang] || '';
+    $('search-rule-questions').hidden = $('search-rule-action').value !== 'clarify';
+    const choices = $('search-rule-boxes'); choices.replaceChildren();
+    const ids = [...new Set([...boxes.map(box => box.boxId), ...(rule?.boxIds || [])])];
+    for (const id of ids) {
+      const label = node('label', undefined, 'check-label'); const input = node('input'); input.type = 'checkbox'; input.value = id;
+      input.checked = Boolean(rule?.boxIds.includes(id)); label.append(input, node('span', boxName(id))); choices.append(label);
+    }
+    $('search-rule-form').hidden = false; $('search-rule-queries').focus();
+  }
+  $('open-search-settings').addEventListener('click', async () => {
+    try {
+      [state, { boxes }] = await Promise.all([api('search-settings'), api('boxes')]);
+      generation++; models = []; $('search-models').replaceChildren(); status(''); populate(); page('rules');
+      dialog.showModal(); await refreshStatus();
+    } catch (error) { message(error.message, true); }
+  });
+  $('close-search-settings').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => { generation++; clearTimeout(timer); $('search-key').value = ''; });
+  for (const button of document.querySelectorAll('[data-search-page]')) button.addEventListener('click', () => page(button.dataset.searchPage));
+  $('search-model-form').addEventListener('input', () => { status(t('Save changes before loading models or trying a question.')); updateDirty(); });
+  $('search-model').addEventListener('change', () => {
+    const model = models.find(m => m.name === $('search-model').value);
+    if (model) $('search-model-revision').value = model.digest;
+    updateDirty();
+  });
+  $('search-model-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    try { await save({ ...fields(), apiKey: $('search-key').value, clearCredentials: $('search-clear-key').checked }, state.rules); status(t('Embedding settings saved.')); }
+    catch (error) { status(t(error.message), true); }
+  });
+  $('search-load-models').addEventListener('click', async () => {
+    const token = ++generation; busy = true; updateDirty(); status(t('Loading models…'));
+    try {
+      const result = await api('search-settings/models', { revision: state.revision });
+      if (!dialog.open || token !== generation) return;
+      models = result.models; $('search-models').replaceChildren(...models.map(model => new Option(model.name, model.name)));
+      const current = models.find(model => model.name === $('search-model').value);
+      if (current) $('search-model-revision').value = current.digest;
+      status(tr('{0} models loaded. Choose an embedding model and save its settings.', models.length));
+    } catch (error) { if (dialog.open && token === generation) status(t(error.message), true); }
+    finally { busy = false; updateDirty(); }
+  });
+  $('search-retry-index').addEventListener('click', async () => {
+    try { await api('semantic/rebuild', {}); await refreshStatus(); } catch (error) { status(t(error.message), true); }
+  });
+  $('search-add-rule').addEventListener('click', () => editRule());
+  $('search-cancel-rule').addEventListener('click', () => { $('search-rule-form').hidden = true; editingId = null; });
+  $('search-rule-action').addEventListener('change', () => { $('search-rule-questions').hidden = $('search-rule-action').value !== 'clarify'; });
+  $('search-rule-filter').addEventListener('input', () => {
+    const query = $('search-rule-filter').value.toLocaleLowerCase();
+    for (const label of $('search-rule-boxes').children) label.hidden = !label.textContent.toLocaleLowerCase().includes(query);
+  });
+  $('search-rule-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (modelDirty()) return status(t('Save embedding changes before editing rules.'), true);
+    const action = $('search-rule-action').value;
+    const rule = { id: editingId, queries: $('search-rule-queries').value.split('\n').map(q => q.trim()).filter(Boolean), action,
+      boxIds: [...$('search-rule-boxes').querySelectorAll('input:checked')].map(input => input.value) };
+    if (action === 'clarify') rule.question = Object.fromEntries(['en', 'sv', 'de'].map(lang => [lang, $(`search-rule-${lang}`).value.trim()]).filter(([, q]) => q));
+    try {
+      await save(savedFields(), [...state.rules.filter(r => r.id !== rule.id), rule]); status(t('Answer rule saved.'));
+    } catch (error) { status(t(error.message), true); }
+  });
+  $('search-preview-query').addEventListener('input', () => { generation++; $('search-preview-result').hidden = true; });
+  $('search-preview-form').addEventListener('submit', async event => {
+    event.preventDefault(); const token = ++generation; busy = true; updateDirty(); status(t('Checking saved rules…'));
+    try {
+      const result = await api(`semantic/preview?lang=${uiLanguage()}`, { query: $('search-preview-query').value, revision: state.revision });
+      if (!dialog.open || token !== generation) return;
+      $('search-preview-answer').textContent = result.answer;
+      const decisions = { answer: 'Supported answer', clarify: 'Clarification needed', no_supported_match: 'No supported match' };
+      $('search-preview-meta').textContent = `${t(decisions[result.decision])} · ${t(result.retrieval.available ? 'Embeddings available' : 'Direct evidence and saved rules only')}`;
+      const reasons = { conflicting_rules: 'Several saved rules match this question. Review their questions.',
+        rule_evidence_missing: 'A selected box no longer supports this rule. Review its contents.' };
+      if (reasons[result.reason]) $('search-preview-meta').textContent += ` · ${t(reasons[result.reason])}`;
+      $('search-preview-matches').replaceChildren(...result.matches.map(box => node('li', `${box.label} · ${location(box)}`)));
+      $('search-preview-result').hidden = false; status(t('Preview complete. No inventory was changed.'));
+    } catch (error) { if (dialog.open && token === generation) status(t(error.message), true); }
+    finally { busy = false; updateDirty(); }
+  });
+}

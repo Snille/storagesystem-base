@@ -1,68 +1,306 @@
 # Continue development
 
-Updated 2026-10-20 for the 0.9.1-dev wider Photo settings; includes the storage map, improved search and real HA acceptance. Read this file, README.md, ARCHITECTURE.md and ../TODO.md before continuing. VERSION is authoritative; this remains a development preview, not the production replacement.
+## Latest verification: 2026-10-23
 
-## Evening handover: start here next session
+Read [the session handoff](HANDOFF-2026-10-23.md) first for verified results, current runtime state and the recommended next slice.
 
-The user stopped after accepting all 30 search evaluation questions and proposed
-boxes, and confirming that the last three requested items are absent. No more
-user review is needed for version 1. Do not recreate the questions, repeat the
-production export or ask the user to approve the same labels again.
+Version 0.13.1-dev includes manual roll reading, four explicit media presets and
+correct reservation cleanup for a granted device-error reply with no active job.
+The printer reported jammed before image transfer during failed tests 116/117.
+The owner identified and corrected a backwards roll with the label side facing
+incorrectly. The unchanged 25 x 54 mm test then completed as CUPS job 118;
+queue idle/empty, reasons none. The owner accepted physical text/orientation and confirmed solid power. The supplied photo shows legible Swedish glyphs, correct portrait layout and unclipped text.
+Supported presets: S0722540 (57 x 32), S0722550 (19 x 51), S0722520 (25 x 54),
+S0722430 (54 x 101 mm). All four presets have owner-accepted physical output: S0722540, S0722520,
+S0722430 and S0722550. Article/count come from
+the printer; dimensions use explicit article presets, not CUPS defaults.
+All 98 tests pass locally and in pinned Docker. Separate image:
+`storagesystem-base:roll-reader-0.13.1`. Inventory audit passes. Only the isolated
+port-3212 preview was restarted; production configuration/services are unchanged.
+The preview uses temporary SSH routes, not final LXC networking. See PRINTING.md.
 
-Immediate objective: compare two locally runnable multilingual embedding models
-with existing lexical search and hybrid ranking, before implementing semantic
-search or changing the spoken-answer behavior. SQLite is a settled decision.
-The assistant is button-activated; the target is one short supported destination,
-otherwise one short clarification/no-match response, without spoken alternatives.
+### Previous queue-status verification
 
-Read [SEMANTIC-EVALUATION.md](SEMANTIC-EVALUATION.md) for input files and procedure,
-then [VOICE-SEARCH.md](VOICE-SEARCH.md) for the current/proposed HA contract. The
-full previous conversation is not needed. Read README/ARCHITECTURE/ROADMAP before
-implementation, but avoid broad repo/history scans just to resume evaluation.
+Version 0.12.1-dev clarifies CUPS queue status versus physical printer state.
+A proposed direct DYMO version/status adapter failed live acceptance: the owner
+reported renewed blinking. The adapter/route/settings/UI were withdrawn and its
+temporary direct-printer tunnel stopped. No new labels or reset/feed/end-job
+commands were submitted. Root cause/error 0x1000 remains open. Do not reuse the
+legacy status endpoint (it requests a print lock). All 90 tests pass locally and
+in pinned Docker; separate image `storagesystem-base:printing-status-0.12.1`.
+Inventory audit passes with 164 boxes, 249 sessions and 306 photo references;
+exactly two recorded submissions remain. See PRINTING.md.
 
-Private local input directory: `data/evaluation/live-2026-10-20-40bea18b/`.
-Use `questions-v1.reviewed.json`, `search-corpus.json` and
-`lexical-baseline-v1.reviewed.json`. The original draft remains for provenance;
-`questions-v1.reviewed.validation.json` confirms hashes, IDs/current destinations,
-reproduced rankings and SQLite integrity. These ignored files exist only on this
-computer and are intentionally absent from Git. Preserve them, the isolated
-`inventory.sqlite`, source inventory and manifests; they are evaluation inputs,
-not disposable cleanup artifacts. If missing on another checkout, report that
-instead of silently substituting demo data or exporting production again.
 
-Verified baseline: 164 current-box documents; 30 accepted cases (24 answer,
-three clarify, three unsupported). Lexical top-1 is 13/24 and top-5 is 17/24.
-This is an exploratory set, not an independent holdout. Clarification/false
-confidence metrics are not implemented by the ranking baseline. Some stable
-box IDs differ from current locations: resolve destinations from inventory.
+Version 0.12.0-dev implements the first label-printing workflow. See PRINTING.md.
+The isolated preview submitted exactly one 57 x 32 mm test label through CUPS:
+job 114 completed, queue idle/empty, roll counter 679 -> 678. Physical text/orientation
+was approved by the owner and checked against the supplied photo. Main schema 2 adds a durable print journal; the isolated
+preview was backed up privately before migration. Existing production app, printer
+configuration, drivers and service lifecycle remain unchanged. The development
+preview uses a temporary CUPS SSH tunnel, not a final LXC route.
+All 89 tests pass locally and in pinned Node 24.14 Docker. Separate image:
+`storagesystem-base:printing-preview-0.12.0`; existing service/image/volume preserved.
 
-Next actions, in order:
+### Previous Search & answers verification
 
-1. Reproduce the frozen baseline locally if source/input hashes have changed:
-   `node data/evaluation/live-2026-10-20-40bea18b/validate-questions.mjs --reviewed`.
-2. Inspect available local compute/runtimes read-only. Reuse the established
-   Spark access where appropriate, but do not replace its running image model.
-   No embedding model, runtime or endpoint has been selected or configured.
-   Check official model documentation, multilingual support, licensing, memory,
-   document/query formatting, truncation and production network reachability.
-3. Run both candidates in isolation. Compare lexical, semantic-only and hybrid
-   retrieval on the frozen questions/corpus; save model revisions, dimensions,
-   source hashes, top-1/top-5 and latency with each private result. Keep related
-   question groups together; do not tune synonyms to the test questions.
-4. Evaluate a separate short-answer/clarification policy, prioritizing avoidance
-   of incorrect confident answers. Tune thresholds per model; collect untouched
-   questions before claiming general quality. Do not count retrieval-only scores
-   as successful speech decisions.
-5. Only after measuring, implement the selected approach through shared UI/REST/
-   MCP services, with derived versioned vectors separate from inventory rewrites.
-   Verify through disposable real HA before any authorized hardware session.
+Version 0.11.0-dev adds Search & answers with persisted native embedding settings,
+model/digest discovery, worker reconfiguration, index status/retry, structured
+owner rules and saved-settings decision preview. Default embeddings remain off;
+rules can be tried without them. Keys are redacted and destination-bound, saves
+and in-flight previews use revision checks, and all settings participate in the
+main backup/import/audit/restore validation. No public retrieval or identity
+inference is activated. See README and SEMANTIC-RUNTIME.md.
 
-No embeddings were generated and no inventory text was sent to an embedding
-provider. No production settings, HA/ESPHome configuration or existing development
-inventory were changed by evaluation preparation. Local app version remains
-0.9.1-dev. Evening checks: `npm run check` passed all 48 tests; reviewed-data
-validation and SQLite audit passed. These checks do not retest physical audio,
-printing or live external services. No registry publishing destination is set.
+Browser acceptance used a separate local snapshot with the six already approved
+owner rules. Network cable now returns the exact finished-cable question; extension
+lead returns both accepted destinations. The browser test caught a Swedish
+cable-plural evidence gap, fixed with a bounded inflection family and an exact
+question/code-guard regression. Offline replay of existing verified evidence
+retains original 27/30, owner 20/20, source 30/30 and zero incorrect confident
+answers. Evidence is private in `data/search-settings-preview-20261023/`; no
+new identity-model inference or paid request was run. This is regression evidence.
+All 81 automated tests pass locally and in pinned Node 24.14 Docker. A separate
+`storagesystem-base:search-settings-0.11.0` image is built; the existing development
+image/service/volume was not replaced.
+
+Printing was subsequently implemented and physically submitted; see the latest verification above.
+
+Remaining search gates: approved authenticated native deployment route,
+identity-model/threshold/latency configuration, independent acceptance and public
+activation. Conversational follow-up and speech normalization remain planned;
+speech-error work is still deferred. OpenRouter comparison includes Qwen and
+GPT-6 Luna, with no paid benchmark or provider switch performed.
+
+The entries below are prior verification stages:
+
+Version 0.10.2-dev adds optional background semantic indexing, persisted in a
+separate SQLite cache with current session/content/profile and immutable model
+digest checks. Native Ollama requests reject truncation. Authenticated management
+status/retry/decision-preview endpoints are disabled by default and do not alter
+public UI/REST/MCP/HA behavior. See SEMANTIC-RUNTIME.md for configuration, failure
+behavior and deployment gates. The semantic work retained schema 1; printing now adds schema 2 as described above.
+
+Live retrieval regression over the isolated frozen inventory indexed 164/164
+boxes: old answer cases 23/24 top-1, 24/24 top-5; owner answer cases 18/19 top-1,
+19/19 top-5. The current-content serializer differs from the earlier corpus.
+Native overlength input was rejected; source inventory remained unchanged.
+Evidence is private under `runtime-native-v4/`; offline audit checks cached
+sessions/content/profiles, all vectors/rankings/metrics and source/archived-code
+hashes. All 73 automated tests pass locally and in pinned Docker.
+
+The authenticated LAN gateway returns 404 for both native tags/embed paths.
+Live testing used a temporary localhost SSH tunnel; no gateway/server settings
+were changed. Validate an approved authenticated native route from the future
+LXC before deployment activation. Next local product work is reviewed rule/GUI
+configuration plus independent acceptance and the identity endpoint/latency
+decision. Speech remains deferred. OpenRouter model comparison (including Qwen)
+is planned for LXC migration; no paid benchmark or provider switch has occurred.
+
+The entries below are prior verification stages:
+
+Version 0.10.1-dev adds an optional source-bound local identity verifier for
+semantic-only decision previews. The thermal-camera/heat-gun failure is repaired
+in regression: source cases 30/30, owner cases 20/20 with existing owner rules
+and the already confirmed drill/driver intent, old cases 27/30. Pure similarity
+cannot authorize an answer; unavailable verification causes abstention.
+Current query/session/source guards are rechecked after inference. All 63
+automated tests pass locally and in pinned Docker. See ANSWER-POLICY.md and the
+verified identity regression section in SEMANTIC-EVALUATION.md.
+
+The existing Spark llama.cpp model was tested with bounded text requests only;
+no service/model/settings change occurred. Warm checks add about 1.4-4.2 s and
+an early generic cold chat probe took 29.4 s. Default timeout is 15 s; evaluation
+explicitly allowed 60 s. No runtime endpoint or verifier dependency is enabled.
+A new synthetic held-out probe found a brushed/brushless failure; the frozen
+first result is retained and a negative-property guard repairs the repeated
+suite. Those repaired results are regression evidence, not independent acceptance.
+
+Next: independent identity acceptance, production endpoint/latency decision,
+then versioned runtime vectors with length/failure handling and rule management.
+Public UI/REST/MCP/HA still use their prior behavior. Speech work remains deferred.
+
+The entries below are prior verification stages and failed baselines:
+
+The next frozen-policy check (`acceptance-v3`) has completed: 30 agent-authored
+source-derived cases were locked after freezing the implementation and before
+inference. All 15 documented-item cases and five default-clarification cases
+pass; nine of ten unsupported cases pass. One thermal-camera query confidently
+selects a heat gun, so the preregistered zero-incorrect-confident-answer gate
+FAILS despite 29/30 total correct. No rule/threshold/implementation adjustment
+was made after inspecting this result. Full vector/ranking/decision/source and
+SQLite audits pass. This is prospective source-derived checking, not independent
+human-labelled acceptance. See SEMANTIC-EVALUATION.md for evidence and limits.
+
+Immediate next work: require evidence for requested object identity/type before
+a semantic-only candidate can become a confident answer. Keep the failed check
+as regression evidence and validate changes on new cases. Do not activate the
+semantic runtime or interpret the earlier configured 20/20 as release acceptance.
+
+Version 0.10.0-dev adds an isolated shared answer-decision preview, not semantic
+runtime activation. Current whole-word evidence reranks all 19 user answer cases
+correctly. With six explicit owner-reviewed interaction rules, decisions and
+required destination selections pass 20/20, including both extension-lead
+locations and finished-cable clarification. Generic logic alone gets 14/20
+decisions; the owner rules are essential and are not a model-generalization
+claim. The old 30 cases get 27/30 decisions with zero incorrect confident
+answers. See ANSWER-POLICY.md and the development regression section in
+SEMANTIC-EVALUATION.md. Frozen baselines are retained. All 54 tests pass on
+Windows and in pinned Node 24.14 Docker; saved decision audits pass.
+
+Next: independently validate the revised policy, then integrate versioned
+runtime vectors with explicit length/failure handling and owner-rule management.
+The owner deferred speech/transcription work on 2026-10-22. Keep real Whisper
+error capture and conservative split-name normalization in the later backlog;
+text probes are not microphone/STT acceptance. Continue text-search work first.
+The preview is available only as `Inventory.previewAnswer` for trusted callers;
+public ask/search, browser, MCP and HA have not been switched. No service was
+restarted and no application settings/inventory were changed.
+
+The following paragraphs record the preceding frozen baseline, not the revised
+preview results:
+
+The owner supplied and confirmed a further 20 short queries before inference.
+The prospective test gives BGE-M3 18/19 top-1 and 19/19 top-5 versus lexical
+14/19 and 15/19. However, the fixed policy trained only on the old 30 questions
+makes 15/20 correct selection/decision cases. It unnecessarily declines some
+correct short-query matches and misses the owner's required finished-vs-bulk
+network-cable clarification. Extension leads should include both relevant
+destinations; both are retrieved but speech is not verified. See the prospective
+comparison in SEMANTIC-EVALUATION.md. Next work is improved evidence/decision
+logic with these cases retained as regression tests, followed by fresh independent
+acceptance; the current score/margin policy is not ready for activation.
+
+The frozen Storage System comparison now passes against the exact Ollama01 GPU
+endpoint: 22/24 top-1, 24/24 top-5, identical first-ranked boxes to the previous
+BGE-M3 run, and 25/30 correct grouped decisions with zero observed incorrect
+confident answers. Query HTTP p50/p95 is 29.4/44.2 ms; corpus encoding took
+2.55 s. See [SEMANTIC-EVALUATION.md](SEMANTIC-EVALUATION.md) for evidence.
+
+The endpoint silently truncates at 2048 tokens despite HTTP 200; current corpus
+documents max out at 869 tokens. Explicit length handling is required before
+runtime integration. Untouched labelled questions remain the next quality gate,
+followed by shared runtime retrieval and isolated HA acceptance. No semantic
+feature or application connection was enabled by this test.
+
+The older resume checklist below predates this verification and the Mimers Brain
+cutover already recorded in EMBEDDING-SERVICE.md. Do not repeat that cutover.
+Frozen hashes, vectors, rankings, grouped policies, reviewed-data/SQLite audit
+and all 48 application checks pass. Changes remain uncommitted.
+
+Updated 2026-10-21 at the end of the evening after the embedding comparison and shared GPU service migration. Read this file, README.md, ARCHITECTURE.md and ../TODO.md before continuing. VERSION is authoritative; this remains a development preview, not the production replacement.
+
+## Resume checklist for the next session
+
+The shared GPU server is ready for application acceptance; the application
+cutovers are still pending. Start with [EMBEDDING-SERVICE.md](EMBEDDING-SERVICE.md).
+
+1. In a Mimers Brain session, back up the instance and record its current
+   embedding settings, thresholds and baseline recall/contradiction results.
+   Test the same cases through Ollama01, then switch its embedding endpoint
+   after acceptance and owner approval. This is the same BGE-M3 model on a
+   different host/device, not an intended model-family change. Do not assume
+   moving CPU inference to GPU requires regenerating stored vectors.
+2. In this repository, repeat the frozen 164-document/30-question evaluation
+   through the exact Ollama endpoint. Preserve the existing baseline and labels;
+   compare retrieval, long inputs and latency before adding runtime embeddings.
+3. Collect untouched labelled questions and validate answer/clarification/no-match
+   thresholds before enabling semantic voice search. Server acceptance alone
+   does not satisfy these product gates.
+
+Use the separate client credentials from the owner's central secret store; never copy secret values into this repository or memory. Keep the
+existing Mimer CPU service available for rollback. MiniCube CT 141 is a stopped
+server fallback with the same network identity: never start it alongside the
+TowerCube copy. The requested Mimer test-and-switch task is also saved in Mimers
+Brain for a separate project session. These session changes remain uncommitted.
+
+## Embedding comparison handover: start here next session
+
+The evening objective is complete: both pinned local multilingual embedding
+candidates were compared with the frozen lexical baseline and equal-weight RRF
+hybrid. Read [SEMANTIC-EVALUATION.md](SEMANTIC-EVALUATION.md) for method,
+results, limitations and reproduction, then [VOICE-SEARCH.md](VOICE-SEARCH.md)
+for the intended HA contract. No semantic runtime feature has been enabled.
+
+Private inputs and results remain under `data/evaluation/live-2026-10-20-40bea18b/`.
+Preserve this directory, its inventory SQLite/source/manifests, reviewed questions,
+rankings, vectors and exact evaluator snapshots. Do not re-export production,
+recreate questions or ask the user to approve the same 30 labels again.
+
+Measured top-1/top-5 on the 24 answer cases:
+
+- Shared lexical: 13/24 and 17/24.
+- E5-small dense: 21/24 and 23/24; lexical RRF: 19/24 and 23/24.
+- BGE-M3 dense: 22/24 and 24/24; lexical RRF: 20/24 and 23/24.
+
+BGE dense is the leading candidate for further evaluation. Its separate
+leave-one-group-out decision policy makes 25/30 correct decisions: 19 correct
+confident answers, all three clarification cases and all three unsupported cases.
+It declines five answerable requests and has zero observed incorrect confident
+answers here. Each other model/method has one incorrect confident answer.
+This is a small exploratory set, not an untouched holdout or production guarantee.
+Do not enable the tested RRF approach merely because hybrid search was proposed.
+
+Warm single-query CPU p50/p95: E5 16/20 ms, BGE 89/107 ms (excluding HTTP,
+network, STT, TTS and loading). The unchanged full corpus contains 164 documents;
+E5 truncates one document at 512 tokens; BGE truncates none. Both use pinned
+MIT-licensed public weights, downloaded for local inference. No inventory text
+was uploaded to a provider.
+
+Next actions:
+
+1. Collect untouched user-labelled questions before selecting production
+   thresholds. Keep related wording groups together; cover functional misses,
+   similar codes, ambiguity and absent items without tuning the existing corpus.
+2. Re-evaluate BGE dense and the short-answer/clarification policy. Retain lexical
+   identifier/fallback capability; any different fusion needs a fresh comparison.
+3. Run full Mimer recall and Storage System retrieval checks against the new
+   Ollama01 GPU endpoint before either application changes its connection.
+   Spark was inspected read-only and left running its image model. From the
+   existing production host, Spark's corporate hostname did not resolve. The new
+   Ollama01 GPU endpoint on TowerCube is now verified independently, including
+   authenticated network access. Application-specific acceptance is pending.
+4. Implement shared UI/REST/MCP retrieval and derived versioned background vectors
+   only after those quality/route checks, then verify in disposable real HA.
+
+The assistant remains button-activated, with one short supported destination or
+one short clarification/no-match response as the target. SQLite remains settled.
+The current application's search and /ask behavior are unchanged.
+
+Verification: both saved-vector result audits, reviewed hash/location/ranking
+validation and SQLite integrity pass; Python compilation and policy safety
+probes pass; all 48 application checks pass. Application version remains
+0.9.1-dev. No app settings, development inventory, production service, HA/ESPHome
+configuration, physical audio or printing was changed. No registry destination
+is configured. The isolated Python runtime/model cache stays under ignored data/.
+
+## Shared GPU embedding service (2026-10-21)
+
+[Ollama01](EMBEDDING-SERVICE.md) now runs on TowerCube as CT 141 at
+10.0.0.47: 4 vCPU, 8 GiB RAM, 40 GiB `local-lvm`, unprivileged Ubuntu 26.04.
+The MiniCube build copy is retained stopped with onboot disabled. Migration used
+`NAS:backup/vzdump-lxc-141-2026_10_21-20_59_44.tar.zst`. The existing Sunday 01:00
+NAS job includes the target (last two backups, stop mode). Its Proxmox Note was
+approved, written through Notes MCP and read back.
+
+Native Ollama 0.40.6 reports 100% RTX 4000 Ada GPU for `bge-m3:cpu4`, matching
+the existing Mimer model digest. NVIDIA devices and matching read-only host
+libraries are exposed; Plex/OpenWebUI and the host driver were not changed.
+`GGML_CUDA_DISABLE_GRAPHS=1` removes observed multi-second first-input delays;
+14 synthetic varied-length requests then took 17-100 ms over authenticated LAN.
+Separate client keys remain outside the repository. Standard base acceptance,
+SSH/Webmin/Postfix, startup warm-up, API authentication and test mail pass.
+
+No existing application has been switched and no Mimer vectors were regenerated.
+Three CPU/GPU smoke vectors are nearly identical; full recall/retrieval acceptance
+remains pending. Keep the current Mimer CPU service available through those checks.
+The Ollama deployment is not the same runtime artifact used in the Hugging Face
+comparison; repeat it before applying scores/thresholds. Network reachability is
+verified from Mimer and Portainer without relying on the laptop/GSA route.
+
+Monitoring was checked as `snille`: `nvidia-smi` sees the RTX card and a fresh
+btop 1.4.6 shows GPU utilization, memory and temperature. Restarting the old
+btop session resolved the missing GPU row; the owner confirmed the display.
 
 ## Working implementation
 
@@ -96,15 +334,15 @@ printing or live external services. No registry publishing destination is set.
 
 - `npm run check`: syntax, 48 automated checks and Git whitespace validation. Docker build runs the same isolated suite with pinned Node 24.14; host is Windows Node 26.5.1.
 - Container acceptance checks persistence, audit, backup, fresh restore and MCP using a unique disposable container/volume: `./scripts/verify-container.ps1`. This passed again at wrap-up, as did the real HA HTTP client/result mapper; temporary acceptance resources were removed by the script.
-- Live Immich, OpenRouter, Spark, three-photo drafting and the real HA HTTP client/result mapper were checked earlier in this session. See VERIFICATION.md for evidence and reproduction. Real HA 2026.10.2 config flow, entities, services, events, conversation, reload persistence, card delivery and signed images now pass in disposable Docker. Browser tests also exercised the actual Lovelace card and thumbnail. Physical Assist/speech, real PhotoPrism and Portainer remain open.
+- Live Immich, OpenRouter, Spark, three-photo drafting and the real HA HTTP client/result mapper were checked during the 2026-10-20 session. See VERIFICATION.md for evidence and reproduction. Real HA 2026.10.2 config flow, entities, services, events, conversation, reload persistence, card delivery and signed images now pass in disposable Docker. Browser tests also exercised the actual Lovelace card and thumbnail. Physical Assist/speech, real PhotoPrism and Portainer remain open.
 - Recent browser checks used the actual test images without acceptance writes: portrait proportions, collapsed/expanded history, cover browsing, 100% pixels, drag panning, click retention and click-anchored zoom. The clicked point remained within one pixel of its screen position after zoom.
 - Production Storage System and its HA integration remain untouched. Reference checkouts are siblings `Storagesystem` and `storagesystem-ha`; reviewed commits are in COMPATIBILITY.md.
-- Do not test the physical printer until the user says it is available again. No printing UI/backend has been implemented.
+- Printer access was subsequently authorized; the first printing UI/backend and job 114 test are described in PRINTING.md.
 - Local Docker image only: no registry destination, image publication or real Portainer deployment is configured. Production access to Spark without the laptop's GSA is unresolved.
 
 ## Suggested next session
 
-Follow the evening handover above: embedding comparison is the next agreed task. Structured location selection matching the reference workflow is implemented. Excel catalog import/export is retired from scope (one-time initial label import); do not reintroduce it as a release gate. Inventory/location models must stay shared between browser, REST and MCP. Box IDs and location IDs are different concepts; do not silently derive one from the other.
+Follow the comparison handover above: untouched questions and a verified production embedding route are the next gates. Structured location selection matching the reference workflow is implemented. Excel catalog import/export is retired from scope (one-time initial label import); do not reintroduce it as a release gate. Inventory/location models must stay shared between browser, REST and MCP. Box IDs and location IDs are different concepts; do not silently derive one from the other.
 
 No browser tab or old temporary process is required to resume. The frozen offline evaluation does not require rebuilding the app, loading its settings or contacting photo/AI providers. When application acceptance is needed, use the existing Compose app and isolated fixtures. `scripts/browser-fixture.js` serves synthetic in-memory data on port 3212; `verify-immich.js` and `verify-ai.js` can hold isolated live-image fixtures when explicitly run. Stop those fixtures when finished.
 
@@ -124,4 +362,24 @@ Read-only production measurement: 164 unique boxes, all with summaries, in 17 st
 
 The user authorized importing live inventory for semantic-search tests. See [SEMANTIC-EVALUATION.md](SEMANTIC-EVALUATION.md). The Git-ignored directory `data/evaluation/live-2026-10-20-40bea18b/` contains inventory-only JSON, a separate `inventory.sqlite`, capture/hash manifest, current-session search corpus and verification report. Import through the shared Store passed integrity and exact field/record-preservation checks: 164 boxes, 249 sessions, 306 total photo references, 164 exact locations; 293 photo references are current. No app settings/keys or original image binaries were persisted. The existing development app was not redirected or modified.
 
-`search-corpus.json` has 164 current-box documents and 97,067 UTF-16 code units including current photo notes. Historical contents are excluded. The same private directory now contains `questions-v1.json`, `questions-v1.review.md` and `lexical-baseline-v1.json`: 30 draft questions (24 proposed single-box answers, three clarifications, three unsupported requests), with source hashes and verified current destinations. Shared lexical search agrees with draft labels at top 1 for 13/24 answer cases and top 5 for 17/24; speech decisions are not scored. Erik accepted all 30 questions/proposed boxes and confirmed the three absent items. Frozen inputs are questions-v1.reviewed.json and lexical-baseline-v1.reviewed.json; original drafts are preserved. Reviewed hash/location/ranking checks and SQLite audit pass. The set remains exploratory, not a holdout. Next: compare two local embedding candidates against lexical/hybrid search, and assess top-1/clarification/abstention/latency. No embedding model was configured or called, and semantic search remains unimplemented. Keep all real evaluation data under ignored runtime paths.
+`search-corpus.json` has 164 current-box documents and 97,067 UTF-16 code units including current photo notes. Historical contents are excluded. The same private directory now contains `questions-v1.json`, `questions-v1.review.md` and `lexical-baseline-v1.json`: 30 draft questions (24 proposed single-box answers, three clarifications, three unsupported requests), with source hashes and verified current destinations. Shared lexical search agrees with draft labels at top 1 for 13/24 answer cases and top 5 for 17/24; speech decisions are not scored. Erik accepted all 30 questions/proposed boxes and confirmed the three absent items. Frozen inputs are questions-v1.reviewed.json and lexical-baseline-v1.reviewed.json; original drafts are preserved. Reviewed hash/location/ranking checks and SQLite audit pass. The set remains exploratory, not a holdout. The original next step was the now-completed two-model lexical/semantic/hybrid comparison. The original preparation called no model. The subsequent local embedding comparison is complete; see the handover above. Semantic runtime search remains unimplemented. Keep all real evaluation data under ignored runtime paths.
+
+Roll-change observation: after the owner confirmed the replacement was loaded, the app read S0722520 / 25 x 54 mm / 413 labels. The saved format already matched. A fresh preview with a visible format caption was checked without printing. The owner confirmed the size/count and solid power with no extra feed after this replacement read.
+
+Physical test job 116: the owner confirmed the 25 x 54 mm test label emerged, but reported blinking power afterward. CUPS still showed processing / `com.dymo.slot-status-error`. This is not full acceptance of alternate-format printing; text/orientation and clean job completion remain unconfirmed. No additional label, cancellation, reset or direct roll query was sent during the active job.
+
+Job 116 physical correction: the owner clarified that the label was blank, with blinking power. This is a failed alternate-format print, not accepted output. The actual CUPS spool PostScript renders the expected Swedish text. Offline CUPS conversion (raster destination only, no printer backend) produced one 271 x 593 RGB page with 18,360 non-white bytes, including black pixels. The installed filter is the LanguageMonitor-enabled `raster2dymolw_v2`, not a verified no-monitor patch. CUPS first reported `com.dymo.slot-status-error`, then the socket backend failed with `Broken pipe` and busy-error; those observations do not establish the physical cause. Only test job 116 was canceled to prevent retry; no incomplete jobs remain. No additional print, raw device query, reset, production driver/configuration change or service restart was performed. The owner confirmed solid power after cancellation. This links the blinking to the failed print cycle, but does not identify why the label was blank. Evidence remains in the ignored preview diagnostics.
+
+Repeat physical test 117: unchanged S0722520 / 25 x 54 mm test, explicitly authorized by the owner to check initial feeding. The owner reported no label and blinking power. CUPS again reported `com.dymo.slot-status-error`. Only test job 117 was canceled; the queue is empty/idle, with a printer-not-ready message. No reset, raw read, driver/configuration change or further print was performed. The repeat failure argues against a single initial-feed event, but does not distinguish roll seating/sensing from driver/protocol behavior.
+
+0.13.1 follow-up: a bounded A1 probe returned engine 2, job ID 0, bay 9 (jammed), SKU S0722520, count 413, and error-ID zero. This is a granted host response in the protocol, despite being an error state. The reader previously treated only engine zero as owned; cleanup now also releases a granted engine-2 reservation with no active job, while reporting the error before reading NFC. A regression test confirms Q-only cleanup, no U/feed/reset and no release for a nonzero active job ID. The corrected live reader reports the label jam and sends release. The owner reported that reloading and pressing the printer's own feed button did not restore normal feeding/solid readiness. A control test with the previously accepted 57 x 32 mm roll is pending; no more software print jobs have been submitted.
+
+The owner subsequently found the replacement roll was installed backwards, with the label side facing the wrong way, preventing correct sensing. The owner corrected the loading and authorized a fresh test. Previous driver/protocol suspicions are not an established root cause of the physical failures; this loading error is owner-verified. The separate error-reservation cleanup fix remains valid.
+
+After corrected roll loading, app reading returned S0722520 / 25 x 54 mm / 411 labels. A fresh test was submitted once as CUPS job 118. It completed promptly; queue idle, zero queued jobs, reasons none. No media/layout/production driver change was needed. The owner accepted physical text/orientation and solid power, supported by the supplied photo.
+
+Final physical acceptance for job 118: the owner confirmed clear, correctly oriented, unclipped text and solid power. The supplied photo confirms Swedish glyphs and the 25 x 54 mm portrait layout. Two formats now have accepted real output (57 x 32 and 25 x 54 mm); 19 x 51 and 54 x 101 mm have synthetic layout checks only. The roll-loading error resolved the reported print failure; no production driver/configuration changes were needed.
+
+S0722430 / 54 x 101 mm accepted physically: test job 119 completed and the owner confirmed good text/layout with solid power. The supplied photo confirms legible Swedish glyphs and no clipping. Three formats now have real output acceptance: 57 x 32, 25 x 54 and 54 x 101 mm. Only 19 x 51 mm remains physically unverified among the four presets.
+
+Final acceptance for job 120: the owner confirmed legible, correctly oriented, unclipped text and solid power. All four explicit formats now have real owner-accepted test output: S0722540 (57 x 32 mm; jobs 114/115), S0722520 (25 x 54 mm; job 118), S0722430 (54 x 101 mm; job 119), and S0722550 (19 x 51 mm; job 120). This verifies the tested layouts on this 5XL/CUPS route, not every inventory label or other printer. Description size is currently 6 points for the smallest format; text sizes are shared settings, not per-format profiles.

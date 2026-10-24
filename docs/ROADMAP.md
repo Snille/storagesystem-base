@@ -38,7 +38,11 @@ AI settings direction: [task-based AI design](AI-DESIGN.md). Named connections, 
 - [x] Add multi-photo new-box drafts with explicit review/edit/save through the shared session service.
 - [x] Add AI-assisted updates to existing boxes with selected photos, current-description context and explicit review/apply/save.
 - [ ] Implement and evaluate the [voice-first hybrid retrieval and answer contract](VOICE-SEARCH.md): one supported destination or short clarification/no-match answer, without reading candidate lists.
-- [ ] Add versioned background embeddings in SQLite and a verified production embedding-service route; add compatible bounded clarification context for HA with button activation retained.
+- [x] Implement and regression-test an isolated shared answer-decision preview with direct current evidence, explicit compatible-destination/type-clarification rules and current-location formatting. Runtime activation and fresh acceptance remain open; see ANSWER-POLICY.md.
+- [x] Add and live-test an optional source-bound local identity verifier for semantic-only preview candidates, with current-session/quote guards and abstention on failures. This remains a preview; identity model choice, latency and independent acceptance are not release-complete.
+- [x] Add optional versioned background embeddings in a separate SQLite cache, native no-truncation Ollama adapter with immutable digest checks, and authenticated management-only ranking/decision preview with lexical fallback. Disabled by default; no public activation. See SEMANTIC-RUNTIME.md.
+- [x] Add Search & answers UI with saved embedding configuration, native model/digest discovery, credential protection, editable reviewed rules and saved-settings preview. Changes reconfigure the optional worker without restarting inventory; rule previews also work with embeddings disabled.
+- [ ] Verify the authenticated native embedding-service route from the deployment, select/configure identity verification and thresholds, complete independent acceptance, then enable shared public retrieval; add compatible bounded clarification context for HA with button activation retained.
 - [ ] Add optional AI answer phrasing and translation drafting; application logic controls destination selection and speech constraints.
 - [ ] Implement compatible REST and MCP endpoints.
 - [x] Implement public REST shapes and all five read-only MCP tools.
@@ -48,6 +52,7 @@ AI settings direction: [task-based AI design](AI-DESIGN.md). Named connections, 
 - [x] Verify the actual HA HTTP client and result mapper against the development container.
 - [x] Verify HA config flow, entities, services, events, conversation and Lovelace card in isolated real HA.
 - [ ] Verify physical Assist/speech when available.
+- [ ] Later: measure real Whisper transcription errors and evaluate conservative inventory-aware text normalization, including split names. The owner deferred this work on 2026-10-22; it does not block isolated text-search development. Preserve raw queries and exact code/dimension handling.
 
 ## 4. Package and verify deployment
 
@@ -59,5 +64,19 @@ AI settings direction: [task-based AI design](AI-DESIGN.md). Named connections, 
 - [ ] Review printer driver sources and patches; provide optional CUPS packaging.
 - [ ] Implement general print configuration, label sheets, and optional DYMO capabilities.
 - [ ] Verify physical print output and queue/status behavior.
-- Physical printer tests are deferred until the user has printer access again.
+- [x] Implement the first CUPS/IPP printing slice: connection/status, 57 x 32 mm test/box previews, label-only text edits, durable one-job submission and schema-1-to-2 migration tests.
+- Browser test job 114 completed and the physical roll counter decreased 679 to 678. The owner approved physical legibility/orientation and supplied a matching photo. See PRINTING.md.
 - [ ] Document supported printers based on testing, not assumed CUPS compatibility.
+
+- [x] Expose CUPS status/reasons with explicit queue-versus-physical scope.
+- Direct DYMO monitoring failed live acceptance and was withdrawn in 0.12.1; require owner-observed non-interference before another integration.
+
+- [x] Read DYMO 5XL article/count through a bounded manual ownership/read/release cycle, physically accepted without feed or blinking.
+- [x] Add four explicit media presets and dynamic preview/PostScript geometry.
+- [x] Verify a real roll change to S0722520: 25 x 54 mm, 413 labels, owner-confirmed solid power/no feed.
+- [ ] Physically accept alternate-format printed output.
+
+- [x] Physically accept S0722520 / 25 x 54 mm after corrected roll loading: job 118 completed, queue idle/empty, owner-approved output/photo and solid power.
+- [x] Physically accept S0722430 / 54 x 101 mm: job 119 completed, owner-approved output/photo and solid power.
+- [x] Physically accept S0722550 / 19 x 51 mm: job 120 completed with a 6-point description, owner-approved text and solid power.
+- [ ] Add further article mappings only with verified geometry and per-format physical checks.

@@ -3,6 +3,8 @@ import { suggestBoxId } from './locations.js';
 import { mountAi } from './ai.js';
 import { mountBoxDraft } from './box-draft.js';
 import { mountStorageMap } from './storage-map.js';
+import { mountSearchSettings } from './search-settings.js';
+import { mountPrinting } from './printing.js';
 import { initializeLanguage, setLanguage, uiLanguage, t, tr, roleName } from './i18n.js';
 
 await initializeLanguage();
@@ -51,6 +53,8 @@ $('languages-form').addEventListener('submit', async event => {
 });
 
 mountAi(request, message, () => showAlbum());
+mountSearchSettings(request, message);
+mountPrinting(request, message);
 const boxDraft = mountBoxDraft(request, draft => {
   if (draft.editorContext) {
     const context = draft.editorContext;

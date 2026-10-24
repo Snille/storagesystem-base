@@ -8,6 +8,8 @@ import { Inventory } from './inventory.js';
 import { Photos } from './photos.js';
 import { Catalog } from './catalog.js';
 import { Ai } from './ai.js';
+import { SearchService } from './search-service.js';
+import { Printing } from './printing.js';
 import { InputError, object, text } from './validation.js';
 import { equal, requestKey, publicKey, assetUrl, signature } from './auth.js';
 import { handleMcp } from './mcp.js';
@@ -17,6 +19,8 @@ const assets = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/ai.js', ['ai.js', 'text/javascript; charset=utf-8']],
+  ['/search-settings.js', ['search-settings.js', 'text/javascript; charset=utf-8']],
+  ['/printing.js', ['printing.js', 'text/javascript; charset=utf-8']],
   ['/box-draft.js', ['box-draft.js', 'text/javascript; charset=utf-8']],
   ['/location-editor.js', ['location-editor.js', 'text/javascript; charset=utf-8']],
   ['/storage-map.js', ['storage-map.js', 'text/javascript; charset=utf-8']],
@@ -40,6 +44,8 @@ export function createApp({ store, env = process.env }) {
   const inventory = new Inventory(store); const photos = new Photos(store);
   const catalog = new Catalog(store, photos, inventory);
   const ai = new Ai(store, catalog, photos);
+  const search = new SearchService(inventory, env);
+  const printing = new Printing(inventory);
   const server = createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -87,6 +93,25 @@ export function createApp({ store, env = process.env }) {
       const withUrls = box => ({ ...box, photos: box.photos.map(p => ({ ...p, thumbnailUrl: assetUrl(p.immichAssetId, 'thumbnail', key, base), previewUrl: assetUrl(p.immichAssetId, 'preview', key, base), originalUrl: assetUrl(p.immichAssetId, 'original', key, base) })) });
       const lang = url.searchParams.get('lang') || undefined;
       const method = req.method;
+      if (path === '/api/manage/printing' && method === 'GET') return json(printing.view());
+      if (path === '/api/manage/printing' && method === 'PUT') return json(printing.save(await body(req)));
+      if (path === '/api/manage/printing/status' && method === 'GET') return json(await printing.status());
+      if (path === '/api/manage/printing/roll' && method === 'POST') return json(await printing.readRoll(await body(req)));
+      if (path === '/api/manage/printing/preview' && method === 'POST') return json(printing.preview(await body(req), lang));
+      if (path === '/api/manage/printing/submit' && method === 'POST') return json(await printing.submit(await body(req)));
+      const printJobMatch = path.match(/^\/api\/manage\/printing\/jobs\/([a-f0-9-]{36})$/);
+      if (printJobMatch && method === 'GET') return json(await printing.job(printJobMatch[1]));
+      if (path === '/api/manage/search-settings' && method === 'GET') return json(search.settings.view());
+      if (path === '/api/manage/search-settings' && method === 'PUT') return json(search.settings.save(await body(req)));
+      if (path === '/api/manage/search-settings/models' && method === 'POST') return json(await search.settings.models(await body(req)));
+      if (path === '/api/manage/semantic' && method === 'GET') return json(search.status());
+      if (path === '/api/manage/semantic/rebuild' && method === 'POST') {
+        return json(search.retry(), 202);
+      }
+      if (path === '/api/manage/semantic/preview' && method === 'POST') {
+        const preview = await search.preview(await body(req), lang);
+        return json({ ...preview, matches: preview.matches.map(withUrls), lexicalFallback: preview.lexicalFallback.map(withUrls) });
+      }
       if (path === '/api/public/health' && method === 'GET') return json({ ok: true, service: 'lagersystem', date: new Date().toISOString() });
       if (path === '/api/public/search' && method === 'GET') {
         const query = url.searchParams.get('q')?.trim() || '';
@@ -184,6 +209,7 @@ export function createApp({ store, env = process.env }) {
     }
   });
   server.requestTimeout = 30000; server.headersTimeout = 10000;
+  server.once('close', () => { void search.close(); });
   return server;
 }
 

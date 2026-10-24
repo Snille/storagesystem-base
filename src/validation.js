@@ -1,3 +1,7 @@
+import { normalizeText } from './search.js';
+
+export const answerIgnoredWords = new Set('var vart finns ligger har jag behover den det de en ett och med i pa av till where is are the do you have need wo ist sind der die das'.split(' '));
+
 export class InputError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
@@ -57,6 +61,8 @@ export function validateSettings(settings) {
   object(settings, 'settings');
   if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);
+  if (settings.searchWorkspace !== undefined) validateSearchWorkspace(settings.searchWorkspace);
+  if (settings.printing !== undefined) validatePrinting(settings.printing);
   for (const [section, fields] of Object.entries({
     appearance: ['language'], security: ['publicApiKey', 'appBaseUrl'],
     immich: ['provider', 'baseUrl', 'accountLabel', 'accessMode', 'apiKey', 'shareKey', 'albumId']
@@ -102,3 +108,85 @@ export function validateAiWorkspace(config) {
   if (!['app', 'en', 'sv', 'de'].includes(task.language)) throw new InputError('Choose app, en, sv or de for the image output language.');
   return config;
 }
+
+export function validateAnswerRules(rules) {
+  if (!Array.isArray(rules) || rules.length > 100) throw new InputError('Configure at most 100 answer rules.');
+  const ids = new Set();
+  for (const rule of rules) {
+    object(rule, 'rule');
+    for (const key of Object.keys(rule)) if (!['id', 'queries', 'action', 'boxIds', 'question'].includes(key)) throw new InputError('Unsupported answer rule field.');
+    if (typeof rule.id !== 'string' || !rule.id.trim() || rule.id.length > 100 || ids.has(rule.id)
+      || !Array.isArray(rule.queries) || !rule.queries.length || rule.queries.length > 30
+      || rule.queries.some(q => typeof q !== 'string' || !q.trim() || q.length > 240
+        || !normalizeText(q).split(' ').some(word => word && !answerIgnoredWords.has(word)))
+      || !['clarify', 'any', 'all'].includes(rule.action)
+      || !Array.isArray(rule.boxIds) || rule.boxIds.length < 2 || rule.boxIds.length > 25
+      || new Set(rule.boxIds).size !== rule.boxIds.length || rule.boxIds.some(id => typeof id !== 'string' || !id.trim() || id.length > 200)
+      || (rule.action === 'all' && rule.boxIds.length > 2)) throw new InputError('Invalid answer rule: choose queries and distinct boxes; return at most two locations.');
+    if (rule.question !== undefined) {
+      object(rule.question, 'question');
+      if (Object.keys(rule.question).some(key => !['en', 'sv', 'de'].includes(key))
+        || Object.values(rule.question).some(q => typeof q !== 'string' || !q.trim() || q.length > 240)) throw new InputError('Use short English, Swedish or German clarification questions.');
+    }
+    if (rule.action === 'clarify' && !Object.keys(rule.question || {}).length) throw new InputError('Clarification rules need a question in at least one language.');
+    ids.add(rule.id);
+  }
+  return rules;
+}
+
+export function validateSearchWorkspace(config) {
+  object(config, 'searchWorkspace');
+  for (const key of Object.keys(config)) if (!['embedding', 'rules'].includes(key)) throw new InputError('Unsupported search setting.');
+  const e = object(config.embedding, 'embedding');
+  for (const key of Object.keys(e)) if (!['enabled', 'baseUrl', 'model', 'modelRevision', 'dimensions', 'apiKey'].includes(key)) throw new InputError('Unsupported embedding setting.');
+  if (typeof e.enabled !== 'boolean' || !Number.isInteger(e.dimensions) || e.dimensions < 1 || e.dimensions > 8192) throw new InputError('Choose a valid embedding dimension and preview mode.');
+  for (const key of ['baseUrl', 'model', 'modelRevision']) {
+    text(e[key], key, { empty: true });
+    if (e[key].length > (key === 'baseUrl' ? 1000 : 200)) throw new InputError('Embedding setting is too long.');
+  }
+  text(e.apiKey, 'apiKey', { optional: true, empty: true });
+  if (e.apiKey && (e.apiKey.length > 4096 || /[\r\n]/.test(e.apiKey))) throw new InputError('Use an API key without line breaks.');
+  if (e.baseUrl) {
+    let url; try { url = new URL(e.baseUrl); } catch { throw new InputError('Enter the native Ollama HTTP(S) origin without /v1.'); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash
+      || url.pathname !== '/') throw new InputError('Enter the native Ollama HTTP(S) origin without paths or credentials.');
+  }
+  if (e.modelRevision && !/^[a-f0-9]{64}$/.test(e.modelRevision)) throw new InputError('Choose the model digest from the saved server model list.');
+  if (e.enabled && (!e.baseUrl || !e.model.trim() || !e.modelRevision)) throw new InputError('Save a server, model and immutable digest before enabling embeddings.');
+  validateAnswerRules(config.rules);
+  return config;
+}
+
+export function validatePrinting(config) {
+  object(config, 'printing');
+  if (Object.keys(config).some(key => !['enabled', 'serverUrl', 'queue', 'mediaKey', 'style', 'rollReader'].includes(key))) throw new InputError('Unsupported printing setting.');
+  if (typeof config.enabled !== 'boolean' || !labelMediaPresets.some(p => p.key === config.mediaKey)) throw new InputError('Choose a supported label format.');
+  for (const key of ['serverUrl', 'queue']) text(config[key], key, { empty: !config.enabled });
+  if (config.serverUrl.length > 1000) throw new InputError('CUPS server URL is too long.');
+  if (config.serverUrl) {
+    let url; try { url = new URL(config.serverUrl); } catch { throw new InputError('Enter a CUPS HTTP(S) origin.'); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new InputError('Use a CUPS origin without paths or credentials.');
+  }
+  if (config.queue && !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(config.queue)) throw new InputError('Invalid CUPS queue name.');
+  object(config.style, 'style');
+  if (Object.keys(config.style).sort().join(',') !== 'descriptionSize,locationSize,titleSize'
+    || Object.values(config.style).some(n => !Number.isInteger(n) || n < 6 || n > 16)) throw new InputError('Label font sizes must be 6-16 points.');
+  if (config.rollReader !== undefined) {
+    const r = object(config.rollReader, 'rollReader');
+    if (Object.keys(r).sort().join(',') !== 'enabled,host,port' || typeof r.enabled !== 'boolean' || typeof r.host !== 'string'
+      || r.host.length > 253 || (r.host && !/^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(r.host)) || (r.enabled && !r.host)
+      || !Number.isInteger(r.port) || r.port < 1 || r.port > 65535) throw new InputError('Use a roll-reader hostname or IPv4 address and a valid TCP port.');
+  }
+  return config;
+}
+
+export function validatePrintJob(record) {
+  object(record, 'print job');
+  if (!/^[a-f0-9-]{36}$/.test(record.id) || !/^[a-f0-9]{64}$/.test(record.tokenHash) || !/^[a-f0-9]{64}$/.test(record.documentHash)
+    || !/^[a-f0-9]{64}$/.test(record.settingsRevision) || typeof record.createdAt !== 'string' || !Number.isFinite(Date.parse(record.createdAt))
+    || !['submitting', 'submitted', 'unknown', 'rejected'].includes(record.state)
+    || (record.jobId !== undefined && (!Number.isInteger(record.jobId) || record.jobId < 1))) throw new InputError('Invalid print job record.');
+  validatePrinting({ enabled: true, serverUrl: record.serverUrl, queue: record.queue, mediaKey: record.mediaKey, style: { titleSize: 11, descriptionSize: 8, locationSize: 8 } });
+  return record;
+}
+import { labelMediaPresets } from './label-media.js';

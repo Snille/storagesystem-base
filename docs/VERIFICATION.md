@@ -1,5 +1,27 @@
 # Development verification
 
+## Search settings preview (0.11.0-dev)
+
+All 81 automated tests pass on Windows and pinned Node 24.14 Docker. New coverage
+includes settings revision/key/destination boundaries, atomic rule validation,
+saved rules without embeddings, native metadata-only discovery, model changes
+without app restart, stale in-flight preview rejection, backup/restore and public
+API behavior. No production data or physical output is used by these tests.
+
+Browser verification used a separate local snapshot with the owner's six already
+approved rules: opening/editing/saving the network-cable rule, obtaining the exact
+finished-cable clarification, obtaining both extension-lead destinations, saving
+disabled model settings and handling a server without native model metadata.
+The browser test exposed a cable-plural evidence gap; the fixed policy has a
+specific question-text and code-constraint regression. Offline replay of prior
+source-bound identity evidence retains original 27/30, owner 20/20 and source
+30/30, with zero incorrect confident answers. No new identity inference or paid
+request ran. Private evidence is under `data/search-settings-preview-20261023/`.
+These checks are regression evidence, not independent production acceptance.
+
+Printer access was confirmed on 2026-10-23. Read-only CUPS preflight found
+`DYMO_5XL` idle/enabled; new-system physical printing remains unverified.
+
 ## Fitted album previews on 2026-10-20 (0.7.1-dev)
 
 - Browser acceptance uses synthetic 640×360 landscape and 320×480 portrait images with a visible perimeter. Both load through the album preview rendition and compute to `object-fit: contain`; all perimeter edges are visible in the inbox.
@@ -168,6 +190,43 @@ Versions 0.6.1–0.6.3 were also checked with the real test images: uncropped po
 - Physical Assist/speech/satellite acceptance; real isolated HA runtime and card have passed.
 - Separate legacy language-file migration. Excel catalog round-trip was retired from scope on 2026-10-20.
 - Real Portainer installation/update and future database schema upgrades.
-- Printer filters, print queue/status and physical label/sheet output. All physical printer testing is deferred until the user has access again.
+- Alternate media/sheets and fresh printer driver installations remain unverified. The first new-system 57 x 32 mm label, queue/status and owner physical acceptance are verified below.
 
 No existing production installation has been modified or restarted.
+
+## Printing verification - 2026-10-23
+
+See PRINTING.md for the schema migration, eight synthetic printing cases, exact live CUPS route and physical acceptance limits. Browser submission created one job (114), CUPS completed, queue returned idle/empty, loaded S0722540 roll decreased 679 -> 678. The owner approved physical output and supplied a photo confirming legible Swedish glyphs, correct orientation and unclipped text. No production configuration or service restart was performed.
+
+## CUPS status follow-up - 0.12.1-dev
+
+Expanded queue-state/reason/media presentation and fixture coverage; no direct DYMO query ships. A proposed raw version/status adapter passed transport fixtures but failed physical acceptance when the owner observed renewed white power-lamp blinking. It was withdrawn, its config removed and tunnel stopped. No new print submission, reset, feed or end-job command was sent. Root cause remains unresolved. See PRINTING.md.
+
+Final 0.12.1 checks: 90/90 tests pass locally and in pinned Docker. Separate image `storagesystem-base:printing-status-0.12.1` was built without replacing an existing service. Browser verification shows idle CUPS, zero queued jobs and explicit default/app-media distinction. Inventory audit passes and rows/registered locations match the private pre-print backup. Two journal entries remain. Missing local photo credentials were restored from the canonical store; a signed image request returned HTTP 200 WebP. A comparison assertion accidentally exposed a photo credential in tool output; do not reproduce it in diagnostics or docs. Credential rotation is recommended.
+
+
+## 0.13.0 manual roll reader
+
+97 local tests pass, including seven added protocol/layout/concurrency cases. The owner confirmed solid white power and no feed after the complete experimental cycle and the new app button. App metadata: S0722540, 677 remaining, preset 57 x 32 mm. A portrait 25 x 54 mm test preview was prepared without printing. A real change to S0722520 was owner-accepted with solid power and no feed; alternate-format output acceptance remains pending. No new print jobs or production changes. The Immich key was subsequently rotated by the owner and refreshed from the canonical secrets file; the earlier credential rotation recommendation is resolved.
+
+Roll-change observation: after the owner confirmed the replacement was loaded, the app read S0722520 / 25 x 54 mm / 413 labels. The saved format already matched. A fresh preview with a visible format caption was checked without printing. The owner confirmed the size/count and solid power with no extra feed after this replacement read.
+
+Final checks: 97/97 tests pass locally and in pinned Node 24.14 Docker. Separate image `storagesystem-base:roll-reader-0.13.0` built successfully. Inventory audit passes; inventory and registered locations match the private pre-print backup. Exactly two historical print submissions remain.
+
+Job 116 physical correction: the owner clarified that the label was blank, with blinking power. This is a failed alternate-format print, not accepted output. The actual CUPS spool PostScript renders the expected Swedish text. Offline CUPS conversion (raster destination only, no printer backend) produced one 271 x 593 RGB page with 18,360 non-white bytes, including black pixels. The installed filter is the LanguageMonitor-enabled `raster2dymolw_v2`, not a verified no-monitor patch. CUPS first reported `com.dymo.slot-status-error`, then the socket backend failed with `Broken pipe` and busy-error; those observations do not establish the physical cause. Only test job 116 was canceled to prevent retry; no incomplete jobs remain. No additional print, raw device query, reset, production driver/configuration change or service restart was performed. The owner confirmed solid power after cancellation. This links the blinking to the failed print cycle, but does not identify why the label was blank. Evidence remains in the ignored preview diagnostics.
+
+Repeat physical test 117: unchanged S0722520 / 25 x 54 mm test, explicitly authorized by the owner to check initial feeding. The owner reported no label and blinking power. CUPS again reported `com.dymo.slot-status-error`. Only test job 117 was canceled; the queue is empty/idle, with a printer-not-ready message. No reset, raw read, driver/configuration change or further print was performed. The repeat failure argues against a single initial-feed event, but does not distinguish roll seating/sensing from driver/protocol behavior.
+
+0.13.1 follow-up: a bounded A1 probe returned engine 2, job ID 0, bay 9 (jammed), SKU S0722520, count 413, and error-ID zero. This is a granted host response in the protocol, despite being an error state. The reader previously treated only engine zero as owned; cleanup now also releases a granted engine-2 reservation with no active job, while reporting the error before reading NFC. A regression test confirms Q-only cleanup, no U/feed/reset and no release for a nonzero active job ID. The corrected live reader reports the label jam and sends release. The owner reported that reloading and pressing the printer's own feed button did not restore normal feeding/solid readiness. A control test with the previously accepted 57 x 32 mm roll is pending; no more software print jobs have been submitted.
+
+0.13.1 validation: all 98 tests pass locally and in pinned Node 24.14 Docker; separate image `storagesystem-base:roll-reader-0.13.1`. Only the isolated port-3212 helper was restarted to load the correction. Inventory integrity audit passes (164 boxes, 249 sessions, 306 photo references, 164 locations).
+
+The owner subsequently found the replacement roll was installed backwards, with the label side facing the wrong way, preventing correct sensing. The owner corrected the loading and authorized a fresh test. Previous driver/protocol suspicions are not an established root cause of the physical failures; this loading error is owner-verified. The separate error-reservation cleanup fix remains valid.
+
+After corrected roll loading, app reading returned S0722520 / 25 x 54 mm / 411 labels. A fresh test was submitted once as CUPS job 118. It completed promptly; queue idle, zero queued jobs, reasons none. No media/layout/production driver change was needed. The owner accepted physical text/orientation and solid power, supported by the supplied photo.
+
+Final physical acceptance for job 118: the owner confirmed clear, correctly oriented, unclipped text and solid power. The supplied photo confirms Swedish glyphs and the 25 x 54 mm portrait layout. Two formats now have accepted real output (57 x 32 and 25 x 54 mm); 19 x 51 and 54 x 101 mm have synthetic layout checks only. The roll-loading error resolved the reported print failure; no production driver/configuration changes were needed.
+
+S0722430 / 54 x 101 mm accepted physically: test job 119 completed and the owner confirmed good text/layout with solid power. The supplied photo confirms legible Swedish glyphs and no clipping. Three formats now have real output acceptance: 57 x 32, 25 x 54 and 54 x 101 mm. Only 19 x 51 mm remains physically unverified among the four presets.
+
+Final acceptance for job 120: the owner confirmed legible, correctly oriented, unclipped text and solid power. All four explicit formats now have real owner-accepted test output: S0722540 (57 x 32 mm; jobs 114/115), S0722520 (25 x 54 mm; job 118), S0722430 (54 x 101 mm; job 119), and S0722550 (19 x 51 mm; job 120). This verifies the tested layouts on this 5XL/CUPS route, not every inventory label or other printer. Description size is currently 6 points for the smallest format; text sizes are shared settings, not per-format profiles.

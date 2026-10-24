@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { InputError, object, text } from './validation.js';
 import { searchBoxes } from './search.js';
 import { buildStorageMap } from './storage-map.js';
+import { previewAnswerDecision } from './answer-policy.js';
 
 const labels = {
   en: { ivar: 'Shelving unit', bench: 'Bench', cabinet: 'Cabinet', shelf: 'Shelf', slot: 'Slot', surface: 'Surface', top: 'On top', under: 'Under' },
@@ -103,6 +104,22 @@ export class Inventory {
   }
 
   storageMap(language) { return buildStorageMap(this.list(language), this.positions(language)); }
+
+  // Development decision layer; public ask/search retain their current contracts.
+  previewAnswer(query, options, language) {
+    return previewAnswerDecision(query, this.list(language), options, this.language(language));
+  }
+
+  async verifiedPreviewAnswer(query, options, verifier, language) {
+    if (options?.identityEvidence?.length) throw new InputError('Identity evidence is supplied only by the verifier.');
+    const initial = this.previewAnswer(query, options, language);
+    if (initial.reason !== 'unverified_item_identity') return initial;
+    const best = initial.matches[0];
+    let proof = null;
+    try { proof = await verifier.verify(query, this.get(best.boxId, language), options.confirmedIntent); } catch { /* Unavailable verification cannot authorize an answer. */ }
+    // Re-read current inventory after inference; stale retrieval/evidence fails closed.
+    return this.previewAnswer(query, { ...options, identityEvidence: proof ? [proof] : [] }, language);
+  }
 
   ask(query, language) {
     const lang = this.language(language); const matches = this.search(query, 5, lang);

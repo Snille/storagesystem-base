@@ -24,16 +24,44 @@
     </section>
     <p id="message" role="status" aria-live="polite"></p>
     <div id="workspace" hidden>
-      <section class="intro"><div><p class="eyebrow">INVENTORY</p><h1>A place for everything.</h1><p class="muted">Your workshop at a glance.</p></div><div class="actions"><button id="open-storage-map" class="quiet">Storage map</button><button id="open-settings" class="quiet">Photo settings</button><button id="open-ai" class="quiet">AI assistance</button><button id="open-album" class="quiet">Album inbox</button><button id="new-box">+ Add box</button></div></section>
+      <section class="intro"><div><p class="eyebrow">INVENTORY</p><h1>A place for everything.</h1><p class="muted">Your workshop at a glance.</p></div><div class="actions"><button id="open-storage-map" class="quiet">Storage map</button><button id="open-settings" class="quiet">Photo settings</button><button id="open-ai" class="quiet">AI assistance</button><button id="open-search-settings" class="quiet">Search &amp; answers</button><button id="open-printing" class="quiet">Printing</button><button id="open-album" class="quiet">Album inbox</button><button id="new-box">+ Add box</button></div></section>
       <section class="stats" aria-label="Inventory totals"><div><strong id="box-count">0</strong><span>Boxes</span></div><div><strong id="location-count">0</strong><span>Storage positions</span></div><div><strong id="session-count">0</strong><span>Inventory sessions</span></div><div><strong id="photo-count">0</strong><span>Photo references</span></div></section>
       <section class="toolbar"><label class="search-label">Search inventory<input id="search" type="search" placeholder="Search contents, box names, or locations…"></label><label>Location<select id="location"><option value="">All locations</option></select></label><button class="quiet" id="refresh">↻ Refresh</button></section>
       <p id="result-count" class="muted"></p>
       <section id="boxes" class="grid" aria-label="Inventory boxes"></section>
       <section id="empty" class="panel empty" hidden><h2>Your inventory starts here.</h2><p class="muted">Add your first box, or import an existing inventory below. Imports require an empty database.</p><button id="empty-add">+ Add first box</button></section>
       <details class="panel maintenance"><summary>Data &amp; maintenance</summary><p class="muted">Exports contain inventory only. SQLite backups also include settings and credentials: keep them private. Original photos remain in your photo service.</p><div class="actions"><button id="export" class="quiet">Export JSON</button><button id="backup" class="quiet">Download SQLite backup</button><button id="audit" class="quiet">Check data integrity</button></div><label class="import-label">Import inventory JSON into an empty database<input id="import" type="file" accept="application/json,.json"></label><p class="hint">For a full SQLite restore, stop a fresh instance and use the documented restore command. Existing data is never overwritten here.</p></details>
-      <p class="hint footer">Your photos stay in your photo service. Review AI suggestions before saving. Label printing is planned.</p>
+      <p class="hint footer">Your photos stay in your photo service. Review AI suggestions before saving. Preview labels before printing.</p>
     </div>
   </main>
+  <dialog id="printing-dialog" class="wide-dialog">
+    <div class="dialog-title"><h2>Printing</h2><button id="close-printing" class="quiet" aria-label="Close">✕</button></div>
+    <p class="hint">One label per job. Check the loaded roll before printing.</p>
+    <details><summary>Printer connection and text sizes</summary><form id="print-config">
+      <label class="check-label"><input id="print-enabled" type="checkbox">Enable printing</label>
+      <label>CUPS server origin<input id="print-server" type="url" placeholder="http://cups-server:631"></label>
+      <label>Queue name<input id="print-queue" maxlength="80"></label>
+      <label>Label format<select id="print-media"></select></label>
+      <fieldset><legend>DYMO roll reader</legend><label class="check-label"><input id="print-roll-enabled" type="checkbox">Enable manual roll reading</label>
+        <div class="form-grid"><label>Printer address<input id="print-roll-host" maxlength="253" placeholder="192.168.1.50"></label><label>Printer TCP port<input id="print-roll-port" type="number" min="1" max="65535" required value="9100"></label></div>
+        <p class="hint">Read only while no one is printing. The reader briefly reserves the interface, reads the roll and releases its reservation. No labels are fed.</p>
+      </fieldset>
+      <div class="form-grid"><label>Title size<input id="print-title-size" type="number" min="6" max="16" required></label><label>Description size<input id="print-description-size" type="number" min="6" max="16" required></label><label>Location size<input id="print-location-size" type="number" min="6" max="16" required></label></div>
+      <button id="print-save">Save print settings</button>
+    </form></details>
+    <button id="print-check" class="quiet">Check printer connection</button>
+    <button id="print-read-roll" class="quiet" disabled>Read loaded roll</button>
+    <section id="print-roll-result" class="panel" hidden aria-live="polite"><h3>Loaded roll</h3><p id="print-roll-summary"></p><p id="print-roll-observed" class="hint"></p><p id="print-roll-note" class="hint"></p><button id="print-use-roll" class="quiet" disabled>Use detected label format</button></section>
+    <section id="print-device-result" class="panel" hidden aria-live="polite"></section>
+    <label>Label source<select id="print-box"></select></label>
+    <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label>Title<input id="print-title" maxlength="240"></label><label>Description<textarea id="print-description" maxlength="2000"></textarea></label><label>Location<input id="print-location" maxlength="240"></label></div>
+    <button id="print-preview" class="quiet">Prepare label preview</button>
+    <div id="print-paper" class="label-paper"></div>
+    <p id="print-status" role="status" aria-live="polite"></p>
+    <div class="actions"><button id="print-submit" disabled>Print one label</button><button id="print-job-check" class="quiet" disabled>Check print job</button></div>
+    <p class="hint">A completed CUPS job confirms delivery to the driver. Check the physical label for text and orientation.</p>
+    <details><summary>Recent print submissions</summary><div id="print-history" class="actions"></div></details>
+  </dialog>
   <dialog id="storage-map-dialog" class="wide-dialog" aria-labelledby="storage-map-title">
     <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
     <p id="storage-map-query" class="hint"></p>
@@ -172,6 +200,43 @@
         <button type="button" id="ai-run-preview" disabled>Analyze selected photo</button><p id="ai-preview-status" role="status" class="hint" aria-live="polite"></p>
         <article id="ai-result" class="ai-result" hidden><div class="dialog-title"><h3>Review suggestion</h3><span class="chip">Preview only · not saved</span></div><p id="ai-result-meta" class="hint"></p><dl><dt>Suggested photo role</dt><dd id="ai-result-role"></dd><dt>Suggested label</dt><dd id="ai-result-label"></dd><dt>Contents description</dt><dd id="ai-result-summary"></dd><dt>Searchable keywords</dt><dd id="ai-result-keywords"></dd><dt>Uncertainty</dt><dd id="ai-result-uncertainties"></dd></dl><p class="hint">Check names, quantities and product codes against the photo. To create a box draft from one or more photos, select them in Album inbox and choose Create AI draft.</p></article>
       </section>
+    </section>
+  </dialog>
+  <dialog id="search-settings-dialog" class="wide-dialog" aria-labelledby="search-settings-title">
+    <div class="dialog-title"><div><h2 id="search-settings-title">Search &amp; answers</h2><p class="hint">Try saved search rules here. The usual search and Home Assistant are unchanged.</p></div><button id="close-search-settings" class="quiet" aria-label="Close search settings">✕</button></div>
+    <p id="search-settings-status" role="status" aria-live="polite" class="hint"></p>
+    <nav class="actions search-tabs" aria-label="Search settings sections"><button type="button" data-search-page="rules">Answer rules</button><button type="button" data-search-page="model" class="quiet">Embedding model</button><button type="button" data-search-page="preview" class="quiet">Try a question</button></nav>
+    <section id="search-page-rules">
+      <h3>Choose how ambiguous questions are answered</h3><p class="hint">A rule can accept either location, return two locations, or ask which type you need. Every selected box must still have current evidence for the question.</p>
+      <div id="search-rules-list"></div><button type="button" id="search-add-rule">Add answer rule</button>
+      <form id="search-rule-form" hidden class="panel search-rule-editor">
+        <h3 id="search-rule-title">Answer rule</h3>
+        <label>Questions, one per line<textarea id="search-rule-queries" rows="3" required placeholder="e.g. Skarvsladd"></textarea></label>
+        <label>For these questions<select id="search-rule-action"><option value="any">Either location is fine</option><option value="all">Return both locations</option><option value="clarify">Ask which type</option></select></label>
+        <fieldset><legend>Boxes this rule applies to</legend><p class="hint">Choose at least two boxes. Returning both locations is limited to two.</p><label>Filter boxes<input id="search-rule-filter" type="search"></label><div id="search-rule-boxes" class="search-rule-boxes"></div></fieldset>
+        <div id="search-rule-questions" hidden><p class="hint">Write the short clarification question in at least one language.</p><label>Question in Swedish<input id="search-rule-sv" maxlength="240" placeholder="Ska det vara en färdig nätverkskabel?"></label><label>Question in English<input id="search-rule-en" maxlength="240"></label><label>Question in German<input id="search-rule-de" maxlength="240"></label></div>
+        <div class="actions"><button type="submit">Save answer rule</button><button id="search-cancel-rule" type="button" class="quiet">Cancel rule edit</button></div>
+      </form>
+    </section>
+    <section id="search-page-model" hidden>
+      <h3>Embedding model</h3><p class="hint">Embeddings help find related wording. They do not analyze photos or decide that two different objects are the same.</p>
+      <p id="search-environment-note" class="hint" hidden>Environment configuration is in use. Saving replaces it with this instance's saved search settings.</p>
+      <form id="search-model-form">
+        <label>Ollama server<input id="search-server" type="url" maxlength="1000" placeholder="http://ollama-host:11434"></label>
+        <label>Server key<input id="search-key" type="password" autocomplete="new-password" maxlength="4096"></label><p id="search-key-status" class="hint"></p>
+        <label class="check-label"><input id="search-clear-key" type="checkbox">Clear saved server key</label><p class="hint">Changing the server clears its saved key. A blank key otherwise keeps it.</p>
+        <label>Model name<input id="search-model" list="search-models" maxlength="200" placeholder="bge-m3:cpu4"><datalist id="search-models"></datalist></label>
+        <button id="search-load-models" type="button" class="quiet">Load saved server models</button><p class="hint">Save the server first. Loading models sends no inventory text and does not verify embedding support.</p>
+        <details><summary>Model version and dimensions</summary><label>Immutable model digest<input id="search-model-revision" maxlength="64" spellcheck="false"></label><p class="hint">Choosing a listed model fills its digest. A changed digest requires new vectors.</p><label>Vector dimensions<input id="search-dimensions" type="number" min="1" max="8192" value="1024" required></label></details>
+        <label class="check-label"><input id="search-enabled" type="checkbox">Use embeddings in this preview</label><p class="hint">Enabling sends current inventory descriptions to the saved Ollama server and builds a separate cache. Public search is not enabled by this setting.</p>
+        <div class="actions"><button type="submit">Save embedding settings</button><button id="search-retry-index" type="button" class="quiet">Retry indexing</button></div>
+      </form>
+      <p id="search-index-status" role="status" class="hint"></p>
+    </section>
+    <section id="search-page-preview" hidden>
+      <h3>Try a question</h3><p class="hint">Uses saved rules and current inventory. With embeddings enabled, the question is also sent to the saved Ollama server. No inventory is changed.</p>
+      <form id="search-preview-form"><label>Question<input id="search-preview-query" required maxlength="2000" placeholder="Var finns tejpen?"></label><button type="submit" id="search-run-preview">Preview answer</button></form>
+      <article id="search-preview-result" class="ai-result" hidden><p id="search-preview-answer"></p><p id="search-preview-meta" class="hint"></p><ul id="search-preview-matches"></ul></article>
     </section>
   </dialog>
 </body>

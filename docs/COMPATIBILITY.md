@@ -22,9 +22,9 @@ Reusable behavior includes current-session precedence, structured location gramm
 | Album inbox and photo selection | Implemented for Immich/PhotoPrism with selected album, roles and unassigned filtering |
 | AI photo roles, analysis, matching and corrections | Single-photo tests, multi-photo new-box drafts and selected-photo existing-box updates implemented with explicit review/edit/save; manual roles retained; automatic matching remains pending |
 | AI-generated natural answers | Local search fallback implemented; provider-generated answers pending |
-| Settings, prompts and per-model overrides | Photo source, independent UI/external/AI language, named AI connections and task extra instructions implemented; per-role/per-model prompt editing and remaining legacy execution pending |
+| Settings, prompts and per-model overrides | Photo source, independent UI/external/AI language, named AI connections and task extra instructions implemented; Search & answers adds embedding settings and saved owner rules for management preview. Per-role/per-model prompt editing and remaining legacy execution pending |
 | Language catalogs and translation tool | API location labels/local answers in en/sv/de; catalog/override editing and separate-file migration pending |
-| Label designer and printer selection/status | Pending; no physical printer contact performed |
+| Label designer and printer selection/status | Initial CUPS connection/status and 57 x 32 mm label preview/print implemented; job 114 completed and counter fell by one. Owner approved physical text/orientation with photo evidence. Full designer/media/sheets pending |
 | Excel catalog import/export | Retired from scope on 2026-10-20 at Erik's request; one-time initial label import, no future use |
 
 ## REST contract
@@ -72,6 +72,10 @@ MCP text results contain text JSON and structuredContent. Photo metadata exclude
 All `/api/manage/*` routes require the management header key. `GET/PUT /api/manage/settings` exposes and edits the photo source, with redacted credentials and an optimistic source revision. Independent UI/external-response languages use `GET/PUT /api/manage/languages`. `GET /api/manage/albums` discovers albums; `GET /api/manage/album?refresh=true` returns the selected album's image metadata, assignment flags and expiring preview URLs. `POST /api/manage/session` requires the catalog's `photoSourceRevision` when attaching previously unused images, and verifies current album membership before writing.
 
 Immich album images use paginated `POST /api/search/metadata` with `albumIds`, `size` and `page`, matching the reference rather than relying on embedded album assets. Shared-link mode reads `/api/shared-links/me`. PhotoPrism lists `/api/v1/albums` and searches `/api/v1/photos` with album `s`, `count` and `offset`. All calls are read-only even where the metadata search method is POST. Adapter errors do not expose upstream response bodies or credentials.
-- Physical output, queues, driver/filter behavior and DYMO status remain unverified. Printer tests are deferred at the user's request until access is available.
+- Physical output and driver/filter behavior remain unverified. The owner confirmed printer access on 2026-10-23; tests can proceed once the new print path exists. Read-only preflight found `DYMO_5XL` idle/enabled in the existing CUPS service. No queue/service settings were changed and no new-system physical output is claimed.
 
 No replacement of production is appropriate until the remaining migration, integration and workflow acceptance gates pass.
+
+Current printing evidence supersedes earlier preflight-only notes: see PRINTING.md. Queue/driver configuration remains unchanged.
+
+Version 0.13.0 adds four legacy-template article/media mappings and an optional 5XL roll reader. The manual same-connection cycle has owner-observed solid-lamp/no-feed acceptance; alternate-format physical output remains unverified. This does not reuse the legacy standalone lock request.

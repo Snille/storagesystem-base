@@ -107,4 +107,52 @@ Album assignment and write ownership use the same effective current-session sele
 
 ## Proposed semantic retrieval and voice decisions
 
-[VOICE-SEARCH.md](VOICE-SEARCH.md) documents the existing physical-button-to-HA-to-Piper-to-announcement path and the proposed hybrid retrieval/one-destination answer contract. This is design work, not an implemented feature. Retain SQLite for the observed 164 boxes/293 current photo references and their conservative doubled scenario. Store derived, versioned embeddings separately from inventory rows and compare this small corpus directly before considering a vector extension or PostgreSQL. Original image files stay in the external photo service. Revisit the database choice on measured concurrency/corpus growth rather than treating PostgreSQL as a requirement for semantic quality. The production route to an embedding service remains an explicit deployment gate.
+[VOICE-SEARCH.md](VOICE-SEARCH.md) documents the existing physical-button-to-HA-to-Piper-to-announcement path and proposed runtime retrieval/answer contract. `src/answer-policy.js` implements a synchronous decision preview used by `Inventory.previewAnswer`. It combines current literal evidence with externally supplied, current-session-bound semantic scores, and validates explicit owner rules separately. It performs no network calls or writes, and formats selected destinations from current inventory records. The public ask/search and MCP/browser paths retain their previous behavior; no semantic runtime is activated. See [ANSWER-POLICY.md](ANSWER-POLICY.md) for evidence precedence, limits, configuration and evaluation.
+
+Retain SQLite for the observed 164 boxes/293 current photo references and their conservative doubled scenario. Store derived, versioned embeddings separately from inventory rows and compare this small corpus directly before considering a vector extension or PostgreSQL. Original image files stay in the external photo service. Revisit the database choice on measured concurrency/corpus growth rather than treating PostgreSQL as a requirement for semantic quality. The earlier compatible Ollama route was measured but silently truncates at 2048 tokens; the optional runtime below uses a native adapter with explicit rejection instead. An approved native deployment route and independent acceptance remain activation gates.
+
+The 0.10.1-dev `verifiedPreviewAnswer` service adds an optional injected identity
+verifier for semantic-only candidates. `identity-verifier.js` sends bounded
+current source text to an explicitly configured local model and returns exact
+source-bound evidence. Similarity alone cannot produce a confident answer.
+Evidence is checked again against query, confirmed intent and current session
+after inference. IDs/locations stay in application code; unavailable verification
+causes abstention. This is an isolated preview with live local tests, not an
+enabled application setting or deployment decision. See ANSWER-POLICY.md.
+
+Version 0.10.2-dev adds `semantic-index.js` with a separate derived SQLite cache,
+post-commit background reconciliation and full-current-corpus ranking. Cached rows
+bind exact current session/content to document version, endpoint, model digest and
+dimension. Results are rechecked after inference; stale/incomplete indexes yield
+no semantic scores. `embeddings.js` uses native Ollama with `truncate: false` and
+checks the model digest before each request. `semantic-runtime.js` is explicitly
+enabled by server environment configuration, disabled by default and used only
+by authenticated management preview endpoints. No public search/ask/MCP behavior
+changes. The deployed gateway's native routes, independent acceptance and reviewed
+runtime rule management remain open. See SEMANTIC-RUNTIME.md.
+
+Version 0.11.0-dev adds `SearchSettings` and `SearchService` over the same store
+and inventory service. `searchWorkspace` persists embedding configuration and
+owner answer rules in the existing settings table; the main schema stays version
+1. Shared validation runs on save/import/audit/restore. Settings views redact keys
+and writes require an optimistic revision, preserve unrelated sections and clear
+credentials when the destination changes. Native model discovery uses only the
+saved endpoint/key and returns names/digests without inference or source text.
+
+The service replaces the optional embedding worker/cache on configuration
+changes, serializing transitions outside inventory transactions; rules-only
+changes reuse vectors. Requests read one settings snapshot and reject results
+after a revision change. Management preview uses saved rules even with embeddings
+disabled, while public UI/REST/MCP/HA search remains unchanged. The Search & answers
+dialog edits structured rules and model settings without exposing raw JSON or
+provider errors. Identity model/threshold selection and independent acceptance
+remain separate activation gates. No speech normalization is enabled.
+
+### Initial printing implementation (0.12.0-dev)
+
+`Printing` coordinates management settings, bounded shared label layout and native IPP. The server generates one PostScript document; no shell/driver dependency lives in the app. Preview tokens bind content/settings and expire. Schema 2 adds a durable unique token/request journal before external submission, preventing automatic duplicate prints after ambiguous responses or restart. CUPS status is distinct from physical output acceptance. See PRINTING.md; legacy designer, sheets and optional driver packaging remain pending.
+
+The 0.12.1 print-status UI displays CUPS attributes only. An experimental raw DYMO adapter caused renewed lamp blinking in owner-observed acceptance and was withdrawn entirely from runnable source. No raw TCP monitoring, auto polling, reset or recovery endpoint ships. Driver protocol work remains gated on real hardware acceptance.
+
+
+In 0.13.0, an optional manual DYMO adapter uses one bounded ownership/read/release connection with owner-observed non-interference on the tested 5XL. It shares the printing busy guard, checks queue/revision and never polls. Dimensions use explicit article presets. The earlier withdrawn implementation above is historical; see PRINTING.md for current behavior and physical acceptance limits.

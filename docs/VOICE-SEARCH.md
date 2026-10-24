@@ -4,13 +4,26 @@ Recorded 2026-10-20. Application version: 0.9.1-dev. This document distinguishes
 the existing production setup, the implemented replacement, and proposed work.
 No production configuration, firmware or database was changed for this review.
 
+Implementation update (0.10.0-dev): the isolated decision layer is available
+through `Inventory.previewAnswer`; see ANSWER-POLICY.md. It is regression-tested
+with current evidence and explicit owner rules, but the proposed runtime flow
+below is not activated in public interfaces or HA.
+
 ## Primary requirement
 
 Erik activates the wall-mounted workshop assistant with a button, not a wake word.
 The normal spoken result should give one well-supported destination in one short
-sentence. Do not read a list of alternative boxes or locations. A short, honest
+sentence. Do not read an indiscriminate list of alternative boxes or locations. A short, honest
 clarification or no-match response is preferable to a confident but weak match.
 Detailed candidates may remain visible on the screen or HA card.
+
+Owner refinement on 2026-10-22: extension-lead queries should include both
+power strips and long extension leads in a short answer. This explicitly allows
+two relevant supported destinations for that case. Do not confuse acceptable
+alternatives with meaningful item-type ambiguity: network cable should prompt
+whether a finished cable is wanted, distinguishing it from bulk cable used to
+make cables. These are confirmed design requirements, not implemented runtime
+behavior. See the prospective user-query test in SEMANTIC-EVALUATION.md.
 
 Keep button activation. Proposed clarification support does not authorize
 automatically opening the microphone or introducing wake-word activation.
@@ -153,7 +166,9 @@ current inventory record, never from model-generated location text.
 | Decision | Proposed spoken behavior |
 | --- | --- |
 | One strongly supported destination | One short sentence with the item and its actual human-readable location |
-| Several similarly supported destinations | One short distinguishing question; no list of locations |
+| Owner-confirmed compatible alternatives, such as extension leads | Short answer with both supported destinations where explicitly wanted; no unrelated candidate list |
+| Meaningfully different item types, such as finished versus bulk network cable | One short distinguishing question |
+| Other unresolved similarly supported destinations | One short distinguishing question; no list of locations |
 | Insufficient evidence | One short no-match response; do not guess |
 
 The decision to select, clarify or abstain belongs to application logic. An
@@ -251,8 +266,11 @@ adding unanalysed photos does not automatically add semantic knowledge.
 The existing synchronous snapshot-based inventory writes are a separate
 implementation constraint, documented in ARCHITECTURE.md. Keep derived vectors
 out of that rewrite and benchmark actual write/search latency before expanding
-scope. No performance benchmark or embedding-quality evaluation has yet been run
-for the proposed semantic implementation.
+scope. The [isolated embedding comparison](SEMANTIC-EVALUATION.md) now measures
+local CPU retrieval and a separate experimental decision policy. BGE-M3 dense
+leads that exploratory set; the tested equal-weight lexical fusion reduces top-1.
+The application still has no semantic implementation or measured production
+embedding endpoint. Untouched questions and route verification remain required.
 
 Reconsider PostgreSQL/pgvector if measured load calls for many concurrent writers,
 multiple application replicas, a substantially larger chunk corpus or server-side

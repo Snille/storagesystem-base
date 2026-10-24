@@ -1,0 +1,9 @@
+# Isolated CPU evaluation only; not application/container dependencies.
+# Install torch first using https://download.pytorch.org/whl/cpu.
+torch==2.9.1+cpu
+sentence-transformers==5.1.2
+transformers==4.57.3
+numpy==2.5.4
+huggingface-hub==0.36.2
+tokenizers==0.22.2
+safetensors==0.8.0
