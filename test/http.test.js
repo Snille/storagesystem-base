@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { Store } from '../src/store.js';
-import { createApp } from '../src/server.js';
+import { createApp, version } from '../src/server.js';
 import { fixture } from './fixture.js';
 
 async function setup(t, { populated = true, settings = {}, env = {} } = {}) {
@@ -43,6 +43,12 @@ test('position registration requires management, preserves exact IDs and shares 
   assert.equal(positions.find(p => p.locationId === 'A-H1-P1-A').boxCount, 0);
   assert.equal(positions.find(p => p.locationId === 'CABINET:C:H2:P3').boxCount, 1);
   assert.equal(store.audit().counts.sessions, 2); assert.equal(store.audit().ok, true);
+});
+
+test('the page header shows the VERSION file', async t => {
+  const { base } = await setup(t, { populated: false });
+  const page = await (await fetch(base + '/')).text();
+  assert.ok(page.includes(`id="app-version" title="Version">v${version}<`)); assert.ok(!page.includes('{{version}}'));
 });
 
 test('REST contract: health, auth precedence, search languages, ask fallback, missing box', async t => {

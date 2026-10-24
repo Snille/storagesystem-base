@@ -99,8 +99,11 @@ test('multi-photo draft maps indexed interpretations to source assets; explicit 
   assert.equal(draft.result.photos[0].description, 'Screws visible inside.');
   assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
   const call = c.calls.find(call => call.path.endsWith('completions'));
-  assert.equal(call.body.chat_template_kwargs, undefined);
+  assert.equal(call.body.chat_template_kwargs, undefined); assert.deepEqual(call.body.response_format, { type: 'json_object' }); assert.equal(call.body.provider, undefined);
   assert.equal(call.body.messages[1].content.filter(p => p.type === 'image_url').length, 2);
+  // Evaluation rules: names and keywords describe contents, never the container or shelf.
+  assert.match(call.body.messages[0].content, /Never use only a product code/); assert.match(call.body.messages[0].content, /Do not add words about the container or the storage place/);
+  assert.match(call.body.messages[0].content, /inside: Shows the contents: inside an open box, or items standing directly on a shelf/);
   assert.equal(c.calls.filter(call => call.path.startsWith('/api/assets/')).length, 2);
   const payload = { expectNewBox: true, box: { boxId: 'REVIEWED-BOX', label: 'User corrected label', currentLocationId: 'A-H1-P1-A' }, session: { boxId: 'REVIEWED-BOX', summary: draft.result.summary, itemKeywords: draft.result.keywords }, photos: draft.result.photos.map(p => ({ immichAssetId: p.assetId, photoRole: p.role, notes: p.description })), photoSourceRevision: draft.sourceRevision };
   assert.equal((await c.request('session', payload)).status, 200);
@@ -110,6 +113,27 @@ test('multi-photo draft maps indexed interpretations to source assets; explicit 
   const mcp = await (await c.request('../mcp', { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_box', arguments: { box_id: 'REVIEWED-BOX' } } }, 'POST', 'read-fixture')).json();
   assert.equal(mcp.result.isError, undefined); assert.ok(JSON.stringify(mcp.result).includes('User corrected label'));
   assert.equal(c.store.audit().ok, true);
+});
+
+test('OpenRouter drafts request the strict schema; duplicate keywords, empty names and CJK text are handled without writes', async t => {
+  const c = await setup(t);
+  // Settings pin OpenRouter to its real address; route those requests to the fixture.
+  const realFetch = globalThis.fetch; t.after(() => { globalThis.fetch = realFetch; });
+  globalThis.fetch = (url, init) => realFetch(String(url).replace('https://openrouter.ai/api/v1', c.source + '/v1'), init);
+  c.config.connections[0] = { ...c.config.connections[0], provider: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1' };
+  const state = await c.configure(); const first = await c.previewInput(state);
+  const input = { revision: state.revision, sourceRevision: first.sourceRevision, photos: [{ assetId: 'one', role: 'inside' }, { assetId: 'two', role: 'label' }] };
+  c.setCompletion(completion({ ...combined, keywords: ['LED', ' led ', 'kondensator', 'LED', ''] }));
+  const response = await c.request('ai/draft', input); assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).result.keywords, ['LED', 'kondensator']);
+  const call = c.calls.find(call => call.path.endsWith('completions'));
+  assert.equal(call.body.response_format.type, 'json_schema'); assert.equal(call.body.response_format.json_schema.strict, true);
+  assert.deepEqual(call.body.response_format.json_schema.schema.required, ['label', 'summary', 'keywords', 'uncertainties', 'photos']);
+  assert.deepEqual(call.body.provider, { require_parameters: true });
+  for (const bad of [{ ...combined, label: '  ' }, { ...combined, summary: 'Blandade 集成电路 och kondensatorer.' }, { ...combined, photos: [combined.photos[0], { ...combined.photos[1], description: 'ström接触are' }] }]) {
+    c.setCompletion(completion(bad)); assert.equal((await c.request('ai/draft', input)).status, 502);
+  }
+  assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
 });
 
 test('multi-photo draft rejects duplicate/missing assets, bad roles, excess photos and mismatched model photo rows without writes', async t => {
@@ -133,8 +157,11 @@ test('existing-box analysis combines selected retained/new photos with editor co
   const response = await c.request('ai/draft', input); assert.equal(response.status, 200); const update = await response.json();
   assert.equal(update.saved, false); assert.deepEqual(c.store.read(), before);
   assert.deepEqual(update.result.photos.map(p => p.role), ['inside', 'spread']);
+  // The model did not return the saved keyword; the update keeps it first anyway.
+  assert.deepEqual(update.result.keywords, ['manual-code', 'screws', 'washers']);
   const call = c.calls.find(call => call.path.endsWith('completions'));
   assert.match(call.body.messages[0].content, /absence|Absence/); assert.match(call.body.messages[0].content, /Preserve useful existing facts/);
+  assert.match(call.body.messages[0].content, /owner often adds facts that photos cannot show/);
   assert.ok(call.body.messages[1].content[0].text.includes('Manual editor description: screws.'));
   assert.ok(call.body.messages[1].content[0].text.includes('manual-code'));
   const commit = { ...seed, expectedSessionId: saved.sessionId, session: { ...seed.session, summary: update.result.summary, itemKeywords: update.result.keywords }, photos: update.result.photos.map(p => ({ immichAssetId: p.assetId, photoRole: p.role, notes: p.description })) };

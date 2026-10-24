@@ -11,7 +11,7 @@
 <body>
   <header>
     <a class="brand" href="/">▦ <span>Storage System<small>Everything has a place.</small></span></a>
-    <div class="header-actions"><span class="badge">Development preview</span><button id="open-languages" class="quiet">Languages</button><button id="theme" class="quiet" aria-label="Toggle color theme">◐ Theme</button></div>
+    <div class="header-actions"><span class="badge">Development preview</span><span class="badge" id="app-version" title="Version">v{{version}}</span><button id="open-languages" class="quiet">Languages</button><button id="theme" class="quiet" aria-label="Toggle color theme">◐ Theme</button></div>
   </header>
   <main>
     <section id="connect" class="panel connection">
@@ -34,7 +34,7 @@
       <p class="hint footer">Your photos stay in your photo service. Review AI suggestions before saving. Preview labels before printing.</p>
     </div>
   </main>
-  <dialog id="printing-dialog" class="wide-dialog">
+  <dialog id="printing-dialog">
     <div class="dialog-title"><h2>Printing</h2><button id="close-printing" class="quiet" aria-label="Close">✕</button></div>
     <p class="hint">Labels are printed by the label service, one label per job.</p>
     <details><summary>Label service connection</summary><form id="print-config">
@@ -58,7 +58,7 @@
     <p class="hint">A completed CUPS job confirms delivery to the driver. Check the physical label for text and orientation.</p>
     <details><summary>Recent print submissions</summary><div id="print-history" class="actions"></div></details>
   </dialog>
-  <dialog id="storage-map-dialog" class="wide-dialog" aria-labelledby="storage-map-title">
+  <dialog id="storage-map-dialog" aria-labelledby="storage-map-title">
     <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
     <p id="storage-map-query" class="hint"></p>
     <label>Storage unit<select id="storage-map-unit"></select></label>
@@ -103,7 +103,7 @@
       <p class="hint box-identity" title="Generated automatically. New boxes show a proposed ID until saved; existing IDs stay unchanged.">Box ID: <output id="box-identity">Assigned automatically on save</output></p>
     </form>
   </dialog>
-  <dialog id="detail" class="wide-dialog"><div class="dialog-title"><h2 id="detail-title"></h2><button id="close-detail" class="quiet" aria-label="Close">✕</button></div><div id="detail-body"></div><div class="actions"><button id="edit">Update inventory</button></div></dialog>
+  <dialog id="detail"><div class="dialog-title"><h2 id="detail-title"></h2><button id="close-detail" class="quiet" aria-label="Close">✕</button></div><div id="detail-body"></div><div class="actions"><button id="edit">Update inventory</button></div></dialog>
   <dialog id="photo-viewer" class="image-viewer" aria-labelledby="viewer-title">
     <div class="dialog-title"><h2 id="viewer-title"></h2><button id="viewer-close" class="quiet" aria-label="Close photo viewer">✕</button></div>
     <p id="viewer-caption" class="hint"></p>
@@ -113,7 +113,7 @@
     <div class="actions viewer-controls"><button id="viewer-previous" class="quiet" aria-label="Previous photo">← Previous</button><button id="viewer-next" class="quiet" aria-label="Next photo">Next →</button><button id="viewer-cover">Use as card image</button><button id="viewer-auto-cover" class="quiet">Automatic card image</button></div>
     <p class="hint">Click a detail to zoom in there, then hold and drag the image to explore. Use Fit image to zoom out, ← / → to browse and Esc to return to the box.</p>
   </dialog>
-  <dialog id="settings-dialog" class="wide-dialog">
+  <dialog id="settings-dialog">
     <form id="settings-form">
       <div class="dialog-title"><h2>Photo settings</h2><button type="button" id="close-settings" class="quiet" aria-label="Close settings">✕</button></div>
       <div class="form-grid"><label>Photo provider<select name="provider"><option value="immich">Immich</option><option value="photoprism">PhotoPrism</option></select></label><label>Access mode<select name="accessMode"><option value="apiKey">API key / token</option><option value="shareKey">Immich shared link key</option></select></label></div>
@@ -129,13 +129,13 @@
       <p id="settings-status" role="status" class="hint"></p><div class="actions"><button id="save-settings">Save settings</button></div>
     </form>
   </dialog>
-  <dialog id="album-dialog" class="wide-dialog">
+  <dialog id="album-dialog">
     <div class="dialog-title"><div><h2>Album inbox</h2><p id="album-status" class="hint" role="status"></p></div><button id="close-album" class="quiet" aria-label="Close album">✕</button></div>
     <div class="album-toolbar"><label class="check-label"><input id="unused-only" type="checkbox" checked> Show unassigned photos only</label><button id="refresh-album" class="quiet">Refresh album</button></div>
     <p id="album-error" role="alert" class="error"></p><div id="album-photos" class="album-grid"></div>
     <div class="actions album-actions"><span id="selection-count" class="hint" role="status">Select at least one photo to continue.</span><div class="actions"><button id="create-ai-draft" class="quiet" disabled aria-describedby="selection-count">Create AI draft · up to 6 photos</button><button id="use-photos" disabled aria-describedby="selection-count">Use selected photos</button></div></div>
   </dialog>
-  <dialog id="box-draft-dialog" class="wide-dialog">
+  <dialog id="box-draft-dialog">
     <div class="dialog-title"><div><p class="eyebrow" id="box-draft-eyebrow">NEW BOX · AI ASSISTED</p><h2 id="box-draft-title">Build a box draft</h2></div><button id="box-draft-close" class="quiet" aria-label="Close box draft">✕</button></div>
     <p class="hint">Combine up to six photos of the same box: its label, contents, storage location or details. Analysis creates a suggestion for you to review.</p>
     <h3>1. Photos &amp; roles</h3><div id="box-draft-photos" class="session-photos"></div>
@@ -149,7 +149,7 @@
     </article>
     <div class="actions box-draft-footer"><button id="box-draft-apply" disabled>Review &amp; edit in box form →</button><span class="hint">The box form is the final step before saving.</span></div>
   </dialog>
-  <dialog id="ai-dialog" class="wide-dialog">
+  <dialog id="ai-dialog">
     <div class="dialog-title"><div><p class="eyebrow">SETTINGS</p><h2>AI assistance</h2></div><button type="button" id="close-ai" class="quiet" aria-label="Close AI assistance">✕</button></div>
     <p class="hint">Connect a service once, then choose how it helps with your inventory.</p>
     <nav class="ai-nav" aria-label="AI sections"><button type="button" data-ai-page="overview" aria-current="page">Overview</button><button type="button" data-ai-page="connections" class="quiet">Connections</button><button type="button" data-ai-page="images" class="quiet">Image inventory</button></nav>
@@ -198,7 +198,7 @@
       </section>
     </section>
   </dialog>
-  <dialog id="search-settings-dialog" class="wide-dialog" aria-labelledby="search-settings-title">
+  <dialog id="search-settings-dialog" aria-labelledby="search-settings-title">
     <div class="dialog-title"><div><h2 id="search-settings-title">Search &amp; answers</h2><p class="hint">Try saved search rules here. The usual search and Home Assistant are unchanged.</p></div><button id="close-search-settings" class="quiet" aria-label="Close search settings">✕</button></div>
     <p id="search-settings-status" role="status" aria-live="polite" class="hint"></p>
     <nav class="actions search-tabs" aria-label="Search settings sections"><button type="button" data-search-page="rules">Answer rules</button><button type="button" data-search-page="model" class="quiet">Embedding model</button><button type="button" data-search-page="preview" class="quiet">Try a question</button></nav>

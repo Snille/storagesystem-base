@@ -64,7 +64,10 @@ export function createApp({ store, env = process.env }) {
       }
       if (assets.has(path) && req.method === 'GET') {
         const [file, type] = assets.get(path);
-        res.writeHead(200, { 'Content-Type': type }); return res.end(readFileSync(new URL(`../web/${file}`, import.meta.url)));
+        res.writeHead(200, { 'Content-Type': type });
+        const content = readFileSync(new URL(`../web/${file}`, import.meta.url));
+        // VERSION is the only version source; the page header shows it.
+        return res.end(file === 'index.html' ? content.toString('utf8').replaceAll('{{version}}', version) : content);
       }
       const previewMatch = path.match(/^\/api\/album-preview\/([^/]+)$/);
       if (previewMatch && req.method === 'GET') {

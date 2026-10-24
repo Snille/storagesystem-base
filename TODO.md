@@ -34,6 +34,16 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 - [x] Add AI-assisted updates to existing boxes with explicit review and preserved inventory history.
 - [ ] Evaluate other local image models only when requested; compare real image/OCR results rather than trusting capability labels. Reuse the current Spark connection before setting up new infrastructure.
 
+## Gaps against the reference application (compared 2026-10-24 with Storage System v1.6.1)
+
+- [ ] Browser voice search with a spoken answer and "Read answer" for typed searches. Tied to the HA voice flow; design them together (see VOICE-SEARCH.md).
+- [ ] Translation tool: edit interface texts per language, AI-assisted drafts, export. The reference also ships a German interface (`de.json`); this app has English and Swedish only.
+- [ ] Prompt management: per-photo-role prompts and per-model overrides with reset to defaults. This app has one extra-instructions field.
+- [ ] Appearance and security settings in the interface (theme, API keys).
+- [ ] Overview page parity: album-cover overview image and storage statistics (units, storage types, photo coverage).
+- [ ] Check smaller reference behaviors not yet compared in detail: hover analysis text and the green "analysis saved" mark on photos, releasing a photo from a box, `?lang=` URL override for shared devices.
+- Location management is **not** a reference feature: the reference derives storage units from box locations and has no editor. This app already registers empty positions and shows them on the storage map. Further management (removing unused positions, renaming units) is new scope.
+
 ## Before production migration
 
 - [ ] Complete legacy search/language parity and separate translation-file import; acceptance-test real migration and restore.
