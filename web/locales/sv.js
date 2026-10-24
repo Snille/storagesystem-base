@@ -90,6 +90,7 @@ export default {
   "Open label service": "Öppna etikettjänsten",
   "Label service and printer queue": "Etikettjänst och skrivarkö",
   "Selected label format": "Valt etikettformat",
+  "Label format setting": "Formatets inställning",
   "The selected format must match the loaded roll. Read the roll and change the format on the label service page.": "Valt format måste stämma med rullen som sitter i. Läs av rullen och byt format på etikettjänstens sida.",
   "Title size": "Rubrikstorlek",
   "Description size": "Beskrivningsstorlek",

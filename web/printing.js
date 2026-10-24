@@ -86,13 +86,16 @@ export function mountPrinting(request) {
   }));
   $('print-box').addEventListener('change', () => { invalidate(); $('print-fields').hidden = true; status(''); });
   $('print-kind').addEventListener('change', () => { sources(); invalidate(); $('print-fields').hidden = true; status(''); });
+  $('print-orientation').addEventListener('change', () => { invalidate(); status(''); });
   $('print-fields').addEventListener('input', invalidate);
   $('print-preview').addEventListener('click', () => run(async () => {
     const stamp = ++generation, source = $('print-box').value, labelKind = kind();
     const names = labelKind === 'location' ? ['location'] : ['title', 'description', 'location'];
     const fields = Object.fromEntries(names.map(key => [key, $(`print-${key}`).value]));
     const target = labelKind === 'location' ? { locationId: source } : { boxId: source };
-    const result = await api('/preview', { revision: state.revision, kind: labelKind, ...(source ? { ...target, ...($('print-fields').hidden ? {} : { fields }) } : { test: true }) });
+    const orientation = $('print-orientation').value;
+    const result = await api('/preview', { revision: state.revision, kind: labelKind, ...(orientation ? { orientation } : {}),
+      ...(source ? { ...target, ...($('print-fields').hidden ? {} : { fields }) } : { test: true }) });
     if (stamp !== generation) return;
     preview = result; requestId = crypto.randomUUID(); lastJob = null; draw(result.layout);
     for (const key of names) $(`print-${key}`).value = result.fields[key];

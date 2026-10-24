@@ -8,7 +8,7 @@ Open **Printing**, expand **Label service connection**, enable printing and save
 
 **Check printer connection** shows the label service's CUPS queue and the selected label format. The selected format must match the loaded roll. **Open label service** opens the service's own page, where the admin reads the roll, selects the format and sets text sizes and direction.
 
-Choose a **Label type**. A **Box label** uses **Test label** or a current inventory box; title, description and current location are prefilled. A **Location label** uses **Test label** or a registered location and prints only the location text, large. **Prepare label preview** sends the content to the label service and shows its layout. Edits affect only the label, never saved inventory. Text must be Latin-1 (Swedish letters work); text that does not fit cannot be printed.
+Choose a **Label type**. A **Box label** uses **Test label** or a current inventory box; title, description and current location are prefilled. A **Location label** uses **Test label** or a registered location and prints only the location text, large. **Text direction** keeps the label format's saved direction, or sets landscape or portrait for this label only (label service 0.4.0 or later). **Prepare label preview** sends the content to the label service and shows its layout. Edits affect only the label, never saved inventory. Text must be Latin-1 (Swedish letters work); text that does not fit cannot be printed.
 
 **Print one label** rechecks that the print settings and the box (contents, session and location) are unchanged since the preview, then sends the preview token with a request identifier. The label service prints exactly one copy and deduplicates the identifier, so resending after a lost response returns the original job instead of printing again. **Check print job** and **Recent print submissions** read this system's jobs from the label service. A completed CUPS job proves delivery to the driver, not legibility; check the physical label.
 
@@ -21,7 +21,7 @@ All endpoints require the management key and same-origin write protection:
 - `GET /api/manage/printing`: `{config: {enabled, url, apiKeyConfigured}, revision, locations}`. The key is never returned.
 - `PUT /api/manage/printing`: `{revision, config: {enabled, url, apiKey?, clearKey?}}`.
 - `GET /api/manage/printing/status`: the label service's queue status plus the selected format.
-- `POST /api/manage/printing/preview?lang=sv`: `{revision, kind?, test: true}`, `{revision, kind?: 'box', boxId, fields?}` or `{revision, kind: 'location', locationId, fields?}`.
+- `POST /api/manage/printing/preview?lang=sv`: `{revision, kind?, test: true}`, `{revision, kind?: 'box', boxId, fields?}` or `{revision, kind: 'location', locationId, fields?}`, each with optional `orientation` (`portrait` or `landscape`).
 - `POST /api/manage/printing/submit`: `{token, requestId}` (UUIDs); returns the label service's job record.
 - `GET /api/manage/printing/jobs`, `GET /api/manage/printing/jobs/<requestId>`: this system's jobs from the label service.
 

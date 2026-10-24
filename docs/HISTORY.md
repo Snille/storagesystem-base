@@ -1,5 +1,9 @@
 # History
 
+## 0.15.1-dev - 2026-10-24
+
+- The print dialog has a **Text direction** choice for each label: the label format's setting (default), landscape or portrait. The choice is sent with the preview and needs label service 0.4.0 or later; older services refuse it. The saved format setting in the label service is not changed.
+
 ## 0.15.0-dev - 2026-10-24
 
 - Printing now goes through the separate label service (Snille/label-service), the only program that talks to the printer. This application sends the label content (box, registered location or test label) with its own client key, shows the service's preview, re-checks that the box is unchanged and submits with a request identifier the service deduplicates.

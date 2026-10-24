@@ -86,6 +86,10 @@ test('previews send only the chosen content to the label service and printing pa
   assert.deepEqual(await printing.submit({ token: p.token, requestId }), job);
   await printing.preview({ revision, test: true });
   assert.deepEqual(service.calls.at(-1).body, { kind: 'box', test: true });
+  // A chosen text direction is passed on; without one the service's format setting applies.
+  await printing.preview({ revision, test: true, orientation: 'portrait' });
+  assert.deepEqual(service.calls.at(-1).body, { kind: 'box', orientation: 'portrait', test: true });
+  await assert.rejects(printing.preview({ revision, test: true, orientation: 'sideways' }), /Unsupported/);
   await printing.preview({ revision, kind: 'location', locationId: location }, 'sv');
   assert.equal(service.calls.at(-1).body.reference, `location:${location}`); assert.match(service.calls.at(-1).body.fields.location, /Lagerhylla|Bänk|Skåp/);
   await assert.rejects(printing.preview({ revision, kind: 'location', locationId: 'IVAR-Z-H9-P9' }), { status: 404 });

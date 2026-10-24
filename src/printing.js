@@ -52,8 +52,9 @@ export class Printing {
   }
   async preview(input, language) {
     object(input);
-    if (Object.keys(input).some(k => !['revision', 'kind', 'test', 'boxId', 'locationId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
-      || (input.kind !== undefined && !['box', 'location'].includes(input.kind))) throw new InputError('Unsupported label preview request.');
+    if (Object.keys(input).some(k => !['revision', 'kind', 'test', 'boxId', 'locationId', 'fields', 'orientation'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
+      || (input.kind !== undefined && !['box', 'location'].includes(input.kind))
+      || (input.orientation !== undefined && !['portrait', 'landscape'].includes(input.orientation))) throw new InputError('Unsupported label preview request.');
     this.assertRevision(input.revision);
     const kind = input.kind || 'box';
     let box, locationId, fields, reference;
@@ -70,7 +71,9 @@ export class Printing {
       reference = `box:${box.boxId}`.slice(0, 200);
       fields = input.fields || { title: box.label, description: box.summary || '', location: Object.values(box.location).filter(Boolean).join(', ') };
     }
-    const result = await this.client().preview({ kind, ...(input.test === true ? { test: true } : { fields, reference }) });
+    // Without an orientation the label service uses the selected format's saved text direction.
+    const result = await this.client().preview({ kind, ...(input.orientation ? { orientation: input.orientation } : {}),
+      ...(input.test === true ? { test: true } : { fields, reference }) });
     this.assertRevision(input.revision);
     const now = Date.now(); for (const [id, p] of this.previews) if (p.expires <= now) this.previews.delete(id);
     if (this.previews.size >= 100) throw new InputError('Too many label previews. Wait for an older preview to expire.', 429);
