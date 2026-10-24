@@ -1,5 +1,12 @@
 # History
 
+## 0.17.0-dev - 2026-10-24
+
+- **3D overview.** The start page overview is a panorama you turn by dragging and zoom with the wheel, a pinch or the + / - buttons, with a full-screen button; "Open as flat image" keeps the photo viewer. It uses Pannellum 2.5.6 (MIT), vendored in `web/vendor/pannellum` from the npm tarball (integrity matched the registry; no eval or remote code; hotspot text is escaped).
+- A 2:1 image is shown as a full 360 x 180 degree sphere. A wider image, like the current album cover (15104 x 3136), is shown as a 180 degree panorama about 37 degrees high; zoom and tilt stop at the image edge so no empty area shows. Replacing the album cover with a 360 degree photo needs no code change.
+- The full image loads only when the overview is on screen and is scaled down in the browser when it exceeds the graphics card's texture limit (at most 16384 pixels).
+- The page policy now allows `data:` and `blob:` images, for the viewer's icons and scaled panoramas. Scripts are still limited to this application.
+
 ## 0.16.1-dev - 2026-10-24
 
 - The album inbox, the editor's album picker and the AI test photos leave out the album cover, since it is the start page's overview image, as in the reference application. A cover that a box already uses stays listed. If the cover cannot be read, every photo is listed. Development copy: 294 -> 293 album photos.

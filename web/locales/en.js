@@ -575,5 +575,15 @@ export default {
   "Storage units": "Storage units",
   "Boxes with photos": "Boxes with photos",
   "The cover of the photo album, chosen in the photo service.": "The cover of the photo album, chosen in the photo service.",
-  "Open the overview image": "Open the overview image"
+  "Open the overview image": "Open the overview image",
+  "Loading the overview…": "Loading the overview…",
+  "Loading…": "Loading…",
+  "This browser cannot show the 3D view.": "This browser cannot show the 3D view.",
+  "The image is too large for this device.": "The image is too large for this device.",
+  "The 3D view could not be shown.": "The 3D view could not be shown.",
+  "Open as flat image": "Open as flat image",
+  "Drag to look around. Scroll or pinch to zoom. The image is the cover of the photo album, chosen in the photo service.": "Drag to look around. Scroll or pinch to zoom. The image is the cover of the photo album, chosen in the photo service.",
+  "Overview of the workshop. Drag to look around; scroll or pinch to zoom.": "Overview of the workshop. Drag to look around; scroll or pinch to zoom.",
+  "Drag to look around. Scroll or pinch to zoom.": "Drag to look around. Scroll or pinch to zoom.",
+  "Drag to look around. Scroll or pinch to zoom. This is a 180 degree image; a 360 degree image shows the whole room.": "Drag to look around. Scroll or pinch to zoom. This is a 180 degree image; a 360 degree image shows the whole room."
 };

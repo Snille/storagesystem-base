@@ -20,6 +20,7 @@ const assets = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/ai.js', ['ai.js', 'text/javascript; charset=utf-8']],
   ['/appearance.js', ['appearance.js', 'text/javascript; charset=utf-8']],
+  ['/overview.js', ['overview.js', 'text/javascript; charset=utf-8']],
   ['/search-settings.js', ['search-settings.js', 'text/javascript; charset=utf-8']],
   ['/printing.js', ['printing.js', 'text/javascript; charset=utf-8']],
   ['/box-draft.js', ['box-draft.js', 'text/javascript; charset=utf-8']],
@@ -29,6 +30,8 @@ const assets = new Map([
   ['/locales/en.js', ['locales/en.js', 'text/javascript; charset=utf-8']],
   ['/locales/sv.js', ['locales/sv.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
+  ['/vendor/pannellum/pannellum.js', ['vendor/pannellum/pannellum.js', 'text/javascript; charset=utf-8']],
+  ['/vendor/pannellum/pannellum.css', ['vendor/pannellum/pannellum.css', 'text/css; charset=utf-8']],
   ...['hills', 'pegboard', 'blueprint'].map(name => [`/backgrounds/${name}.svg`, [`backgrounds/${name}.svg`, 'image/svg+xml']])
 ]);
 
@@ -53,7 +56,8 @@ export function createApp({ store, env = process.env }) {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' http: https:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    // data: and blob: images are for the vendored panorama viewer's icons and loaded panoramas.
+    res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob: http: https:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const json = (value, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
     try {
       const url = new URL(req.url, 'http://localhost'); const path = url.pathname;

@@ -569,5 +569,15 @@ export default {
   "Storage units": "Förvaringsenheter",
   "Boxes with photos": "Lådor med bilder",
   "The cover of the photo album, chosen in the photo service.": "Fotoalbumets omslagsbild, vald i fototjänsten.",
-  "Open the overview image": "Öppna översiktsbilden"
+  "Open the overview image": "Öppna översiktsbilden",
+  "Loading the overview…": "Läser in översikten…",
+  "Loading…": "Läser in…",
+  "This browser cannot show the 3D view.": "Den här webbläsaren kan inte visa 3D-vyn.",
+  "The image is too large for this device.": "Bilden är för stor för den här enheten.",
+  "The 3D view could not be shown.": "3D-vyn kunde inte visas.",
+  "Open as flat image": "Öppna som platt bild",
+  "Drag to look around. Scroll or pinch to zoom. The image is the cover of the photo album, chosen in the photo service.": "Dra för att se dig omkring. Skrolla eller nyp för att zooma. Bilden är fotoalbumets omslagsbild, vald i fototjänsten.",
+  "Overview of the workshop. Drag to look around; scroll or pinch to zoom.": "Översikt över verkstaden. Dra för att se dig omkring; skrolla eller nyp för att zooma.",
+  "Drag to look around. Scroll or pinch to zoom.": "Dra för att se dig omkring. Skrolla eller nyp för att zooma.",
+  "Drag to look around. Scroll or pinch to zoom. This is a 180 degree image; a 360 degree image shows the whole room.": "Dra för att se dig omkring. Skrolla eller nyp för att zooma. Det här är en 180-gradersbild; en 360-gradersbild visar hela rummet."
 };

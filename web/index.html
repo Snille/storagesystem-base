@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
   <title>Storage System</title>
+  <link rel="stylesheet" href="/vendor/pannellum/pannellum.css">
   <link rel="stylesheet" href="/style.css">
+  <script src="/vendor/pannellum/pannellum.js" defer></script>
   <script type="module" src="/app.js"></script>
 </head>
 <body>
@@ -26,7 +28,7 @@
     <div id="workspace" hidden>
       <section class="intro"><div><p class="eyebrow">INVENTORY</p><h1>A place for everything.</h1><p class="muted">Your workshop at a glance.</p></div><div class="actions"><button id="open-storage-map" class="quiet">Storage map</button><button id="open-settings" class="quiet">Photo settings</button><button id="open-ai" class="quiet">AI assistance</button><button id="open-search-settings" class="quiet">Search &amp; answers</button><button id="open-printing" class="quiet">Printing</button><button id="open-album" class="quiet">Album inbox</button><button id="new-box">+ Add box</button></div></section>
       <section class="stats" aria-label="Inventory totals"><div><strong id="box-count">0</strong><span>Boxes</span></div><div><strong id="unit-count">0</strong><span>Storage units</span><small id="unit-kinds"></small></div><div><strong id="location-count">0</strong><span>Storage positions</span></div><div><strong id="session-count">0</strong><span>Inventory sessions</span></div><div><strong id="photo-count">0</strong><span>Photo references</span></div><div><strong id="photo-box-count">0</strong><span>Boxes with photos</span><small id="no-photo-count"></small></div></section>
-    <section id="overview" class="panel overview" hidden><h2>Overview image</h2><button type="button" id="overview-open" class="overview-image" aria-label="Open the overview image"><img id="overview-img" alt=""></button><p class="hint">The cover of the photo album, chosen in the photo service.</p></section>
+    <section id="overview" class="panel overview" hidden><div class="overview-heading"><h2>Overview</h2><button type="button" id="overview-open" class="quiet">Open as flat image</button></div><div id="overview-pano" class="overview-pano" role="application" aria-label="Overview of the workshop. Drag to look around; scroll or pinch to zoom."></div><p class="hint" id="overview-hint">Drag to look around. Scroll or pinch to zoom. The image is the cover of the photo album, chosen in the photo service.</p></section>
       <section class="toolbar"><label class="search-label">Search inventory<input id="search" type="search" placeholder="Search contents, box names, or locations…"></label><label>Location<select id="location"><option value="">All locations</option></select></label><button class="quiet" id="refresh">↻ Refresh</button></section>
       <p id="result-count" class="muted"></p>
       <section id="boxes" class="grid" aria-label="Inventory boxes"></section>

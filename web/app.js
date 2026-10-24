@@ -7,6 +7,7 @@ import { mountSearchSettings } from './search-settings.js';
 import { mountPrinting } from './printing.js';
 import { initializeLanguage, setLanguage, uiLanguage, t, tr, roleName } from './i18n.js';
 import { loadAppearance, mountAppearance } from './appearance.js';
+import { mountOverview } from './overview.js';
 
 await Promise.all([initializeLanguage(), loadAppearance()]);
 
@@ -106,11 +107,10 @@ async function load() {
   render(); loadOverview();
 }
 
-let overviewImage = null;
+let overviewImage = null; const overview = mountOverview();
 async function loadOverview() {
   try { overviewImage = (await (await request('overview')).json()).image; } catch { overviewImage = null; }
-  $('overview').hidden = !overviewImage;
-  if (overviewImage) { $('overview-img').src = overviewImage.previewUrl; $('overview-img').alt = overviewImage.albumName || t('Overview image'); }
+  $('overview').hidden = !overviewImage; overview.show(overviewImage);
 }
 $('overview-open').addEventListener('click', () => openViewer({ label: overviewImage.albumName || t('Overview image'),
   photos: [{ role: 'location', originalUrl: overviewImage.originalUrl, originalFileName: t('Album cover'), immichAssetId: overviewImage.assetId }] }, 0, true));
