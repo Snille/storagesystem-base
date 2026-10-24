@@ -173,6 +173,21 @@ export class Store {
     return { ok: errors.length === 0, schemaVersion: this.db.prepare('PRAGMA user_version').get().user_version, counts, errors };
   }
 
+  // Replaces every table with a checked backup in one transaction, so a failure changes nothing.
+  // The backup must already have passed checkBackup (current schema, audit ok).
+  replaceFrom(sourcePath) {
+    this.db.prepare('ATTACH DATABASE ? AS src').run(resolve(sourcePath));
+    try {
+      this.transaction(() => {
+        for (const table of [...tables].reverse()) this.db.exec(`DELETE FROM main.${table}`);
+        for (const table of tables) this.db.exec(`INSERT INTO main.${table} SELECT * FROM src.${table}`);
+        const audit = this.audit();
+        if (!audit.ok) throw new InputError(`The restored data failed the audit: ${audit.errors.join(' ')}`);
+      });
+    } finally { this.db.exec('DETACH DATABASE src'); }
+    return this.audit();
+  }
+
   async backup(destination) {
     if (this.path !== ':memory:' && resolve(destination) === resolve(this.path)) throw new InputError('Backup destination must differ from the active database.');
     // Reserve the path atomically; never overwrite a previous backup.
@@ -183,6 +198,23 @@ export class Store {
     try { this.db.prepare('VACUUM main INTO ?').run(resolve(destination)); }
     catch (error) { unlinkSync(destination); throw error; }
   }
+}
+
+const tables = ['locations', 'boxes', 'sessions', 'photos', 'settings', 'print_jobs', 'media'];
+
+// Opens an uploaded backup copy, refusing anything that is not one of this application's
+// databases, migrates it to the current schema in place and audits it. The copy is changed;
+// the caller keeps the uploaded original only as that copy.
+export function checkBackup(path) {
+  let version;
+  try {
+    const probe = new DatabaseSync(path, { readOnly: true });
+    try { version = probe.prepare('PRAGMA user_version').get().user_version; } finally { probe.close(); }
+  } catch { throw new InputError('The file is not an SQLite backup from this application.'); }
+  if (![1, 2, 3].includes(version)) throw new InputError(version > 3 ? 'The backup is from a newer version of this application.' : 'The file is not an SQLite backup from this application.');
+  let store;
+  try { store = new Store(path); } catch { throw new InputError('The backup could not be opened.'); }
+  try { return { ...store.audit(), sourceSchemaVersion: version }; } finally { store.close(); }
 }
 
 export async function restore(source, destination) {

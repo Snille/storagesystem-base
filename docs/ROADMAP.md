@@ -16,7 +16,7 @@ All unchecked items are planned, not delivered.
 - [x] Import legacy inventory and app-settings into an empty database with preserved IDs/history and atomic validation.
 - [ ] Complete separate language-file and translation-override import and full migration acceptance.
 - [x] Implement consistent backup, restore, and JSON export; test a restoration into an empty instance.
-- [ ] Add controlled full SQLite restore to the UI (CLI fresh-file restore currently implemented).
+- [x] Add controlled full SQLite restore to the UI: checked upload, typed confirmation, safety backup, one transaction.
 
 ## 3. Implement interfaces and integrations
 

@@ -160,7 +160,7 @@ npm run inventory -- restore ./storage-backup.sqlite ./data/restored.sqlite
 
 Restore validates the backup and refuses to overwrite an existing file. Stop the target instance and point it at the newly restored database after verification. Audit the new file by setting `STORAGE_DB` to its path. A backup contains inventory **and settings/credentials**; keep it private. JSON export contains inventory only. Neither includes original photos from external services. Settings import retains provider configuration, prompts, label templates and other existing sections without claiming their features are implemented. Separate legacy language files are not imported yet.
 
-The UI offers inventory JSON import/export, data audit and SQLite backup download. Full SQLite restore currently uses the offline CLI; it is intentionally unavailable as an overwrite action in the UI.
+The UI offers inventory JSON import/export, data audit, SQLite backup download and a controlled full restore under **Data & maintenance**. A restore uploads the backup, checks it (only this application's schemas 1-3, older ones are migrated, the audit must pass) and shows the current and backup totals. Only after you type `RESTORE` does it replace all inventory, settings, keys and the background image in one transaction. The current database is saved first in `restore-backups` beside the database file (`/data/restore-backups` in Docker); remove old safety backups there yourself. The offline CLI restore into a new file still works.
 
 ## Documentation
 

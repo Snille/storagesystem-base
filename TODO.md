@@ -49,7 +49,8 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 ## Before production migration
 
 - [ ] Complete legacy search/language parity and separate translation-file import; acceptance-test real migration and restore.
-- [ ] Add controlled full SQLite restore to the UI; current restore is CLI-only into a new file.
+- [x] Add controlled full SQLite restore to the UI (checked upload, typed `RESTORE`, safety backup first). Round trip verified on the development copy.
+- [ ] Clickable points in the 3D overview that open a storage unit on the map. Waiting for the owner's higher-resolution 360 degree photo.
 - [ ] Complete location/storage-unit management and remaining application settings.
 - [ ] Verify real PhotoPrism.
 - [x] Verify actual Home Assistant config flow, entities, services, result events, conversation and card delivery in disposable Docker.

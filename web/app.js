@@ -397,6 +397,33 @@ $('import').addEventListener('change', async event => {
   } catch (error) { message(error.message, true); }
   finally { event.target.value = ''; }
 });
+// Full restore: upload and check first, then show what changes and require typing RESTORE.
+let restoreToken = null;
+$('restore-file').addEventListener('change', async event => {
+  const file = event.target.files[0]; event.target.value = ''; if (!file) return;
+  try {
+    message(t('Checking the backup…'));
+    const check = await (await request('restore/upload', { method: 'POST', body: file, headers: { 'content-type': 'application/vnd.sqlite3' } })).json();
+    restoreToken = check.token; message('');
+    $('restore-counts').replaceChildren(...[['boxes', 'Boxes'], ['sessions', 'Inventory sessions'], ['photos', 'Photo references'], ['locations', 'Storage positions']].map(([key, label]) => {
+      const row = element('tr'); row.append(element('td', t(label)), element('td', String(check.current[key])), element('td', String(check.counts[key]))); return row;
+    }));
+    $('restore-confirm').value = ''; $('restore-apply').disabled = true; $('restore-error').textContent = ''; $('restore-dialog').showModal();
+  } catch (error) { message(error.message, true); }
+});
+$('restore-confirm').addEventListener('input', () => { $('restore-apply').disabled = $('restore-confirm').value.trim() !== 'RESTORE'; });
+$('close-restore').addEventListener('click', () => $('restore-dialog').close());
+$('restore-form').addEventListener('submit', async event => {
+  event.preventDefault(); $('restore-apply').disabled = true;
+  try {
+    const result = await (await request('restore', { method: 'POST', body: JSON.stringify({ token: restoreToken, confirm: $('restore-confirm').value.trim() }) })).json();
+    // The backup brings its own language and background settings.
+    $('restore-dialog').close(); await loadAppearance();
+    try { setLanguage((await (await fetch('/api/interface-language')).json()).language); } catch { /* Keep the current language. */ }
+    await load(); message(tr('Backup restored. The previous data is saved as {0}.', result.safetyBackup));
+  } catch (error) { $('restore-error').textContent = t(error.message); $('restore-apply').disabled = false; }
+});
+
 $('theme').addEventListener('click', () => {
   const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.dataset.theme = dark ? 'light' : 'dark';

@@ -1,5 +1,11 @@
 # History
 
+## 0.19.0-dev - 2026-10-24
+
+- **Restore from backup in the interface.** Under Data & maintenance, upload an SQLite backup. The server checks it (SQLite header, this application's schema 1-3, migration of older schemas, full audit including images) and shows the current and backup totals. Typing `RESTORE` replaces every table in one transaction; a failed audit inside the transaction rolls everything back. The current database is saved first as `restore-backups/before-restore-<time>.sqlite` beside the database. Uploads are limited to 512 MiB, kept only until restore or the next upload, and expire after 10 minutes.
+- New `POST /api/manage/restore/upload` (raw SQLite body) and `POST /api/manage/restore` (`{token, confirm: "RESTORE"}`).
+- Verified on the development copy: downloaded a backup and restored it through the interface; the audit passes (164 boxes, 249 sessions, 306 photos), the label service and AI settings are intact, and the safety backup exists. A separate copy was taken first: `data/docker-dev-backups/before-0.19-20261024.sqlite`.
+
 ## 0.18.0-dev - 2026-10-24
 
 - **Security dialog.** Set the public base URL and the public API key (type one or generate one, show or hide it, or remove the saved key to fall back to `STORAGE_API_KEY`). Keys are never returned, only where the active one comes from. `APP_BASE_URL` on the server still wins and is shown read-only. The management key stays a server setting. New `GET/PUT /api/manage/security` with an optimistic revision.

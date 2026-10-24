@@ -10,6 +10,7 @@ import { Catalog } from './catalog.js';
 import { Ai } from './ai.js';
 import { SearchService } from './search-service.js';
 import { Printing } from './printing.js';
+import { RestoreService } from './restore.js';
 import { InputError, object, text } from './validation.js';
 import { equal, requestKey, publicKey, assetUrl, signature } from './auth.js';
 import { handleMcp } from './mcp.js';
@@ -53,6 +54,7 @@ export function createApp({ store, env = process.env }) {
   const ai = new Ai(store, catalog, photos);
   const search = new SearchService(inventory, env);
   const printing = new Printing(inventory, { env });
+  const restoring = new RestoreService(store);
   const server = createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -205,6 +207,9 @@ export function createApp({ store, env = process.env }) {
         // This deliberately imports inventory only. Settings with credentials use the offline CLI.
         return json({ imported: store.importLegacy(await body(req)) }, 201);
       }
+      // The upload is the raw SQLite file, not JSON.
+      if (path === '/api/manage/restore/upload' && method === 'POST') return json(await restoring.upload(req));
+      if (path === '/api/manage/restore' && method === 'POST') return json(await restoring.apply(await body(req)));
       if (path === '/api/manage/backup' && method === 'GET') {
         const temp = mkdtempSync(join(tmpdir(), 'storage-backup-'));
         try {
