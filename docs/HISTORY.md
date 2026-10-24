@@ -1,6 +1,6 @@
 # History
 
-## Unreleased (after 0.22.0)
+## 0.23.0 - 2026-10-25
 
 - **Open management (owner decision).** `STORAGE_MANAGEMENT_ACCESS=open` lets the page and management API work without a key, like the reference application, which is open on the LAN and behind Authelia with MFA from outside. It requires `APP_ALLOWED_HOSTS`: requests for other host names are refused (DNS rebinding), and the origin check still stops other websites from changing data. The public API keeps its key, so Home Assistant and MCP are unchanged. The page opens the inventory directly when the server needs no key. `APP_ALLOWED_HOSTS` also allows the second public name (`hylla.snille.net`) for browser changes.
 - Home Assistant's integration uses `https://verkstad.snille.net` (config entry unique ID), so it follows the NPM switch; NPM proxy host 11 serves both `verkstad.snille.net` and `hylla.snille.net`, and its MCP and OAuth exceptions use the same forward target.
