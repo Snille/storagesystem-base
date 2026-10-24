@@ -21,6 +21,7 @@ const assets = new Map([
   ['/ai.js', ['ai.js', 'text/javascript; charset=utf-8']],
   ['/appearance.js', ['appearance.js', 'text/javascript; charset=utf-8']],
   ['/overview.js', ['overview.js', 'text/javascript; charset=utf-8']],
+  ['/security.js', ['security.js', 'text/javascript; charset=utf-8']],
   ['/search-settings.js', ['search-settings.js', 'text/javascript; charset=utf-8']],
   ['/printing.js', ['printing.js', 'text/javascript; charset=utf-8']],
   ['/box-draft.js', ['box-draft.js', 'text/javascript; charset=utf-8']],
@@ -181,6 +182,8 @@ export function createApp({ store, env = process.env }) {
         return json({ query, count: matches.length, matches });
       }
       if (path === '/api/manage/settings' && method === 'GET') return json(catalog.settings.view());
+      if (path === '/api/manage/security' && method === 'GET') return json(catalog.settings.security(env));
+      if (path === '/api/manage/security' && method === 'PUT') return json(catalog.settings.saveSecurity(await body(req), env));
       if (path === '/api/manage/overview' && method === 'GET') return json(await catalog.overview());
       if (path === '/api/manage/appearance' && method === 'PUT') return json(catalog.settings.saveBackground(await body(req)));
       if (path === '/api/manage/languages' && method === 'GET') return json(catalog.settings.languages());

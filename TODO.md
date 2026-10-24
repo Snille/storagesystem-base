@@ -38,12 +38,12 @@ Read docs/STATUS.md for the current handover and docs/ROADMAP.md for the full sc
 
 - [ ] Browser voice search with a spoken answer and "Read answer" for typed searches. Tied to the HA voice flow; design them together (see VOICE-SEARCH.md).
 - [ ] Translation tool: edit interface texts per language, AI-assisted drafts, export. The reference also ships a German interface (`de.json`); this app has English and Swedish only.
-- [ ] Prompt management: per-photo-role prompts and per-model overrides with reset to defaults. This app has one extra-instructions field.
+- [x] Prompt management: not needed. The 2026-10-24 evaluation showed that better built-in instructions plus code guards fix the problems for any model; the extra-instructions field covers local wishes. Closed by the owner.
 - [x] Appearance: page backgrounds (three built-in, none, or an uploaded image) in the Appearance dialog. Theme stays a per-tab toggle.
-- [ ] Security settings in the interface (API keys).
+- [x] Security settings in the interface: public base URL and public API key (set, generate, remove). The management key stays a server setting.
 - [x] Overview page parity: album-cover overview image and storage statistics (units by type, boxes with and without photos).
 - [x] The album inbox and photo choices leave out the album cover (the overview image), unless a box already uses it.
-- [ ] Check smaller reference behaviors not yet compared in detail: hover analysis text and the green "analysis saved" mark on photos, releasing a photo from a box, `?lang=` URL override for shared devices.
+- [x] Smaller reference behaviors: hover analysis text and the green "analysis saved" mark on photos (also shown in the photo viewer), and the `?lang=` URL override for shared devices. Releasing a photo from a box already exists as **Remove** in the editor, which keeps the history.
 - Location management is **not** a reference feature: the reference derives storage units from box locations and has no editor. This app already registers empty positions and shows them on the storage map. Further management (removing unused positions, renaming units) is new scope.
 
 ## Before production migration

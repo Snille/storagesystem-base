@@ -1,5 +1,12 @@
 # History
 
+## 0.18.0-dev - 2026-10-24
+
+- **Security dialog.** Set the public base URL and the public API key (type one or generate one, show or hide it, or remove the saved key to fall back to `STORAGE_API_KEY`). Keys are never returned, only where the active one comes from. `APP_BASE_URL` on the server still wins and is shown read-only. The management key stays a server setting. New `GET/PUT /api/manage/security` with an optimistic revision.
+- **Photo analysis text.** Photos with saved analysis text get a green check; hovering or focusing a photo in the box view shows the text, and the photo viewer shows it below the photo for touch screens. Box cards show the check on their cover.
+- **`?lang=en` / `?lang=sv`** in the address fixes the interface language on a shared device, for example from a QR code, without changing the saved setting. Saving the language settings removes it.
+- Prompt management is closed as not needed (owner decision after the evaluation). Releasing a photo from a box already works through **Remove** in the editor.
+
 ## 0.17.0-dev - 2026-10-24
 
 - **3D overview.** The start page overview is a panorama you turn by dragging and zoom with the wheel, a pinch or the + / - buttons, with a full-screen button; "Open as flat image" keeps the photo viewer. It uses Pannellum 2.5.6 (MIT), vendored in `web/vendor/pannellum` from the npm tarball (integrity matched the registry; no eval or remote code; hotspot text is escaped).

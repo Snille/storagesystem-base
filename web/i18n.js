@@ -21,7 +21,16 @@ export async function initializeLanguage() {
       const source = node.getAttribute(attribute); staticAttributes.push({ node, attribute, source, rendered: source });
     }
   }
+  // ?lang=sv or ?lang=en fixes the language on a shared device, for example from a QR code.
+  // Saving language settings removes it again (clearLanguageOverride).
+  const forced = new URLSearchParams(location.search).get('lang');
+  if (['en', 'sv'].includes(forced)) { setLanguage(forced); return; }
   try { const response = await fetch('/api/interface-language'); if (response.ok) setLanguage((await response.json()).language); } catch { }
+}
+
+export function clearLanguageOverride() {
+  const url = new URL(location.href);
+  if (url.searchParams.has('lang')) { url.searchParams.delete('lang'); history.replaceState(null, '', url); }
 }
 
 export function setLanguage(next) {

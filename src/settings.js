@@ -54,6 +54,34 @@ export class Settings {
       return this.appearance();
     });
   }
+  // Keys are never returned, only where the active one comes from. A saved public key and
+  // base URL take precedence over the environment like in the reference application,
+  // except APP_BASE_URL, which deployment sets on purpose.
+  security(env = {}) {
+    const saved = this.store.settings().security || {};
+    const value = {
+      appBaseUrl: saved.appBaseUrl || '', appBaseUrlFromEnvironment: Boolean(env.APP_BASE_URL), environmentBaseUrl: env.APP_BASE_URL || '',
+      publicKeySource: saved.publicApiKey?.trim() ? 'settings' : env.STORAGE_API_KEY?.trim() || env.LAGERSYSTEM_API_KEY?.trim() ? 'environment' : 'none'
+    };
+    return { ...value, revision: sourceRevision({ ...value, key: saved.publicApiKey ? sourceRevision(saved.publicApiKey) : '' }) };
+  }
+  saveSecurity(input, env = {}) {
+    object(input);
+    for (const field of Object.keys(input)) if (!['revision', 'appBaseUrl', 'publicApiKey', 'clearPublicApiKey'].includes(field)) throw new InputError(`Unsupported security setting: ${field}`);
+    text(input.appBaseUrl, 'appBaseUrl', { optional: true, empty: true });
+    text(input.publicApiKey, 'publicApiKey', { optional: true });
+    if (input.clearPublicApiKey !== undefined && typeof input.clearPublicApiKey !== 'boolean') throw new InputError('clearPublicApiKey must be a boolean.');
+    if (input.publicApiKey !== undefined && (input.publicApiKey.length < 16 || input.publicApiKey.length > 200 || /\s/.test(input.publicApiKey))) throw new InputError('Use a public API key of 16 to 200 characters without spaces.');
+    return this.store.transaction(() => {
+      if (input.revision !== this.security(env).revision) throw new InputError('Security settings changed. Reopen Security before saving.', 409);
+      const next = { ...this.store.settings().security };
+      if (input.appBaseUrl !== undefined) next.appBaseUrl = baseUrl(input.appBaseUrl);
+      if (input.clearPublicApiKey) delete next.publicApiKey;
+      if (input.publicApiKey !== undefined) next.publicApiKey = input.publicApiKey;
+      this.store.writeSettings({ security: next });
+      return this.security(env);
+    });
+  }
   view() {
     const settings = this.store.settings(); const config = settings.immich || {};
     return {

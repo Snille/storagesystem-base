@@ -5,9 +5,10 @@ import { mountBoxDraft } from './box-draft.js';
 import { mountStorageMap } from './storage-map.js';
 import { mountSearchSettings } from './search-settings.js';
 import { mountPrinting } from './printing.js';
-import { initializeLanguage, setLanguage, uiLanguage, t, tr, roleName } from './i18n.js';
+import { initializeLanguage, setLanguage, clearLanguageOverride, uiLanguage, t, tr, roleName } from './i18n.js';
 import { loadAppearance, mountAppearance } from './appearance.js';
 import { mountOverview } from './overview.js';
+import { mountSecurity } from './security.js';
 
 await Promise.all([initializeLanguage(), loadAppearance()]);
 
@@ -50,7 +51,7 @@ $('languages-form').addEventListener('submit', async event => {
   event.preventDefault(); $('save-languages').disabled = true;
   try {
     languageState = await (await request('languages', { method: 'PUT', body: JSON.stringify({ revision: languageState.revision, uiLanguage: $('ui-language').value, responseLanguage: $('response-language').value }) })).json();
-    setLanguage(languageState.uiLanguage); $('languages-dialog').close(); await load(); message(t('Language settings saved.'));
+    clearLanguageOverride(); setLanguage(languageState.uiLanguage); $('languages-dialog').close(); await load(); message(t('Language settings saved.'));
   } catch (error) { $('languages-error').textContent = error.message; }
   finally { $('save-languages').disabled = false; }
 });
@@ -58,6 +59,7 @@ $('languages-form').addEventListener('submit', async event => {
 mountAi(request, message, () => showAlbum());
 mountSearchSettings(request, message);
 const printing = mountPrinting(request, message);
+mountSecurity(request, message);
 const boxDraft = mountBoxDraft(request, draft => {
   if (draft.editorContext) {
     const context = draft.editorContext;
@@ -166,7 +168,7 @@ async function render() {
     if (cover) {
       const image = element('img', undefined, 'box-cover'); image.src = cover.thumbnailUrl; image.alt = tr('Photo of {0}', box.label); image.loading = 'lazy';
       image.addEventListener('error', () => image.replaceWith(element('span', t('Photo unavailable'), 'hint')));
-      card.append(image);
+      const frame = element('span', undefined, 'box-cover-frame'); frame.append(image, ...noteMarks(cover).slice(0, 1)); card.append(frame);
     } else card.append(element('span', '▦', 'box-icon'));
     card.append(element('h2', box.label), element('p', box.summary || t('No contents summary yet.')));
     const chips = element('div', undefined, 'chips');
@@ -175,6 +177,14 @@ async function render() {
     card.addEventListener('click', () => details(box).catch(error => message(error.message, true)));
     $('boxes').append(card);
   }
+}
+
+// A green check marks photos with saved analysis text; the text shows on hover or keyboard focus,
+// and in the photo viewer for touch screens.
+function noteMarks(photo) {
+  if (!photo.notes?.trim()) return [];
+  const check = element('span', '✓', 'photo-check'); check.title = t('Analysis text saved'); check.setAttribute('aria-label', t('Analysis text saved'));
+  return [check, element('span', photo.notes, 'photo-note')];
 }
 
 async function details(box) {
@@ -190,7 +200,7 @@ async function details(box) {
       const link = element('button', undefined, 'photo-open'); link.type = 'button'; link.setAttribute('aria-label', tr('View photo {0} of {1}', index + 1, box.label));
       const img = element('img'); img.src = photo.previewUrl || photo.originalUrl; img.alt = tr('{0} photo of {1}', roleName(photo.role), box.label); img.loading = 'lazy';
       img.addEventListener('error', () => { img.replaceWith(element('p', t('Photo unavailable. Check the configured photo source.'), 'hint')); });
-      link.append(img); photos.append(link);
+      link.append(img, ...noteMarks(photo)); photos.append(link);
       link.addEventListener('click', () => openViewer(box, index));
     }
     area.append(photos);
@@ -255,6 +265,7 @@ function showViewerPhoto() {
   $('viewer-title').textContent = viewerBox.label;
   $('viewer-caption').textContent = `${viewerIndex + 1} / ${viewerBox.photos.length} · ${roleName(photo.role)} · ${photo.originalFileName || photo.immichAssetId}`;
   $('viewer-status').textContent = t('Loading image…');
+  $('viewer-notes').textContent = photo.notes || ''; $('viewer-notes').hidden = !photo.notes?.trim();
   viewerCoverControls();
   $('viewer-previous').disabled = $('viewer-next').disabled = viewerBox.photos.length < 2;
   const image = element('img'); image.alt = tr('{0} photo of {1}', roleName(photo.role), viewerBox.label);
