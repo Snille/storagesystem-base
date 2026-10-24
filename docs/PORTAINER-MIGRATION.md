@@ -1,6 +1,7 @@
 # Moving Storage System to Portainer
 
-Plan written 2026-10-24. Nothing in this plan has been carried out yet. Steps marked
+Plan written 2026-10-24. Parts A, B and C were carried out on 2026-10-24 (see
+[Results](#results-2026-10-24-parts-a-c)); part D has not started. Steps marked
 **Approval** change something outside this repository and wait for the owner's yes.
 
 ## Starting point
@@ -81,3 +82,74 @@ spoken answers must match or improve first (see VOICE-SEARCH.md and ANSWER-POLIC
 - Docker Hub repository public (like the label service) or private.
 - Who changes the NPM proxy host in step 12 (normally the owner through the NPM web page).
 - The old system's edited translation files are not imported; this application has its own texts.
+
+## Results 2026-10-24 (parts A-C)
+
+Part D was not started: NPM, `verkstad.snille.net` and the old system are unchanged. The old
+system was only read (`lagersystem` still active, `inventory.json` still dated 2026-10-20).
+
+### A. Preparation
+
+- Release `0.22.0`. The image was built from a clean export of commit `2cabd05` with `VERSION`
+  set to `0.22.0`, so uncommitted work in the checkout was not included. `npm run check` passed
+  there (102 tests) and the Docker build ran the suite again.
+- `docker buildx build --platform linux/amd64 -t mrsnille/storagesystem-base:0.22.0 -t mrsnille/storagesystem-base:latest`.
+  The image holds only `src`, `web`, `package.json` and `VERSION`; `/data` is empty and no
+  `.sqlite`, `.env`, settings or inventory files are present.
+- A new production management key is stored as `STORAGE_ADMIN_KEY_PROD` beside the other
+  Storage System Base secrets (outside the repository).
+
+### B. Publish and empty instance
+
+- Docker Hub `mrsnille/storagesystem-base` (public): `0.22.0` and `latest`, both
+  `sha256:4f7b853dc431c471518d90898dab31b9f8912e6a5d5a97fecb0d276f32f1d4e3`.
+- Portainer stack `storagesystem` (id 13, endpoint 2) from `compose.portainer.yaml`:
+  `STORAGE_IMAGE=mrsnille/storagesystem-base:0.22.0`, `APP_BASE_URL=http://10.0.0.25:3210`,
+  the new management key, `STORAGE_API_KEY` = the old system's public API key (so Home Assistant
+  keeps its key), `LABEL_SERVICE_URL=http://10.0.0.25:3230` with this system's label client key.
+  Named volume `storagesystem_app-data`.
+- `/healthz` → `{"ok":true,"version":"0.22.0"}`, container healthy.
+- From inside the container: `omni.snille.net` resolves (10.0.0.42); OmniRoute, Ollama01 and the
+  label service answer (401 without a key, which proves the network path); Immich `/api/server/ping` 200.
+
+### C. Rehearsal data move
+
+- Copied `/opt/lagersystem/data` (inventory.json, app-settings.json, languages/) with `scp` into
+  `data/migration-2026-10-24/` (git-ignored); SHA-256 of both JSON files matches the server.
+- Legacy import into an empty `move.sqlite` with the 0.22.0 code: 164 boxes, 249 sessions,
+  306 photos. The imported public API key matches the old system's key.
+- Added from a copy of the development database: `aiWorkspace`, `labelService`, `overviewPoints`,
+  `overviewPointsSource`, `searchWorkspace`; `appearance` merged (imported theme and fonts,
+  development background `hills` and interface language, imported language `sv` kept). The
+  development database has no `background` media row, so none was copied. The `printing` row was
+  not copied. Audit: ok, schema 3, no errors.
+- Restored through `POST /api/manage/restore/upload` and `POST /api/manage/restore`: audit ok,
+  164 / 249 / 306 / 164 locations. Safety backup of the empty database inside the volume:
+  `restore-backups/before-restore-2026-10-24T21-51-40-171Z.sqlite`.
+
+Checks against the restored instance:
+
+| Check | Result |
+| --- | --- |
+| Box / session / photo counts | 164 / 249 / 306, equal to the old system's `inventory.json` |
+| Public search (`skruv`, `lödtenn`, `kabel`, `batteri`) | Sensible boxes, for example `BENCH-2-UNDER-P1-A` Träskruvar, `IVAR-G-H6-P1-A` Lödutrustning |
+| Photos | Signed thumbnail 200 `image/webp`, preview 200 `image/jpeg`, links use `http://10.0.0.25:3210` |
+| MCP `/api/mcp` with the public key | 5 tools; `search_inventory` returns boxes |
+| Label service | Enabled, status idle, DYMO LabelWriter 5XL; one box preview 200. Nothing was printed |
+| AI draft (2 photos, not saved) | 200 in 5.3 s via OmniRoute `cx/gpt-6-luna`; fallback set to Ollama01 `qwen3-vl:8b-instruct-16k` |
+
+Notes and open points:
+
+- `searchWorkspace` and `aiWorkspace` came from development, so the instance also lists the
+  development connections (`spark`, OpenRouter) and their saved keys. Remove what production
+  should not use in **Settings**.
+- The legacy `ai` and `translationAi` rows (OpenRouter) were imported unchanged with the old
+  system's settings.
+- Voice answers (`/api/public/ask`) still use the local template; the gate before part D applies.
+- `data/migration-2026-10-24/` holds the old data, `move.sqlite` and the development copy,
+  which include keys. Keep it local and delete it after the switch.
+
+Rollback for this stage: nothing outside Portainer changed. To remove the rehearsal, delete stack
+`storagesystem` (id 13) and its volume `storagesystem_app-data` in Portainer; the Docker Hub tags
+can stay. To redo the rehearsal, restore a new move database the same way; every restore keeps
+a safety backup of the replaced database in the volume.
