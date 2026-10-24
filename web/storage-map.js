@@ -57,9 +57,16 @@ export function mountStorageMap(request, getBoxes, openBox, printLocation) {
   }
   $('close-storage-map').addEventListener('click', () => $('storage-map-dialog').close());
   $('storage-map-unit').addEventListener('change', render);
-  return { units: () => model.units, title, async load() { model = await (await request(`storage-map?lang=${document.documentElement.lang}`)).json(); return model.units; },
+  // Units are listed alphabetically by their shown name, with numbers in numeric order.
+  async function fetchModel() {
+    const lang = document.documentElement.lang;
+    model = await (await request(`storage-map?lang=${lang}`)).json();
+    model.units.sort((a, b) => title(a).localeCompare(title(b), lang, { numeric: true, sensitivity: 'base' }));
+    return model;
+  }
+  return { units: () => model.units, title, async load() { return (await fetchModel()).units; },
     async open(highlightIds = null, focusedBox = null, focusedUnit = null) {
-    const response = await request(`storage-map?lang=${document.documentElement.lang}`); model = await response.json(); matches = highlightIds === null ? null : new Set(highlightIds);
+    await fetchModel(); matches = highlightIds === null ? null : new Set(highlightIds);
     const previous = $('storage-map-unit').value; $('storage-map-unit').replaceChildren();
     for (const unit of model.units) $('storage-map-unit').add(new Option(title(unit), unit.slug));
     const focused = model.units.find(unit => unit.positions.some(position => position.boxIds.some(id => focusedBox ? id === focusedBox : matches?.has(id))));
