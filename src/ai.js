@@ -210,8 +210,9 @@ export class Ai {
         input.context ? 'Propose an UPDATE to the current inventory description using ONLY the selected photos plus the current description supplied as data. Preserve useful existing facts and keywords unless the selected photos clearly contradict them. The owner often adds facts that photos cannot show, such as quantities, hidden items and model names; keep them. Absence from a selected close-up or spread photo is not evidence that other contents were removed. Do not duplicate items across views. Report contradictions and uncertainty for review. Keep the existing box name unless the evidence clearly warrants a different suggestion. The user decides what to apply; never save anything.' : '',
         task.extraInstructions ? `Additional user instructions: ${task.extraInstructions}` : '',
         `Return exactly one JSON object matching this schema: ${JSON.stringify(answerSchema)}`].filter(Boolean).join('\n\n');
+      const ask = async (connection, model) => {
       const payload = await this.request(connection, '/chat/completions', {
-        model: task.model, max_tokens: batch ? 2200 : 1200,
+        model, max_tokens: batch ? 2200 : 1200,
         // OpenRouter and OpenAI-compatible servers such as Ollama enforce the schema; free-form
         // JSON produced invalid drafts in 3 (OpenRouter) and 7 (Ollama) of 15 evaluation boxes.
         // OpenRouter also routes only to providers that support it.
@@ -248,13 +249,28 @@ export class Ai {
           }
         }
       } catch { throw new InputError('AI returned an incomplete or invalid inventory description. Try again or choose another image model. No draft was changed.', 502); }
+      return result;
+      };
+      // The fallback answers when the first route is unreachable, rate limited, rejects the key or
+      // returns an unusable answer (all 429/502). Changed settings or inventory (409) are not retried.
+      const routes = [{ connectionId: task.connectionId, model: task.model }];
+      if (task.fallbackConnectionId && task.fallbackModel && (task.fallbackConnectionId !== task.connectionId || task.fallbackModel !== task.model)) routes.push({ connectionId: task.fallbackConnectionId, model: task.fallbackModel });
+      let result, used, firstError;
+      for (const route of routes) {
+        try { used = { ...route, connection: route === routes[0] ? connection : this.connection(config, route.connectionId) }; result = await ask(used.connection, route.model); break; }
+        catch (error) {
+          if (route === routes.at(-1) || !(error instanceof InputError) || ![429, 502].includes(error.status)) throw error;
+          firstError = error;
+        }
+      }
       // Saved keywords come first and always survive an update; the model only adds.
       const keywords = uniqueKeywords([...(input.context?.keywords || []), ...result.keywords]);
       return {
         result: { label: result.label.trim(), summary: result.summary, keywords, uncertainties: result.uncertainties,
           ...(batch ? { photos: selected.map((photo, i) => ({ assetId: photo.assetId, fileName: photo.asset.fileName, capturedAt: photo.asset.capturedAt, role: photo.role === 'auto' ? result.photos.find(p => p.index === i + 1).role : photo.role, description: result.photos.find(p => p.index === i + 1).description })) } : { role: input.role === 'auto' ? result.role : input.role }) },
         input: { ...(batch ? { photos: selected.map(p => ({ assetId: p.assetId, fileName: p.asset.fileName, role: p.role })) } : { assetId: selected[0].assetId, fileName: selected[0].asset.fileName, role: input.role }), imageVariant: 'preview' },
-        connection: { name: connection.name, baseUrl: connection.baseUrl, model: task.model }, language,
+        connection: { name: used.connection.name, baseUrl: used.connection.baseUrl, model: used.model }, language,
+        ...(firstError ? { fallback: { reason: firstError.message } } : {}),
         sourceRevision: input.sourceRevision, elapsedMs: Math.round(performance.now() - start), saved: false
       };
     } finally { this.busy = false; }

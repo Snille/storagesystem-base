@@ -139,6 +139,27 @@ test('OpenRouter drafts request the strict schema; duplicate keywords, empty nam
   assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
 });
 
+test('the fallback connection answers when the first one is unreachable or unusable, and both or neither must be set', async t => {
+  const c = await setup(t);
+  const down = { id: 'down', name: 'Unreachable', provider: 'compatible', baseUrl: 'http://127.0.0.1:1/v1', apiKey: 'unused' };
+  c.config.connections.push(down);
+  c.config.imageInventory = { ...c.config.imageInventory, connectionId: 'down', model: 'missing-model', fallbackConnectionId: 'local', fallbackModel: 'fixture-vision' };
+  for (const bad of [{ fallbackConnectionId: 'local', fallbackModel: '' }, { fallbackConnectionId: 'nowhere', fallbackModel: 'x' }]) {
+    assert.equal((await c.save({ ...c.config, revision: (await c.view()).revision, imageInventory: { ...c.config.imageInventory, ...bad } })).status, 400);
+  }
+  const state = await c.configure(); c.setCompletion(completion(combined));
+  const first = await c.previewInput(state);
+  const input = { revision: state.revision, sourceRevision: first.sourceRevision, photos: [{ assetId: 'one', role: 'inside' }, { assetId: 'two', role: 'label' }] };
+  const draft = await (await c.request('ai/draft', input)).json();
+  assert.deepEqual([draft.connection.name, draft.connection.model], ['Fixture AI', 'fixture-vision']); assert.match(draft.fallback.reason, /could not be reached/);
+  // An unusable answer from the first route also falls back; the fallback's own failure is reported.
+  c.config.imageInventory = { ...c.config.imageInventory, connectionId: 'local', model: 'fixture-vision', fallbackConnectionId: 'down', fallbackModel: 'missing-model' };
+  const second = await c.configure(); c.setCompletion(completion({ ...combined, label: '' }));
+  const failed = await c.request('ai/draft', { ...input, revision: second.revision });
+  assert.equal(failed.status, 502); assert.match((await failed.json()).error, /could not be reached/);
+  assert.deepEqual(c.store.read(), { boxes: [], sessions: [], photos: [] });
+});
+
 test('multi-photo draft rejects duplicate/missing assets, bad roles, excess photos and mismatched model photo rows without writes', async t => {
   const c = await setup(t); const state = await c.configure(); const first = await c.previewInput(state);
   const input = { revision: state.revision, sourceRevision: first.sourceRevision, photos: [{ assetId: 'one', role: 'inside' }, { assetId: 'two', role: 'label' }] };

@@ -8,8 +8,10 @@ export function mountAi(request, message, chooseBoxPhotos) {
   const fail = error => { $('ai-status').textContent = t(error.message); $('ai-status').classList.add('error'); };
   const status = value => { $('ai-status').textContent = value; $('ai-status').classList.remove('error'); };
   const connectionFields = c => ({ id: c.id, name: c.name, provider: c.provider, baseUrl: c.baseUrl });
-  const taskValue = () => ({ connectionId: $('ai-task-connection').value, model: $('ai-model').value.trim(), language: $('ai-language').value, extraInstructions: $('ai-extra').value });
-  const taskDirty = () => JSON.stringify(taskValue()) !== JSON.stringify(state.imageInventory, ['connectionId', 'model', 'language', 'extraInstructions']);
+  const taskValue = () => ({ connectionId: $('ai-task-connection').value, model: $('ai-model').value.trim(), language: $('ai-language').value, extraInstructions: $('ai-extra').value,
+    fallbackConnectionId: $('ai-fallback-connection').value, fallbackModel: $('ai-fallback-model').value.trim() });
+  const taskFields = ['connectionId', 'model', 'language', 'extraInstructions', 'fallbackConnectionId', 'fallbackModel'];
+  const taskDirty = () => JSON.stringify(taskValue()) !== JSON.stringify({ fallbackConnectionId: '', fallbackModel: '', ...state.imageInventory }, taskFields);
   function page(name) {
     for (const id of ['overview', 'connections', 'images']) $(`ai-${id}`).hidden = id !== name;
     for (const button of document.querySelectorAll('[data-ai-page]')) {
@@ -33,10 +35,12 @@ export function mountAi(request, message, chooseBoxPhotos) {
     const task = state.imageInventory;
     $('ai-connection-picker').replaceChildren(new Option(t('New connection…'), ''));
     $('ai-task-connection').replaceChildren(new Option(t('Choose a connection…'), ''));
+    $('ai-fallback-connection').replaceChildren(new Option(t('No fallback'), ''));
     for (const c of state.connections) {
-      $('ai-connection-picker').add(new Option(c.name, c.id)); $('ai-task-connection').add(new Option(c.name, c.id));
+      $('ai-connection-picker').add(new Option(c.name, c.id)); $('ai-task-connection').add(new Option(c.name, c.id)); $('ai-fallback-connection').add(new Option(c.name, c.id));
     }
     $('ai-task-connection').value = task.connectionId; $('ai-model').value = task.model; $('ai-language').value = task.language; $('ai-extra').value = task.extraInstructions;
+    $('ai-fallback-connection').value = task.fallbackConnectionId || ''; $('ai-fallback-model').value = task.fallbackModel || '';
     $('ai-default-instructions').textContent = state.defaultInstructions;
     $('ai-legacy').hidden = !state.legacySettingsPresent;
     const c = state.connections.find(c => c.id === task.connectionId);
@@ -146,7 +150,7 @@ export function mountAi(request, message, chooseBoxPhotos) {
       const response = await data('preview', { revision: state.revision, sourceRevision: album.sourceRevision, assetId: chosen.id, role: $('ai-photo-role').value });
       if (current !== generation) return;
       for (const field of ['role', 'label', 'summary', 'keywords', 'uncertainties']) $('ai-result-' + field).textContent = (field === 'role' ? roleName(response.result.role) : field === 'keywords' ? response.result[field].join(', ') : response.result[field]) || t('None provided');
-      $('ai-result-meta').textContent = `${response.input.fileName} · ${response.connection.name} · ${response.connection.model} · ${response.language} · ${(response.elapsedMs / 1000).toFixed(1)} s`;
+      $('ai-result-meta').textContent = `${response.input.fileName} · ${response.connection.name} · ${response.connection.model} · ${response.language} · ${(response.elapsedMs / 1000).toFixed(1)} s${response.fallback ? ` · ${tr('fallback used: {0}', t(response.fallback.reason))}` : ''}`;
       $('ai-result').hidden = false; $('ai-preview-status').textContent = t('Analysis complete. Nothing has been saved to inventory.');
     } catch (error) { if (current === generation) $('ai-preview-status').textContent = error.message; }
     finally { running = false; updateTask(); }

@@ -644,5 +644,13 @@ export default {
   "Turn all points 1 degree left": "Vrid alla punkter 1 grad åt vänster",
   "Turn all points 1 degree right": "Vrid alla punkter 1 grad åt höger",
   "Turn all points 5 degrees right": "Vrid alla punkter 5 grader åt höger",
-  "A place for everything": "En plats för allt"
+  "A place for everything": "En plats för allt",
+  "No fallback": "Ingen reserv",
+  "fallback used: {0}": "reserven användes: {0}",
+  "Fallback connection": "Reservanslutning",
+  "Fallback model": "Reservmodell",
+  "Exact model ID": "Exakt modell-ID",
+  "Used only when the first connection cannot be reached, is rate limited or returns an unusable answer. The result shows when the fallback answered.": "Används bara när den första anslutningen inte svarar, är spärrad eller ger ett oanvändbart svar. Resultatet visar när reserven svarade.",
+  "The fallback must use an existing connection.": "Reserven måste använda en befintlig anslutning.",
+  "Choose both a fallback connection and a fallback model, or neither.": "Välj både reservanslutning och reservmodell, eller ingen av dem."
 };

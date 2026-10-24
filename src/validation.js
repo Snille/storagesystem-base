@@ -122,10 +122,14 @@ export function validateAiWorkspace(config) {
     if (connection.provider === 'openrouter' && connection.baseUrl !== 'https://openrouter.ai/api/v1') throw new InputError('OpenRouter uses https://openrouter.ai/api/v1. Use a compatible connection for another server.');
   }
   const task = object(config.imageInventory, 'imageInventory');
-  for (const field of Object.keys(task)) if (!['connectionId', 'model', 'language', 'extraInstructions'].includes(field)) throw new InputError(`Unsupported image task setting: ${field}`);
+  for (const field of Object.keys(task)) if (!['connectionId', 'model', 'language', 'extraInstructions', 'fallbackConnectionId', 'fallbackModel'].includes(field)) throw new InputError(`Unsupported image task setting: ${field}`);
   for (const field of ['connectionId', 'model', 'language', 'extraInstructions']) text(task[field], field, { empty: true });
+  // The fallback is optional: a second connection and model used when the first one fails.
+  for (const field of ['fallbackConnectionId', 'fallbackModel']) text(task[field], field, { optional: true, empty: true });
   if (task.connectionId && !ids.has(task.connectionId)) throw new InputError('The image task must use an existing connection.');
-  if (task.model.length > 200 || task.extraInstructions.length > 4000) throw new InputError('Use a model ID up to 200 characters and extra instructions up to 4000 characters.');
+  if (task.fallbackConnectionId && !ids.has(task.fallbackConnectionId)) throw new InputError('The fallback must use an existing connection.');
+  if (Boolean(task.fallbackConnectionId) !== Boolean(task.fallbackModel)) throw new InputError('Choose both a fallback connection and a fallback model, or neither.');
+  if (task.model.length > 200 || (task.fallbackModel || '').length > 200 || task.extraInstructions.length > 4000) throw new InputError('Use a model ID up to 200 characters and extra instructions up to 4000 characters.');
   if (!['app', 'en', 'sv', 'de'].includes(task.language)) throw new InputError('Choose app, en, sv or de for the image output language.');
   return config;
 }

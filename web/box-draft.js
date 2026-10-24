@@ -42,7 +42,7 @@ export function mountBoxDraft(request, apply) {
       if (current !== generation) return;
       draft = response;
       for (const field of ['label', 'summary', 'keywords', 'uncertainties']) $(`box-draft-${field}`).textContent = (field === 'keywords' ? draft.result[field].join(', ') : draft.result[field]) || t('None provided');
-      $('box-draft-meta').textContent = `${draft.connection.name} · ${draft.connection.model} · ${tr('{0} photos', draft.result.photos.length)} · ${(draft.elapsedMs / 1000).toFixed(1)} s`;
+      $('box-draft-meta').textContent = `${draft.connection.name} · ${draft.connection.model} · ${tr('{0} photos', draft.result.photos.length)} · ${(draft.elapsedMs / 1000).toFixed(1)} s${draft.fallback ? ` · ${tr('fallback used: {0}', t(draft.fallback.reason))}` : ''}`;
       const perPhoto = $('box-draft-photo-notes'); perPhoto.replaceChildren();
       for (const photo of draft.result.photos) {
         const item = node('div', undefined, 'history-entry'); item.append(node('strong', `${t(roles[photo.role])} · ${photo.fileName}`), node('p', photo.description, 'hint')); perPhoto.append(item);

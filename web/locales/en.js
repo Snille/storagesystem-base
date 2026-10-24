@@ -650,5 +650,13 @@ export default {
   "Turn all points 1 degree left": "Turn all points 1 degree left",
   "Turn all points 1 degree right": "Turn all points 1 degree right",
   "Turn all points 5 degrees right": "Turn all points 5 degrees right",
-  "A place for everything": "A place for everything"
+  "A place for everything": "A place for everything",
+  "No fallback": "No fallback",
+  "fallback used: {0}": "fallback used: {0}",
+  "Fallback connection": "Fallback connection",
+  "Fallback model": "Fallback model",
+  "Exact model ID": "Exact model ID",
+  "Used only when the first connection cannot be reached, is rate limited or returns an unusable answer. The result shows when the fallback answered.": "Used only when the first connection cannot be reached, is rate limited or returns an unusable answer. The result shows when the fallback answered.",
+  "The fallback must use an existing connection.": "The fallback must use an existing connection.",
+  "Choose both a fallback connection and a fallback model, or neither.": "Choose both a fallback connection and a fallback model, or neither."
 };
