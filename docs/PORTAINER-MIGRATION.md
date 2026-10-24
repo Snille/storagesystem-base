@@ -1,7 +1,8 @@
 # Moving Storage System to Portainer
 
 Plan written 2026-10-24. Parts A, B and C were carried out on 2026-10-24 (see
-[Results](#results-2026-10-24-parts-a-c)); part D has not started. Steps marked
+[Results](#results-2026-10-24-parts-a-c)) and the stack was updated to 0.23.0 on 2026-10-25;
+part D has not started. Steps marked
 **Approval** change something outside this repository and wait for the owner's yes.
 
 ## Starting point
@@ -158,3 +159,30 @@ Rollback for this stage: nothing outside Portainer changed. To remove the rehear
 `storagesystem` (id 13) and its volume `storagesystem_app-data` in Portainer; the Docker Hub tags
 can stay. To redo the rehearsal, restore a new move database the same way; every restore keeps
 a safety backup of the replaced database in the volume.
+
+## Update 2026-10-25: 0.23.0 on the rehearsal stack
+
+- Released `0.23.0` (commit `eeb26ae`): spoken answers phrased by AI and open management. Image
+  built from `git archive eeb26ae`, contains only `src`, `web`, `package.json`, `VERSION`;
+  `mrsnille/storagesystem-base:0.23.0` and `:latest`, digest
+  `sha256:9ffe3d1213ee434a3bbae6605a76a9017a367ff413ebd36e4ac418c9f52a9b41`.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.23.0.sqlite` (git-ignored).
+- Stack 13 now uses the 0.23.0 `compose.portainer.yaml` with `STORAGE_IMAGE=...:0.23.0`,
+  `STORAGE_MANAGEMENT_ACCESS=open` and `APP_ALLOWED_HOSTS=verkstad.snille.net,hylla.snille.net,10.0.0.25:3210`.
+  `STORAGE_ADMIN_KEY` stays set but is not needed. `APP_BASE_URL` is still `http://10.0.0.25:3210`.
+- Checks: `/healthz` 0.23.0; management works without a key; an unlisted host gets 403; the public
+  API still needs its key (401 without); audit ok, 164 / 249 / 306 / 164; the page opens directly
+  with background, 3D overview and the owner's 15 points; `/api/public/ask` answered with AI in
+  1.3-1.6 s ("Buntbanden finns på Lagerhylla: G, Hylla 2, Plats: 3B.").
+- The development connections `spark` and `openrouter` were removed from the stack's AI settings;
+  `omniroute` (default `cx/gpt-6-luna`) and `ollama01` (fallback) remain with their keys.
+
+### For the switch (part D)
+
+1. The owner changes NPM proxy host 11 (`verkstad.snille.net`, `hylla.snille.net`): forward host
+   `10.0.0.33` → `10.0.0.25`, port `3000` → `3210`. Nothing else; the Authelia block and the MCP and
+   OAuth locations use the same forward target.
+2. Set `APP_BASE_URL=https://verkstad.snille.net` in stack 13 and update it (photo links for Home
+   Assistant). Home Assistant's integration already uses `https://verkstad.snille.net`.
+3. Rollback: forward host back to `10.0.0.33:3000`.
