@@ -1,5 +1,7 @@
 # Continue development
 
+Read [the 2026-10-24 handoff](HANDOFF-2026-10-24.md) first: current versions, where everything runs, traps and the recommended next steps.
+
 ## Latest verification: 2026-10-24 (0.15.0-dev)
 
 Printing now goes through the separate label service (Snille/label-service,
