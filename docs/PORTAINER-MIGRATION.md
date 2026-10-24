@@ -49,6 +49,14 @@ proxmox-notes, label-service); Docker Hub has no `mrsnille/storagesystem-base` r
 10. Check against the old system: box, session and photo counts, a few searches, photos, MCP tools,
     a print preview and one AI draft. Keep the rehearsal running for review.
 
+## Gate before the switch: voice answers
+
+Home Assistant's voice flow asks `POST /api/public/ask` through the same public address. The old
+system phrases that answer with AI (`source: "ai"`, separate prompts for voice and public use) and
+falls back to a local answer. This application currently answers with a local template only and may
+list several boxes, so voice answers would get worse at the switch. Decide before step 11 whether
+spoken answers must match or improve first (see VOICE-SEARCH.md and ANSWER-POLICY.md).
+
 ## D. Switch over
 
 11. **Owner decides the time.** Stop editing in the old system, take a final read-only copy and
