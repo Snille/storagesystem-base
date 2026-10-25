@@ -203,3 +203,18 @@ a safety backup of the replaced database in the volume.
   and spoken answers through a speaker.
 - The old system on `hyllsystem-live` is untouched and still running; rollback is the NPM forward
   target `10.0.0.33:3000`. Stopping it is part E, after an agreed period.
+
+## Update 2026-10-25: 0.24.0
+
+- Released `0.24.0` (commit `d6591b6`): Data & maintenance moved into the Security dialog, voice
+  search, Appearance fixed for open management, dialogs close on an outside click, no photo viewer
+  flash. Image built from `git archive d6591b6`; `mrsnille/storagesystem-base:0.24.0` and `:latest`,
+  digest `sha256:d3c61a4e4902e8ca797a7202b25765c55a0e578da01026680dedb9b2c05645a3`.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.24.0.sqlite` (git-ignored).
+- Stack 13 updated through the Portainer API with the unchanged `compose.portainer.yaml`; only
+  `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.24.0; audit ok, 164 / 249 / 306 / 164; the public API needs its key (401
+  without); an unlisted host gets 403; `https://verkstad.snille.net/healthz` 200; the page has the
+  voice search button and the maintenance section; a real 2268 x 4032 photo opens hidden and then
+  fitted (12 %), without a full-size frame.
