@@ -2,7 +2,7 @@
 
 Plan written 2026-10-24. Parts A, B and C were carried out on 2026-10-24 (see
 [Results](#results-2026-10-24-parts-a-c)) and the stack was updated to 0.23.0 on 2026-10-25;
-part D has not started. Steps marked
+the public address was switched on 2026-10-25 (part D, see the end). Part E has not started. Steps marked
 **Approval** change something outside this repository and wait for the owner's yes.
 
 ## Starting point
@@ -186,3 +186,20 @@ a safety backup of the replaced database in the volume.
 2. Set `APP_BASE_URL=https://verkstad.snille.net` in stack 13 and update it (photo links for Home
    Assistant). Home Assistant's integration already uses `https://verkstad.snille.net`.
 3. Rollback: forward host back to `10.0.0.33:3000`.
+
+## Switch 2026-10-25 (part D)
+
+- The owner pointed NPM proxy host 11 (`verkstad.snille.net`, `hylla.snille.net`) to
+  `10.0.0.25:3210` (checked in the generated config). The editing freeze and final data copy of
+  step 11 were not repeated; the rehearsal data from 2026-10-24 is in use (the old system's
+  `inventory.json` was still dated 2026-10-20 at the copy).
+- Stack 13 now has `APP_BASE_URL=https://verkstad.snille.net`; `/healthz` 0.23.0.
+- Checks through the public address: the page opens without a key with v0.23.0 and 164 boxes;
+  a same-site change is accepted; box photos load; MCP `search_inventory` and `list_locations`
+  answer (17 units, 164 boxes); Home Assistant `storagesystem.ask` returns the new AI answer
+  ("Buntbanden finns på Lagerhylla: G, Hylla 2, Plats: 3B.") with photo links on
+  `https://verkstad.snille.net` that load (200, `image/webp`).
+- Not checked here: access from outside the LAN through Authelia (needs a real external network),
+  and spoken answers through a speaker.
+- The old system on `hyllsystem-live` is untouched and still running; rollback is the NPM forward
+  target `10.0.0.33:3000`. Stopping it is part E, after an agreed period.
