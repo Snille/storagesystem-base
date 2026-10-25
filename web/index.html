@@ -33,7 +33,6 @@
       <p id="result-count" class="muted"></p>
       <section id="boxes" class="grid" aria-label="Inventory boxes"></section>
       <section id="empty" class="panel empty" hidden><h2>Your inventory starts here.</h2><p class="muted">Add your first box, or import an existing inventory below. Imports require an empty database.</p><button id="empty-add">+ Add first box</button></section>
-      <details class="panel maintenance"><summary>Data &amp; maintenance</summary><p class="muted">Exports contain inventory only. SQLite backups also include settings and credentials: keep them private. Original photos remain in your photo service.</p><div class="actions"><button id="export" class="quiet">Export JSON</button><button id="backup" class="quiet">Download SQLite backup</button><button id="audit" class="quiet">Check data integrity</button></div><label class="import-label">Import inventory JSON into an empty database<input id="import" type="file" accept="application/json,.json"></label><label class="upload-button">Restore from an SQLite backup<input id="restore-file" type="file" accept=".sqlite,application/vnd.sqlite3,application/x-sqlite3"></label><p class="hint">Replaces all inventory, settings and keys with the backup after a check and your confirmation. The current data is saved first as a safety backup on the server.</p></details>
       <p class="hint footer">Your photos stay in your photo service. Review AI suggestions before saving. Preview labels before printing.</p>
     </div>
   </main>
@@ -106,6 +105,7 @@
       <label class="check-label"><input type="checkbox" id="security-clear-key"> Remove the saved key and use the server's STORAGE_API_KEY</label>
       <p id="security-error" role="alert"></p><button id="save-security">Save security settings</button>
     </form>
+    <section class="maintenance"><h3>Data &amp; maintenance</h3><p class="hint">Exports contain inventory only. SQLite backups also include settings and credentials: keep them private. Original photos remain in your photo service.</p><div class="actions"><button type="button" id="export" class="quiet">Export JSON</button><button type="button" id="backup" class="quiet">Download SQLite backup</button><button type="button" id="audit" class="quiet">Check data integrity</button></div><label class="import-label">Import inventory JSON into an empty database<input id="import" type="file" accept="application/json,.json"></label><label class="upload-button">Restore from an SQLite backup<input id="restore-file" type="file" accept=".sqlite,application/vnd.sqlite3,application/x-sqlite3"></label><p class="hint">Replaces all inventory, settings and keys with the backup after a check and your confirmation. The current data is saved first as a safety backup on the server.</p><p id="maintenance-status" role="status" aria-live="polite"></p></section>
   </dialog>
   <dialog id="restore-dialog">
     <form id="restore-form">

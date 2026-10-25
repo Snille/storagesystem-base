@@ -411,17 +411,22 @@ if (SpeechRecognition) {
 }
 $('location').addEventListener('change', render);
 $('refresh').addEventListener('click', () => load().then(() => message(t('Inventory refreshed.'))).catch(e => message(e.message, true)));
+// Data & maintenance lives in the Security dialog, so its results show there.
+function maintenanceMessage(value, error = false) {
+  $('maintenance-status').textContent = t(value); $('maintenance-status').classList.toggle('error', error);
+}
+$('security-dialog').addEventListener('close', () => maintenanceMessage(''));
 $('audit').addEventListener('click', async () => {
-  try { const audit = await (await request('audit')).json(); message(audit.ok ? t('Data integrity checks passed.') : audit.errors.join(' '), !audit.ok); }
-  catch (error) { message(error.message, true); }
+  try { const audit = await (await request('audit')).json(); maintenanceMessage(audit.ok ? t('Data integrity checks passed.') : audit.errors.join(' '), !audit.ok); }
+  catch (error) { maintenanceMessage(error.message, true); }
 });
 for (const [id, filename] of [['export', 'inventory.json'], ['backup', 'storage-backup.sqlite']]) {
   $(id).addEventListener('click', async () => {
     try {
       const blob = await (await request(id)).blob(); const url = URL.createObjectURL(blob);
       const link = element('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      message(tr('{0} downloaded.', filename));
-    } catch (error) { message(error.message, true); }
+      maintenanceMessage(tr('{0} downloaded.', filename));
+    } catch (error) { maintenanceMessage(error.message, true); }
   });
 }
 $('import').addEventListener('change', async event => {
@@ -430,8 +435,8 @@ $('import').addEventListener('change', async event => {
     if (file.size > 10 * 1024 * 1024) throw new Error(t('Import exceeds 10 MiB.'));
     const payload = JSON.parse(await file.text());
     await request('import', { method: 'POST', body: JSON.stringify(payload) });
-    await load(); message(t('Inventory imported and validated.'));
-  } catch (error) { message(error.message, true); }
+    $('security-dialog').close(); await load(); message(t('Inventory imported and validated.'));
+  } catch (error) { maintenanceMessage(error.message, true); }
   finally { event.target.value = ''; }
 });
 // Full restore: upload and check first, then show what changes and require typing RESTORE.
@@ -439,14 +444,14 @@ let restoreToken = null;
 $('restore-file').addEventListener('change', async event => {
   const file = event.target.files[0]; event.target.value = ''; if (!file) return;
   try {
-    message(t('Checking the backup…'));
+    maintenanceMessage(t('Checking the backup…'));
     const check = await (await request('restore/upload', { method: 'POST', body: file, headers: { 'content-type': 'application/vnd.sqlite3' } })).json();
-    restoreToken = check.token; message('');
+    restoreToken = check.token; maintenanceMessage('');
     $('restore-counts').replaceChildren(...[['boxes', 'Boxes'], ['sessions', 'Inventory sessions'], ['photos', 'Photo references'], ['locations', 'Storage positions']].map(([key, label]) => {
       const row = element('tr'); row.append(element('td', t(label)), element('td', String(check.current[key])), element('td', String(check.counts[key]))); return row;
     }));
     $('restore-confirm').value = ''; $('restore-apply').disabled = true; $('restore-error').textContent = ''; $('restore-dialog').showModal();
-  } catch (error) { message(error.message, true); }
+  } catch (error) { maintenanceMessage(error.message, true); }
 });
 $('restore-confirm').addEventListener('input', () => { $('restore-apply').disabled = $('restore-confirm').value.trim() !== 'RESTORE'; });
 $('close-restore').addEventListener('click', () => $('restore-dialog').close());
@@ -455,7 +460,7 @@ $('restore-form').addEventListener('submit', async event => {
   try {
     const result = await (await request('restore', { method: 'POST', body: JSON.stringify({ token: restoreToken, confirm: $('restore-confirm').value.trim() }) })).json();
     // The backup brings its own language and background settings.
-    $('restore-dialog').close(); await loadAppearance();
+    $('restore-dialog').close(); $('security-dialog').close(); await loadAppearance();
     try { setLanguage((await (await fetch('/api/interface-language')).json()).language); } catch { /* Keep the current language. */ }
     await load(); message(tr('Backup restored. The previous data is saved as {0}.', result.safetyBackup));
   } catch (error) { $('restore-error').textContent = t(error.message); $('restore-apply').disabled = false; }
