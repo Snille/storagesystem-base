@@ -39,7 +39,8 @@ async function request(path, options = {}) {
 let languageState;
 const appearance = mountAppearance(request);
 $('open-languages').addEventListener('click', async () => {
-  if (!key) { message(t('Open inventory before changing shared language settings.'), true); return; }
+  // Open management has no key, so check whether the inventory is open instead.
+  if ($('workspace').hidden) { message(t('Open inventory before changing shared language settings.'), true); return; }
   try {
     languageState = await (await request('languages')).json(); await appearance.refresh();
     $('ui-language').value = languageState.uiLanguage; $('response-language').value = languageState.responseLanguage;
@@ -378,6 +379,22 @@ $('box-form').addEventListener('submit', async event => {
 });
 let timer;
 $('search').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 150); });
+// Voice search uses the browser's own speech recognition; the button stays hidden where it is missing.
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+  let recognition = null;
+  $('voice-search').hidden = false;
+  $('voice-search').addEventListener('click', () => {
+    if (recognition) { recognition.stop(); return; }
+    recognition = new SpeechRecognition();
+    recognition.lang = uiLanguage() === 'sv' ? 'sv-SE' : 'en-US'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+    recognition.addEventListener('result', event => { $('search').value = event.results[0][0].transcript.trim().replace(/[.?!]$/, ''); render(); });
+    recognition.addEventListener('error', event => { if (event.error !== 'no-speech' && event.error !== 'aborted') message(t('Voice search is not available.'), true); });
+    recognition.addEventListener('end', () => { recognition = null; $('voice-search').classList.remove('listening'); $('voice-search').setAttribute('aria-pressed', 'false'); });
+    $('voice-search').classList.add('listening'); $('voice-search').setAttribute('aria-pressed', 'true');
+    recognition.start();
+  });
+}
 $('location').addEventListener('change', render);
 $('refresh').addEventListener('click', () => load().then(() => message(t('Inventory refreshed.'))).catch(e => message(e.message, true)));
 $('audit').addEventListener('click', async () => {

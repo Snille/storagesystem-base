@@ -1,5 +1,11 @@
 # History
 
+## Unreleased
+
+- **Appearance works with open management.** The Appearance button checked for a management key, which open management does not have, so it only showed "Open inventory before changing shared language settings." It now checks that the inventory is open.
+- **Voice search in the browser.** A microphone button in the search field fills the search with speech through the browser's own speech recognition (Swedish or English after the interface language). The button is hidden in browsers without it (for example Firefox). Chrome and Edge send the audio to their vendor's speech service; nothing goes through this server.
+- Header: the small "Everything has a place." line is removed and the title is larger, so it lines up with the icon. The Theme button moved from the header to the end of the button row.
+
 ## 0.23.0 - 2026-10-25
 
 - **Open management (owner decision).** `STORAGE_MANAGEMENT_ACCESS=open` lets the page and management API work without a key, like the reference application, which is open on the LAN and behind Authelia with MFA from outside. It requires `APP_ALLOWED_HOSTS`: requests for other host names are refused (DNS rebinding), and the origin check still stops other websites from changing data. The public API keeps its key, so Home Assistant and MCP are unchanged. The page opens the inventory directly when the server needs no key. `APP_ALLOWED_HOSTS` also allows the second public name (`hylla.snille.net`) for browser changes.
