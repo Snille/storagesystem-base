@@ -5,6 +5,8 @@
 - **Appearance works with open management.** The Appearance button checked for a management key, which open management does not have, so it only showed "Open inventory before changing shared language settings." It now checks that the inventory is open.
 - **Voice search in the browser.** A microphone button in the search field fills the search with speech through the browser's own speech recognition (Swedish or English after the interface language). The button is hidden in browsers without it (for example Firefox). Chrome and Edge send the audio to their vendor's speech service; nothing goes through this server.
 - Header: the small "Everything has a place." line is removed and the title is larger, so it lines up with the icon. The Theme button moved from the header to the end of the button row.
+- A click outside a dialog closes it, like Esc and like the reference application. The press must also start outside, so selecting text and releasing outside does not close it.
+- The photo viewer keeps the image hidden until it is sized to fit, so it no longer shows at 100 % for a moment first.
 
 ## 0.23.0 - 2026-10-25
 

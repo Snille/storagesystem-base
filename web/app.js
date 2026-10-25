@@ -13,6 +13,18 @@ import { mountSecurity } from './security.js';
 await Promise.all([initializeLanguage(), loadAppearance()]);
 
 const $ = id => document.getElementById(id);
+
+// A click on the backdrop closes the open dialog, like Esc. The press must start outside too,
+// so selecting text and releasing outside the dialog does not close it.
+let pressedOutside = false;
+const outsideDialog = event => {
+  const dialog = event.target;
+  if (!(dialog instanceof HTMLDialogElement) || !dialog.open) return false;
+  const bounds = dialog.getBoundingClientRect();
+  return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+};
+document.addEventListener('pointerdown', event => { pressedOutside = outsideDialog(event); });
+document.addEventListener('click', event => { if (pressedOutside && outsideDialog(event)) event.target.close(); pressedOutside = false; });
 let key = ''; let boxes = []; let positions = []; let selected = null;
 let sessionPhotos = []; let photoSourceRevision = null;
 let aiDraftActive = false;
@@ -229,6 +241,8 @@ function updateViewerZoom(reset = false) {
   const ready = image?.complete && image.naturalWidth > 0;
   for (const id of ['viewer-zoom-in', 'viewer-zoom-out', 'viewer-actual', 'viewer-fit']) $(id).disabled = !ready;
   if (!ready) { $('viewer-zoom-level').textContent = ''; return; }
+  // The image stays hidden until it is sized, so it never shows at full size first.
+  image.classList.add('is-ready');
   const fit = Math.min(1, viewport.clientWidth / image.naturalWidth, viewport.clientHeight / image.naturalHeight);
   viewerZoom = Math.max(1, Math.min(viewerZoom, Math.max(8, 1 / fit)));
   image.style.width = `${Math.round(image.naturalWidth * fit * viewerZoom)}px`;
