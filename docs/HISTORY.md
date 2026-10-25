@@ -1,5 +1,9 @@
 # History
 
+## 0.25.1 - 2026-10-25
+
+- Favicon: a Da Vinci style sketch of a shelf with storage boxes, shared theme with the other services (made with the ComfyUI icon workflow in `Coding/Icons`). Served as `/favicon.ico`, `/favicon-32.png` and `/apple-touch-icon.png`; an HTTP test checks all three.
+
 ## 0.25.0 - 2026-10-25
 
 - **Accent colour under Appearance.** Eight ready colours or your own colour picker, plus Use the default colour (`#95c200`). The colour is shared and public like the background (`GET /api/appearance` returns `accent`; `PUT /api/manage/appearance` accepts `accent` as `#rrggbb` or `null` for the default). Text on accent buttons switches between dark and white for contrast. Stored in the settings, so backups and restores carry it; settings validation rejects other values.

@@ -51,6 +51,14 @@ test('the page header shows the VERSION file', async t => {
   assert.ok(page.includes(`id="app-version" title="Version">v${version}<`)); assert.ok(!page.includes('{{version}}'));
 });
 
+test('the favicons are served as images', async t => {
+  const { base } = await setup(t, { populated: false });
+  for (const [path, type] of [['/favicon.ico', 'image/x-icon'], ['/favicon-32.png', 'image/png'], ['/apple-touch-icon.png', 'image/png']]) {
+    const icon = await fetch(base + path); assert.equal(icon.status, 200); assert.equal(icon.headers.get('content-type'), type);
+    assert.ok((await icon.arrayBuffer()).byteLength > 100);
+  }
+});
+
 test('REST contract: health, auth precedence, search languages, ask fallback, missing box', async t => {
   const { base, request } = await setup(t);
   assert.equal((await fetch(base + '/api/public/health')).status, 401);

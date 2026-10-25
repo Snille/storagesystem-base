@@ -32,6 +32,9 @@ const assets = new Map([
   ['/locales/en.js', ['locales/en.js', 'text/javascript; charset=utf-8']],
   ['/locales/sv.js', ['locales/sv.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
+  ['/favicon.ico', ['favicon.ico', 'image/x-icon']],
+  ['/favicon-32.png', ['favicon-32.png', 'image/png']],
+  ['/apple-touch-icon.png', ['apple-touch-icon.png', 'image/png']],
   ['/vendor/pannellum/pannellum.js', ['vendor/pannellum/pannellum.js', 'text/javascript; charset=utf-8']],
   ['/vendor/pannellum/pannellum.css', ['vendor/pannellum/pannellum.css', 'text/css; charset=utf-8']],
   ...['hills', 'pegboard', 'blueprint'].map(name => [`/backgrounds/${name}.svg`, [`backgrounds/${name}.svg`, 'image/svg+xml']])
