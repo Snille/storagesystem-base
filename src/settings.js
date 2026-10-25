@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { InputError, object, text, validateSettings, backgrounds } from './validation.js';
+import { InputError, object, text, validateSettings, backgrounds, defaultAccent, accentPattern } from './validation.js';
 
 export const sourceRevision = config => createHash('sha256').update(JSON.stringify(config || {})).digest('hex');
 const baseUrl = value => value?.trim().replace(/\/+$/, '') || '';
@@ -26,13 +26,15 @@ export class Settings {
   // The page background is public: the page shows it before anyone enters a key.
   appearance() {
     const appearance = this.store.settings().appearance || {}; const image = this.store.media('background');
-    const value = { uiLanguage: appearance.uiLanguage || 'en', background: appearance.background || 'hills', imageRevision: image?.sha256 || null };
+    const value = { uiLanguage: appearance.uiLanguage || 'en', background: appearance.background || 'hills', imageRevision: image?.sha256 || null, accent: appearance.accent || defaultAccent };
     return { ...value, revision: sourceRevision(value) };
   }
   saveBackground(input) {
     object(input);
-    for (const field of Object.keys(input)) if (!['revision', 'background', 'image', 'clearImage'].includes(field)) throw new InputError(`Unsupported background setting: ${field}`);
+    for (const field of Object.keys(input)) if (!['revision', 'background', 'image', 'clearImage', 'accent'].includes(field)) throw new InputError(`Unsupported background setting: ${field}`);
     if (input.background !== undefined && !backgrounds.includes(input.background)) throw new InputError('Choose one of the listed backgrounds.');
+    // null returns to the default accent colour.
+    if (input.accent !== undefined && input.accent !== null && !(typeof input.accent === 'string' && accentPattern.test(input.accent.toLowerCase()))) throw new InputError('Choose the accent colour as #rrggbb.');
     if (input.clearImage !== undefined && typeof input.clearImage !== 'boolean') throw new InputError('clearImage must be a boolean.');
     let image;
     if (input.image !== undefined) {
@@ -50,7 +52,10 @@ export class Settings {
         if (input.background === 'custom') throw new InputError('Upload an image before choosing your own background.');
         background = 'hills';
       }
-      this.store.writeSettings({ appearance: { ...this.store.settings().appearance, background } });
+      const next = { ...this.store.settings().appearance, background };
+      if (input.accent === null) delete next.accent;
+      else if (input.accent !== undefined) next.accent = input.accent.toLowerCase();
+      this.store.writeSettings({ appearance: next });
       return this.appearance();
     });
   }

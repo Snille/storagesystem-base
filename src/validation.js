@@ -59,6 +59,9 @@ export function validateInventory(input) {
 
 // Built-in page backgrounds live in web/backgrounds; custom uses the uploaded image.
 export const backgrounds = ['hills', 'pegboard', 'blueprint', 'none', 'custom'];
+// Buttons, links and highlights use the accent colour, a #rrggbb value.
+export const defaultAccent = '#95c200';
+export const accentPattern = /^#[0-9a-f]{6}$/;
 
 // Clickable points in the 3D overview, per overview image: a direction and a storage unit.
 export function validateOverviewPoints(value) {
@@ -78,6 +81,7 @@ export function validateSettings(settings) {
   object(settings, 'settings');
   if (settings.appearance?.uiLanguage !== undefined && !['en', 'sv'].includes(settings.appearance.uiLanguage)) throw new InputError('Unsupported interface language.');
   if (settings.appearance?.background !== undefined && !backgrounds.includes(settings.appearance.background)) throw new InputError('Unsupported background.');
+  if (settings.appearance?.accent !== undefined && !accentPattern.test(settings.appearance.accent)) throw new InputError('Unsupported accent colour.');
   if (settings.overviewPoints !== undefined) validateOverviewPoints(settings.overviewPoints);
   if (settings.overviewPointsSource !== undefined) { object(settings.overviewPointsSource, 'overviewPointsSource'); text(settings.overviewPointsSource.assetId, 'overviewPointsSource.assetId'); }
   if (settings.aiWorkspace !== undefined) validateAiWorkspace(settings.aiWorkspace);

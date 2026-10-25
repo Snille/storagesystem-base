@@ -23,7 +23,7 @@ async function setup(t, store = new Store(':memory:')) {
 
 test('backgrounds are public to read, management-only to change, and the uploaded image is checked and served', async t => {
   const { store, base, view, put } = await setup(t);
-  assert.deepEqual({ ...await view(), revision: undefined }, { uiLanguage: 'en', background: 'hills', imageRevision: null, revision: undefined });
+  assert.deepEqual({ ...await view(), revision: undefined }, { uiLanguage: 'en', background: 'hills', imageRevision: null, accent: '#95c200', revision: undefined });
   for (const name of ['hills', 'pegboard', 'blueprint']) {
     const svg = await fetch(`${base}/backgrounds/${name}.svg`); assert.equal(svg.status, 200); assert.equal(svg.headers.get('content-type'), 'image/svg+xml');
   }
@@ -47,6 +47,19 @@ test('backgrounds are public to read, management-only to change, and the uploade
   assert.equal((await put({ clearImage: true })).status, 200);
   assert.deepEqual([(await view()).background, (await view()).imageRevision], ['hills', null]);
   assert.equal((await fetch(base + '/api/appearance/background-image')).status, 404); assert.equal(store.audit().ok, true);
+});
+
+test('the accent colour is public to read, checked, saved without touching the background, and resets to the default', async t => {
+  const { store, view, put } = await setup(t);
+  assert.equal((await put({ accent: '#2fb8ff' }, 'read')).status, 401);
+  for (const bad of ['blue', '#2fb8f', '#2fb8ffaa', 'url(x)', 42, '']) assert.equal((await put({ accent: bad })).status, 400, String(bad));
+  assert.equal((await put({ background: 'pegboard' })).status, 200);
+  assert.equal((await put({ accent: '#2FB8FF' })).status, 200);
+  assert.deepEqual([(await view()).accent, (await view()).background], ['#2fb8ff', 'pegboard']);
+  assert.equal((await put({ background: 'blueprint' })).status, 200); assert.equal((await view()).accent, '#2fb8ff', 'a background change keeps the accent');
+  assert.equal((await put({ accent: null })).status, 200);
+  assert.equal((await view()).accent, '#95c200'); assert.equal(store.settings().appearance.accent, undefined);
+  assert.throws(() => store.writeSettings({ appearance: { accent: 'red' } }), /accent colour/);
 });
 
 test('the overview image is the album cover, management-only, signed and without the photo key', async t => {

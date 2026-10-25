@@ -1,5 +1,10 @@
 # History
 
+## 0.25.0 - 2026-10-25
+
+- **Accent colour under Appearance.** Eight ready colours or your own colour picker, plus Use the default colour (`#95c200`). The colour is shared and public like the background (`GET /api/appearance` returns `accent`; `PUT /api/manage/appearance` accepts `accent` as `#rrggbb` or `null` for the default). Text on accent buttons switches between dark and white for contrast. Stored in the settings, so backups and restores carry it; settings validation rejects other values.
+- The Green hills background has no trees any more, only the wavy hills.
+
 ## 0.24.0 - 2026-10-25
 
 - **Appearance works with open management.** The Appearance button checked for a management key, which open management does not have, so it only showed "Open inventory before changing shared language settings." It now checks that the inventory is open.
