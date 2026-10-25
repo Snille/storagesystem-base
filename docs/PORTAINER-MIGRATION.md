@@ -233,3 +233,18 @@ a safety backup of the replaced database in the volume.
 - Checks: `/healthz` 0.25.0; audit ok, 164 / 249 / 306 / 164; `/api/appearance` returns the default
   accent `#95c200`; public API 401 without key; unlisted host 403;
   `https://verkstad.snille.net/healthz` 200.
+
+## Update 2026-10-25: 0.25.1
+
+- Released `0.25.1` (commit `afa8f8b`): Da Vinci style favicon. Image built from
+  `git archive afa8f8b`; `mrsnille/storagesystem-base:0.25.1` and `:latest`,
+  digest `sha256:0dde792839f7645044583ec23a28a176ac7f23260dfb8f2588464646294d5211`.
+- Tested first in Docker Desktop: `scripts/verify-container.ps1` passed, then a temporary container
+  on a restored copy of the production database (v0.25.1, 164 boxes, audit ok, `/favicon.ico` 200).
+  The container and copy were removed afterwards.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.25.1.sqlite` (git-ignored).
+- Stack 13 updated through the Portainer API; only `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.25.1; `/favicon.ico`, `/favicon-32.png` and `/apple-touch-icon.png` 200 with
+  image types; public API 401 without key; unlisted host 403 on the API;
+  `https://verkstad.snille.net/healthz` 200.
