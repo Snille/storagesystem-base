@@ -218,3 +218,18 @@ a safety backup of the replaced database in the volume.
   without); an unlisted host gets 403; `https://verkstad.snille.net/healthz` 200; the page has the
   voice search button and the maintenance section; a real 2268 x 4032 photo opens hidden and then
   fitted (12 %), without a full-size frame.
+
+## Update 2026-10-25: 0.25.0
+
+- Released `0.25.0` (commit `8ad8908`): accent colour under Appearance, Green hills without trees.
+  Image built from `git archive 8ad8908`; `mrsnille/storagesystem-base:0.25.0` and `:latest`,
+  digest `sha256:cb41c23cee86313f8cbb702be2565273fba24bb01638ff38b9f118c827a9ca87`.
+- Tested first in Docker Desktop: a temporary container on an empty volume (accent saved and
+  read back), then on a copy of the production database (v0.25.0, 164 boxes, audit ok). The
+  container and copy were removed afterwards.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.25.0.sqlite` (git-ignored).
+- Stack 13 updated through the Portainer API; only `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.25.0; audit ok, 164 / 249 / 306 / 164; `/api/appearance` returns the default
+  accent `#95c200`; public API 401 without key; unlisted host 403;
+  `https://verkstad.snille.net/healthz` 200.
