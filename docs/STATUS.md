@@ -363,6 +363,7 @@ btop session resolved the missing GPU row; the owner confirmed the display.
 
 - Browser: http://localhost:3210/; Docker Compose project `storagesystem-base-dev`, container `storagesystem-base-dev-app-1`, image `storagesystem-base:local`.
 - Persistent named volume: `storagesystem-base-dev_app-data`; database inside the container: `/data/storage.sqlite`. Keep the volume and configured settings when rebuilding. Never use `docker compose down -v`.
+- Removed on 2026-10-25 after the switch to production (see HANDOFF-2026-10-25.md); `compose.yaml` recreates it empty.
 - Development-only management/read keys and launch commands are in README.md. Browser authentication lives in tab memory and must be entered again after reload.
 - The wrap-up audit had 2 boxes, 6 inventory sessions, 8 photo references and 2 locations. This includes a synthetic demo and the user's real test-box inventory. These are runtime data, not repository fixtures. Recheck counts; the user can edit them independently.
 - Photo settings already contain the dedicated Immich service account and the `Storage System Test` album. Do not start photo setup over. Its seven images included the three views below.
