@@ -1,5 +1,10 @@
 # History
 
+## 0.26.0 - 2026-10-26
+
+- **Photo descriptions can be edited.** Each photo in the box form (Update inventory → Session photos) has a Photo description field. AI analysis fills it, and you can change or write it by hand. It is the text that shows on the photo with the green check and in the photo viewer, and it is saved with the inventory session.
+- **The AI suggestion can be edited before it is applied.** In the AI draft dialog the suggested name, contents description, keywords, uncertainty notes and each photo description are now fields, not plain text. Apply uses what the fields show. The photo descriptions are open by default, under Photo descriptions.
+
 ## 0.25.1 - 2026-10-25
 
 - Favicon: a Da Vinci style sketch of a shelf with storage boxes, shared theme with the other services (made with the ComfyUI icon workflow in `Coding/Icons`). Served as `/favicon.ico`, `/favicon-32.png` and `/apple-touch-icon.png`; an HTTP test checks all three.

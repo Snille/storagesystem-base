@@ -82,7 +82,7 @@ const boxDraft = mountBoxDraft(request, draft => {
       return;
     }
     const fields = $('box-form').elements;
-    if (draft.updateName || !fields.label.value.trim()) fields.label.value = draft.result.label;
+    if (draft.result.label && (draft.updateName || !fields.label.value.trim())) fields.label.value = draft.result.label;
     fields.summary.value = draft.result.summary; fields.keywords.value = draft.result.keywords.join(', ');
     const interpretations = new Map(draft.result.photos.map(p => [p.assetId, p]));
     sessionPhotos = sessionPhotos.map(p => {
@@ -518,6 +518,11 @@ function renderSessionPhotos() {
     for (const value of ['inside', 'spread', 'detail', 'label', 'location']) role.add(new Option(roleName(value), value));
     role.value = photo.photoRole; role.addEventListener('change', () => { photo.photoRole = role.value; });
     label.append(role); info.append(label);
+    // The photo description is what the green check and the photo viewer show; AI fills it, and it stays editable.
+    const noteLabel = element('label', t('Photo description')); const note = element('textarea'); note.rows = 3; note.value = photo.notes || '';
+    note.placeholder = t('What does this photo show?'); note.setAttribute('aria-label', tr('Description of {0}', photo.originalFileName || photo.immichAssetId));
+    note.addEventListener('input', () => { photo.notes = note.value; });
+    noteLabel.append(note); info.append(noteLabel);
     const remove = element('button', t('Remove'), 'quiet'); remove.type = 'button';
     remove.setAttribute('aria-label', tr('Remove {0} from this session', photo.originalFileName || photo.immichAssetId));
     remove.addEventListener('click', () => { aiPhotoSelection.delete(photo.immichAssetId); sessionPhotos = sessionPhotos.filter(p => p !== photo); renderSessionPhotos(); });

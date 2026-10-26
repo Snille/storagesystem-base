@@ -192,8 +192,9 @@
     <article id="box-draft-result" class="ai-result" hidden>
       <div class="dialog-title"><h3>2. Review combined suggestion</h3><span class="chip">Draft · not saved</span></div><p id="box-draft-meta" class="hint"></p>
       <section id="box-draft-before" hidden><h3>Current description</h3><p id="box-draft-before-label"></p><p id="box-draft-before-summary" class="detail-notes"></p><p id="box-draft-before-keywords" class="hint"></p><h3>Proposed update</h3><p class="hint">Review the complete description. Only selected photos were analyzed; check that other contents are still represented. Nothing changes until you apply the suggestion.</p></section>
-      <dl><dt>Suggested label</dt><dd id="box-draft-label"></dd><dt>Contents description</dt><dd id="box-draft-summary"></dd><dt>Searchable keywords</dt><dd id="box-draft-keywords"></dd><dt>Uncertainty &amp; conflicts</dt><dd id="box-draft-uncertainties"></dd></dl>
-      <details><summary>View each photo's interpretation</summary><div id="box-draft-photo-notes"></div></details>
+      <p class="hint">You can edit the suggestion here before you apply it.</p>
+      <div class="box-draft-fields"><label>Suggested label<input id="box-draft-label" maxlength="500"></label><label>Contents description<textarea id="box-draft-summary" rows="4"></textarea></label><label>Searchable keywords <span class="hint">(comma separated)</span><input id="box-draft-keywords"></label><label>Uncertainty &amp; conflicts<textarea id="box-draft-uncertainties" rows="3"></textarea></label></div>
+      <details open><summary>Photo descriptions</summary><div id="box-draft-photo-notes"></div></details>
       <label id="box-draft-name-option" class="check-label" hidden><input id="box-draft-update-name" type="checkbox">Also update the box name from the suggestion</label>
     </article>
     <div class="actions box-draft-footer"><button id="box-draft-apply" disabled>Review &amp; edit in box form →</button><span class="hint">The box form is the final step before saving.</span></div>

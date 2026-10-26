@@ -41,11 +41,13 @@ export function mountBoxDraft(request, apply) {
       const response = await (await request('ai/draft', { method: 'POST', body: JSON.stringify({ revision: settings.revision, sourceRevision, photos: photos.map(p => ({ assetId: p.id, role: p.role })), ...(editorContext ? { context: editorContext.context, ...(editorContext.boxId ? { boxId: editorContext.boxId, expectedSessionId: editorContext.expectedSessionId } : {}) } : {}) }) })).json();
       if (current !== generation) return;
       draft = response;
-      for (const field of ['label', 'summary', 'keywords', 'uncertainties']) $(`box-draft-${field}`).textContent = (field === 'keywords' ? draft.result[field].join(', ') : draft.result[field]) || t('None provided');
+      for (const field of ['label', 'summary', 'keywords', 'uncertainties']) $(`box-draft-${field}`).value = (field === 'keywords' ? draft.result[field].join(', ') : draft.result[field]) || '';
       $('box-draft-meta').textContent = `${draft.connection.name} · ${draft.connection.model} · ${tr('{0} photos', draft.result.photos.length)} · ${(draft.elapsedMs / 1000).toFixed(1)} s${draft.fallback ? ` · ${tr('fallback used: {0}', t(draft.fallback.reason))}` : ''}`;
       const perPhoto = $('box-draft-photo-notes'); perPhoto.replaceChildren();
       for (const photo of draft.result.photos) {
-        const item = node('div', undefined, 'history-entry'); item.append(node('strong', `${t(roles[photo.role])} · ${photo.fileName}`), node('p', photo.description, 'hint')); perPhoto.append(item);
+        const item = node('label', undefined, 'history-entry'); const description = node('textarea'); description.rows = 3; description.value = photo.description || '';
+        description.addEventListener('input', () => { photo.description = description.value; });
+        item.append(node('strong', `${t(roles[photo.role])} · ${photo.fileName}`), description); perPhoto.append(item);
       }
       $('box-draft-result').hidden = false; $('box-draft-status').textContent = t(editorContext ? 'Update ready. Compare the current description with the proposal, then apply it to the editor. Nothing has been saved.' : 'Draft ready. Review the combined description, then continue to the box form. Nothing has been saved.');
     } catch (error) { if (current === generation) $('box-draft-status').textContent = tr('{0} Your selected photos and any previous draft are kept.', t(error.message)); }
@@ -57,7 +59,10 @@ export function mountBoxDraft(request, apply) {
       const source = photos.find(photo => photo.id === p.assetId);
       return { ...p, thumbnailUrl: source.thumbnailUrl, previewUrl: source.previewUrl, originalUrl: source.originalUrl };
     });
-    $('box-draft-dialog').close(); apply({ ...draft, editorContext, updateName: $('box-draft-update-name').checked, result: { ...draft.result, photos: selected } });
+    // The person may have edited the suggestion; apply what the fields show now.
+    const edited = { label: $('box-draft-label').value.trim(), summary: $('box-draft-summary').value, uncertainties: $('box-draft-uncertainties').value,
+      keywords: $('box-draft-keywords').value.split(',').map(s => s.trim()).filter(Boolean) };
+    $('box-draft-dialog').close(); apply({ ...draft, editorContext, updateName: $('box-draft-update-name').checked, result: { ...draft.result, ...edited, photos: selected } });
   });
   return {
     async open(selected, revision, editor = null) {
