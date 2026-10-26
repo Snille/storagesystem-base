@@ -248,3 +248,19 @@ a safety backup of the replaced database in the volume.
 - Checks: `/healthz` 0.25.1; `/favicon.ico`, `/favicon-32.png` and `/apple-touch-icon.png` 200 with
   image types; public API 401 without key; unlisted host 403 on the API;
   `https://verkstad.snille.net/healthz` 200.
+
+## Update 2026-10-26: 0.26.0
+
+- Released `0.26.0` (commit `2f2a215`): editable photo descriptions in the box form and an editable
+  AI suggestion. Image built from `git archive 2f2a215`; `mrsnille/storagesystem-base:0.26.0` and
+  `:latest`, digest `sha256:600a73b241c9a4a464dbf52c7198240c32d6502f9ef66d9c9df70b2814e259d6`.
+  The owner ran the Docker Hub push; the auto mode permission check blocked it for the agent.
+- Tested first in Docker Desktop: `scripts/verify-container.ps1` passed. The browser flow (edit the
+  suggestion, apply, edit the photo description, save) was checked against `scripts/browser-fixture.js`.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.26.0.sqlite` (git-ignored); audit of a copy ok,
+  164 / 250 / 310 / 164.
+- Stack 13 updated through the Portainer API; only `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.26.0; audit ok, 164 / 250 / 310 / 164; the served `app.js` and `box-draft.js`
+  contain the new fields; public API 401 without key; unlisted host 403;
+  `https://verkstad.snille.net/healthz` 200.
