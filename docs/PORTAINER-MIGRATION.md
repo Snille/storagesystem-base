@@ -299,3 +299,20 @@ a safety backup of the replaced database in the volume.
 - Checks: `/healthz` 0.27.1; audit ok, 164 / 253 / 314 / 164; the page has the label dialog; a preview of
   a real box with `box-portrait` was portrait and printable (nothing printed); public API 401 without
   key; unlisted host 403; `https://verkstad.snille.net/healthz` 200. No physical label was printed.
+
+## Update 2026-10-28: 0.28.0
+
+- Released `0.28.0` (commit `277fdab`): a photo per storage unit on the storage map and a Storage unit
+  label type (`unit`, `kind`, `name`, `unitId`). Image built from `git archive 277fdab`;
+  `mrsnille/storagesystem-base:0.28.0` and `:latest`, digest
+  `sha256:51ca919b2b62101bae639b75cd0825ef6473181382a6ede72c56a6980a334773`, pushed by the agent.
+- Tested first in Docker Desktop: `scripts/verify-container.ps1` passed, then a temporary container on
+  a copy of the production database (v0.28.0, audit ok, 17 storage units, no unit photos yet). The
+  container, volume and copy were removed afterwards.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.28.0.sqlite` (git-ignored).
+- Stack 13 updated through the Portainer API; only `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.28.0; audit ok, 164 / 253 / 314 / 164; storage map 17 units with `unitPhotos`;
+  the album (293 photos) reports `assignedUnits`; the page has the storage unit label button; the live
+  label service has no storage unit template yet; public API 401 without key; unlisted host 403;
+  `https://verkstad.snille.net/healthz` 200. No unit photo was chosen and no label was printed.
