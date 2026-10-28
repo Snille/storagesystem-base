@@ -35,6 +35,7 @@ export function validateInventory(input) {
   }
   for (const box of input.boxes) {
     text(box.coverAssetId, 'coverAssetId', { optional: true });
+    if (box.labelTemplate !== undefined && (typeof box.labelTemplate !== 'string' || !labelTemplateId.test(box.labelTemplate))) throw new InputError(`Invalid label template: ${box.boxId}`);
     for (const key of ['label', 'currentLocationId', 'createdAt', 'updatedAt']) text(box[key], key);
   }
   const current = new Set();
@@ -88,6 +89,7 @@ export function validateSettings(settings) {
   if (settings.searchWorkspace !== undefined) validateSearchWorkspace(settings.searchWorkspace);
   if (settings.printing !== undefined) validateLegacyPrinting(settings.printing);
   if (settings.labelService !== undefined) validateLabelService(settings.labelService);
+  if (settings.labelTemplates !== undefined) validateLabelTemplates(settings.labelTemplates);
   for (const [section, fields] of Object.entries({
     appearance: ['language'], security: ['publicApiKey', 'appBaseUrl'],
     immich: ['provider', 'baseUrl', 'accountLabel', 'accessMode', 'apiKey', 'shareKey', 'albumId']
@@ -208,6 +210,23 @@ export function validateLabelService(config) {
   }
   if (config.apiKey !== undefined && (typeof config.apiKey !== 'string' || config.apiKey.length < 16 || config.apiKey.length > 500)) throw new InputError('The label service key must be 16-500 characters.');
   if (config.enabled && !config.apiKey) throw new InputError('Save the label service key before enabling printing.');
+  return config;
+}
+
+// Label service template identifiers, and the label functions this system fills with content.
+export const labelTemplateId = /^[a-z0-9-]{2,64}$/;
+export const labelFunctions = ['box', 'location'];
+
+// Per function: the template used unless another is chosen, and the other templates offered when printing.
+export function validateLabelTemplates(config) {
+  object(config, 'labelTemplates');
+  if (Object.keys(config).some(key => !labelFunctions.includes(key))) throw new InputError('Unsupported label function.');
+  for (const choice of Object.values(config)) {
+    object(choice, 'label function');
+    if (Object.keys(choice).some(key => !['default', 'extra'].includes(key)) || typeof choice.default !== 'string' || !labelTemplateId.test(choice.default)
+      || !Array.isArray(choice.extra) || choice.extra.length > 10 || choice.extra.some(id => typeof id !== 'string' || !labelTemplateId.test(id))
+      || new Set([choice.default, ...choice.extra]).size !== choice.extra.length + 1) throw new InputError('Choose one standard template and at most 10 other templates, each once.');
+  }
   return config;
 }
 

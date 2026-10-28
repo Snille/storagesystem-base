@@ -128,6 +128,8 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/manage/printing' && method === 'GET') return json(printing.view());
       if (path === '/api/manage/printing' && method === 'PUT') return json(printing.save(await body(req)));
       if (path === '/api/manage/printing/status' && method === 'GET') return json(await printing.status());
+      if (path === '/api/manage/printing/templates' && method === 'GET') return json(await printing.templates());
+      if (path === '/api/manage/printing/templates' && method === 'PUT') return json({ functions: printing.saveFunctions(await body(req)) });
       if (path === '/api/manage/printing/preview' && method === 'POST') return json(await printing.preview(await body(req), lang));
       if (path === '/api/manage/printing/submit' && method === 'POST') return json(await printing.submit(await body(req)));
       if (path === '/api/manage/printing/jobs' && method === 'GET') return json({ jobs: await printing.jobs() });
@@ -190,6 +192,11 @@ export function createApp({ store, env = process.env }) {
       if (coverMatch && method === 'PUT') {
         const input = object(await body(req));
         return json(withUrls(inventory.setCover(decodeURIComponent(coverMatch[1]), input.assetId)));
+      }
+      const labelMatch = path.match(/^\/api\/manage\/boxes\/([^/]+)\/label-template$/);
+      if (labelMatch && method === 'PUT') {
+        const input = object(await body(req));
+        return json(withUrls(inventory.setLabelTemplate(decodeURIComponent(labelMatch[1]), input.templateId)));
       }
       if (path === '/api/manage/search' && method === 'GET') {
         const query = url.searchParams.get('q')?.trim() || '';

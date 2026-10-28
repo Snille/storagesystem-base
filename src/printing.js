@@ -1,10 +1,15 @@
-import { InputError, object, validateLabelService } from './validation.js';
+import { InputError, object, validateLabelService, validateLabelTemplates, labelFunctions, labelTemplateId } from './validation.js';
 import { sourceRevision } from './settings.js';
 import { presentLocation } from './inventory.js';
 import { LabelServiceClient } from './label-client.js';
 
 const fingerprint = box => sourceRevision({ boxId: box.boxId, sessionId: box.sessionId, label: box.label, locationId: box.locationId, summary: box.summary });
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+// The fields each label function can fill. A template suits a function when it asks only for these fields.
+const provided = { box: ['title', 'description', 'location', 'boxId'], location: ['location', 'locationId'] };
+const editable = ['title', 'description', 'location'];
+// The label service's built-in templates carry the function's name; they are the standard until another is chosen.
+const builtInChoice = Object.fromEntries(labelFunctions.map(f => [f, { default: f, extra: [] }]));
 
 // Labels are laid out, previewed and printed by the label service. This side chooses the content
 // (a box or a registered location) and makes sure it has not changed between preview and print.
@@ -21,7 +26,7 @@ export class Printing {
   revision() { return sourceRevision(this.config()); }
   view() {
     const { apiKey, ...config } = this.config();
-    return { config: { ...config, apiKeyConfigured: Boolean(apiKey) }, revision: this.revision(), locations: this.store.locationIds(),
+    return { config: { ...config, apiKeyConfigured: Boolean(apiKey) }, revision: this.revision(), locations: this.store.locationIds(), functions: this.functions(),
       usingEnvironment: !this.store.settings().labelService && Boolean(this.env.LABEL_SERVICE_URL) };
   }
   assertRevision(revision) { if (revision !== this.revision()) throw new InputError('Print settings changed. Create a new preview before printing.', 409); }
@@ -42,6 +47,22 @@ export class Printing {
       return this.view();
     });
   }
+  functions() { return { ...builtInChoice, ...this.store.settings().labelTemplates }; }
+  saveFunctions(input) {
+    object(input);
+    if (Object.keys(input).some(k => k !== 'functions')) throw new InputError('Unsupported label template setting.');
+    return this.store.transaction(() => { this.store.writeSettings({ labelTemplates: validateLabelTemplates(input.functions) }); return this.functions(); });
+  }
+  // Every template the label service offers this system, with the functions it suits and whether it fits the loaded roll.
+  async templates() {
+    const client = this.client(), [list, formats] = await Promise.all([client.templates(), client.formats()]);
+    const templates = list.templates.filter(t => labelTemplateId.test(t.id)).map(t => {
+      const fields = Object.keys(t.fields || {}), media = t.media || ['*'];
+      return { id: t.id, name: t.name, builtIn: Boolean(t.builtIn), fields, functions: labelFunctions.filter(f => fields.every(k => provided[f].includes(k))),
+        fitsRoll: media.includes('*') || media.includes(formats.mediaKey) };
+    });
+    return { templates, functions: this.functions(), media: formats.media };
+  }
   client(config = this.config()) {
     if (!config.enabled || !config.url || !config.apiKey) throw new InputError('Printing is disabled. Save the label service address and key first.', 409);
     return this.clientFactory(config);
@@ -52,9 +73,10 @@ export class Printing {
   }
   async preview(input, language) {
     object(input);
-    if (Object.keys(input).some(k => !['revision', 'kind', 'test', 'boxId', 'locationId', 'fields', 'orientation'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
-      || (input.kind !== undefined && !['box', 'location'].includes(input.kind))
-      || (input.orientation !== undefined && !['portrait', 'landscape'].includes(input.orientation))) throw new InputError('Unsupported label preview request.');
+    if (Object.keys(input).some(k => !['revision', 'kind', 'template', 'test', 'boxId', 'locationId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
+      || (input.kind !== undefined && !labelFunctions.includes(input.kind))
+      || (input.template !== undefined && (typeof input.template !== 'string' || !labelTemplateId.test(input.template)))) throw new InputError('Unsupported label preview request.');
+    if (input.fields !== undefined && Object.entries(object(input.fields, 'fields')).some(([k, v]) => !editable.includes(k) || typeof v !== 'string')) throw new InputError('Unsupported label field.');
     this.assertRevision(input.revision);
     const kind = input.kind || 'box';
     let box, locationId, fields, reference;
@@ -64,22 +86,33 @@ export class Printing {
       if (input.boxId !== undefined || typeof input.locationId !== 'string') throw new InputError('Choose a registered location or a test label.');
       if (!this.store.locationIds().includes(input.locationId)) throw new InputError('Location not found.', 404);
       locationId = input.locationId; reference = `location:${locationId}`.slice(0, 200);
-      fields = input.fields || { location: Object.values(presentLocation(locationId, '', this.inventory.language(language))).filter(Boolean).join(', ') };
+      fields = { location: Object.values(presentLocation(locationId, '', this.inventory.language(language))).filter(Boolean).join(', '), locationId };
     } else {
       if (input.locationId !== undefined || typeof input.boxId !== 'string') throw new InputError('Choose an inventory box or a test label.');
       box = this.inventory.get(input.boxId, language); if (!box) throw new InputError('Box not found.', 404);
       reference = `box:${box.boxId}`.slice(0, 200);
-      fields = input.fields || { title: box.label, description: box.summary || '', location: Object.values(box.location).filter(Boolean).join(', ') };
+      fields = { title: box.label, description: box.summary || '', location: Object.values(box.location).filter(Boolean).join(', '), boxId: box.boxId };
     }
-    // Without an orientation the label service uses the selected format's saved text direction.
-    const result = await this.client().preview({ kind, ...(input.orientation ? { orientation: input.orientation } : {}),
-      ...(input.test === true ? { test: true } : { fields, reference }) });
+    // An explicit choice prints that template. Otherwise the box's remembered template, then the function's standard
+    // template, then the built-in one; a template removed from the label service falls through to the next.
+    const client = this.client(), choice = this.functions()[kind];
+    const candidates = input.template ? [input.template] : [...new Set([box?.labelTemplate, choice.default, kind].filter(Boolean))];
+    const known = (await client.templates()).templates, template = candidates.find(id => known.some(t => t.id === id));
+    if (!template) throw new InputError('The label template is not available in the label service. Choose another template.', 409);
+    if (input.test !== true) {
+      const wanted = Object.keys(known.find(t => t.id === template).fields || {});
+      if (wanted.some(k => !provided[kind].includes(k))) throw new InputError('This template asks for fields that this label type cannot fill.');
+      fields = Object.fromEntries(wanted.map(k => [k, input.fields?.[k] ?? fields[k]]));
+    }
+    const result = await client.preview({ template, ...(input.test === true ? { test: true } : { fields, reference }) });
     this.assertRevision(input.revision);
     const now = Date.now(); for (const [id, p] of this.previews) if (p.expires <= now) this.previews.delete(id);
     if (this.previews.size >= 100) throw new InputError('Too many label previews. Wait for an older preview to expire.', 429);
+    // A box label printed with the template it was meant to use is remembered for that box; a fallback is not.
     this.previews.set(result.token, { revision: input.revision, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, locationId, language,
-      expires: Math.min(Date.parse(result.expiresAt) || now, now + 10 * 60 * 1000) });
-    return { token: result.token, kind, fields: result.fields, layout: result.layout, printable: result.printable, boxId: box?.boxId, locationId, test: input.test === true };
+      kind, remember: box && template === candidates[0] ? template : undefined, expires: Math.min(Date.parse(result.expiresAt) || now, now + 10 * 60 * 1000) });
+    return { token: result.token, kind, template, fallback: template !== candidates[0], fields: result.fields, layout: result.layout, svg: result.svg,
+      printable: result.printable, warnings: result.warnings, boxId: box?.boxId, locationId, test: input.test === true };
   }
   assertPreview(preview) {
     this.assertRevision(preview.revision);
@@ -97,7 +130,15 @@ export class Printing {
     const preview = this.previews.get(input.token); if (!preview) throw new InputError('Create a new label preview before printing.', 409);
     this.assertPreview(preview);
     // The label service deduplicates by request identifier, so resending after a lost response cannot print twice.
-    return this.client().submit({ token: input.token, requestId: input.requestId });
+    const job = await this.client().submit({ token: input.token, requestId: input.requestId });
+    if (preview.remember) {
+      // The standard template needs no memory, so printing it again forgets an earlier choice.
+      const next = preview.remember === this.functions()[preview.kind].default ? null : preview.remember;
+      if (next !== (this.inventory.get(preview.boxId)?.labelTemplate || null)) {
+        try { this.inventory.setLabelTemplate(preview.boxId, next); } catch { /* The label is printed; a lost preference must not report a failed print. */ }
+      }
+    }
+    return job;
   }
   async jobs() { return (await this.client().jobs()).jobs; }
   async job(id) { return this.client().job(id); }

@@ -1,5 +1,11 @@
 # History
 
+## 0.27.0 - 2026-10-28
+
+- **Label templates per label type.** Printing now lists every template the label service offers (`GET /api/manage/printing/templates`), not only the two built-in labels. Under Printing → Label templates per label type, each label type (Box label, Location label) gets a standard template and other templates to offer when printing, for example a landscape and a portrait version. Only templates whose fields the label type can fill are offered (box: `title`, `description`, `location`, `boxId`; location: `location`, `locationId`). A template that is not made for the loaded roll is marked. Saved in the `labelTemplates` settings record (`PUT /api/manage/printing/templates`), so backups and restores carry it.
+- **Text direction is removed from the print dialog.** The direction belongs to the template. The preview request takes `template` instead of `orientation`; the dialog shows the label service's own drawing, so pictures and codes in a template show too. Only the fields the chosen template prints can be edited.
+- **A box remembers its label template.** Printing a box with a template other than the standard one saves it on the box as `labelTemplate`; printing the standard template again clears it. The next print of that box starts on the remembered template. It is part of the box in REST, MCP, export and backup, can be set with `PUT /api/manage/boxes/<id>/label-template` (`{"templateId": "…"}` or `null`), and the audit checks its format. A remembered or standard template that was removed from the label service falls back to the next one (box choice → standard → built-in) and is not remembered.
+
 ## 0.26.0 - 2026-10-26
 
 - **Photo descriptions can be edited.** Each photo in the box form (Update inventory → Session photos) has a Photo description field. AI analysis fills it, and you can change or write it by hand. It is the text that shows on the photo with the green check and in the photo viewer, and it is saved with the inventory session.

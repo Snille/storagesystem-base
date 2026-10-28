@@ -16,6 +16,7 @@ export class LabelServiceClient {
     if ([401, 403].includes(response.status)) throw new InputError('The label service rejected the key. Check the label service key in the print settings.', 502);
     throw new InputError(typeof data.error === 'string' ? data.error : 'The label service refused the request.', [400, 404, 409, 413, 429].includes(response.status) ? response.status : 502);
   }
+  templates() { return this.request('/api/v1/templates'); }
   formats() { return this.request('/api/v1/formats'); }
   status() { return this.request('/api/v1/status'); }
   preview(input) { return this.request('/api/v1/previews', input); }

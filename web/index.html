@@ -52,10 +52,15 @@
     </form></details>
     <div class="actions"><button id="print-check" class="quiet">Check printer connection</button><a id="print-admin" class="button quiet" target="_blank" rel="noopener noreferrer" hidden>Open label service</a></div>
     <section id="print-device-result" class="panel" hidden aria-live="polite"></section>
+    <details id="print-functions-panel"><summary>Label templates per label type</summary><form id="print-functions">
+      <p class="hint">Make the templates in the label service, for example one landscape and one portrait version. Choose the standard template for each label type here. The other templates you tick can be chosen when you print. A box remembers the template it was last printed with.</p>
+      <div id="print-function-list"></div>
+      <button id="print-functions-save">Save label templates</button>
+    </form></details>
     <div class="form-grid"><label>Label type<select id="print-kind"><option value="box">Box label</option><option value="location">Location label</option></select></label>
       <label>Label source<select id="print-box"></select></label>
-      <label>Text direction<select id="print-orientation"><option value="">Label format setting</option><option value="landscape">Landscape: along the long side</option><option value="portrait">Portrait: across the long side</option></select></label></div>
-    <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label>Location<input id="print-location" maxlength="240"></label></div>
+      <label>Label template<select id="print-template"></select></label></div>
+    <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label id="print-location-row">Location<input id="print-location" maxlength="240"></label></div>
     <button id="print-preview" class="quiet">Prepare label preview</button>
     <div id="print-paper" class="label-paper"></div>
     <p id="print-status" role="status" aria-live="polite"></p>

@@ -1,7 +1,7 @@
 import { parseLocation, suggestBoxId, locationKey } from './locations.js';
 export { parseLocation } from './locations.js';
 import { randomUUID } from 'node:crypto';
-import { InputError, object, text } from './validation.js';
+import { InputError, object, text, labelTemplateId } from './validation.js';
 import { searchBoxes } from './search.js';
 import { buildStorageMap } from './storage-map.js';
 import { previewAnswerDecision } from './answer-policy.js';
@@ -47,7 +47,7 @@ export class Inventory {
     const cover = preferred || ['inside', 'spread', 'detail', 'label', 'location'].map(role => photos.find(p => p.photoRole === role)).find(Boolean);
     return {
       boxId, label: box.label, locationId: box.currentLocationId,
-      coverAssetId: cover?.immichAssetId || null, coverIsAutomatic: !preferred,
+      coverAssetId: cover?.immichAssetId || null, coverIsAutomatic: !preferred, labelTemplate: box.labelTemplate || null,
       location: presentLocation(box.currentLocationId, boxId, this.language(language)), boxNotes: box.notes,
       sessionId: session?.sessionId, sessionCreatedAt: session?.createdAt, summary: session?.summary,
       sessionNotes: session?.notes, itemKeywords: session?.itemKeywords || [],
@@ -87,6 +87,18 @@ export class Inventory {
       if (assetId !== null && !data.photos.some(p => p.sessionId === session?.sessionId && p.immichAssetId === assetId)) throw new InputError('Choose a photo from this box\'s current inventory.', 409);
       if (assetId === null) delete box.coverAssetId;
       else box.coverAssetId = assetId;
+    });
+    return this.get(boxId);
+  }
+
+  // The label template last printed for this box when it was not the standard one, for example a portrait label for a narrow box.
+  setLabelTemplate(boxId, templateId) {
+    if (templateId !== null && (typeof templateId !== 'string' || !labelTemplateId.test(templateId))) throw new InputError('Invalid label template.');
+    this.store.mutate(data => {
+      const box = data.boxes.find(b => b.boxId === boxId);
+      if (!box) throw new InputError('Box not found.', 404);
+      if (templateId === null) delete box.labelTemplate;
+      else box.labelTemplate = templateId;
     });
     return this.get(boxId);
   }

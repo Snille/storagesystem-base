@@ -16,7 +16,12 @@ const KEY = 'storage-client-key-for-tests';
 
 // A stand-in for the label service: records every request and answers like its API.
 async function labelService(t) {
-  const calls = [], jobs = new Map(), state = { fail: null };
+  const calls = [], jobs = new Map(), state = { fail: null, templates: [
+    { id: 'box', name: 'Box label', builtIn: true, fields: { title: '', description: '', location: '' } },
+    { id: 'location', name: 'Location label', builtIn: true, fields: { location: '' } },
+    { id: 'lines', name: 'Free lines', builtIn: true, fields: { lines: '' } },
+    { id: 'box-portrait', name: 'Box portrait', media: ['w162h90'], fields: { title: {}, location: {}, boxId: {} } },
+    { id: 'box-small', name: 'Box small roll', media: ['w54h144'], fields: { title: {} } }] };
   const server = createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
@@ -26,10 +31,11 @@ async function labelService(t) {
     if (state.fail) return reply(state.fail.status, { error: state.fail.error });
     const media = { key: 'w162h90', name: 'S0722540 · 57 × 32 mm' };
     if (req.url === '/api/v1/formats') return reply(200, { mediaKey: media.key, media });
+    if (req.url === '/api/v1/templates') return reply(200, { templates: state.templates });
     if (req.url === '/api/v1/status') return reply(200, { queue: 'DYMO_5XL', state: 'idle', acceptingJobs: true, queuedJobs: 0, reasons: ['none'], model: 'DYMO LabelWriter 5XL' });
     if (req.url === '/api/v1/previews') {
       const fields = body.test ? { title: 'Storage System TEST', description: 'x', location: 'TEST' } : body.fields;
-      return reply(201, { token: randomUUID(), expiresAt: new Date(Date.now() + 600000).toISOString(), kind: body.kind, fields,
+      return reply(201, { token: randomUUID(), expiresAt: new Date(Date.now() + 600000).toISOString(), kind: body.template, fields,
         layout: { name: media.name, widthPt: 162, heightPt: 90, orientation: 'landscape', rotated: false, lines: [], warnings: [] }, svg: '<svg/>', printable: true });
     }
     if (req.url === '/api/v1/jobs' && req.method === 'POST') {
@@ -78,18 +84,17 @@ test('previews send only the chosen content to the label service and printing pa
   const { printing, service } = await setup(t), revision = printing.revision(), box = fixture.boxes[0], location = fixture.boxes[1].currentLocationId;
   const p = await printing.preview({ revision, boxId: box.boxId }, 'sv');
   const sent = service.calls.at(-1);
-  assert.equal(sent.key, KEY); assert.equal(sent.body.kind, 'box'); assert.equal(sent.body.reference, `box:${box.boxId}`); assert.equal(sent.body.fields.title, box.label);
+  assert.equal(sent.key, KEY); assert.equal(sent.body.template, 'box'); assert.equal(sent.body.reference, `box:${box.boxId}`); assert.equal(sent.body.fields.title, box.label);
+  assert.deepEqual(Object.keys(sent.body.fields), ['title', 'description', 'location']);
   assert.equal(p.printable, true); assert.equal(p.boxId, box.boxId);
   const requestId = randomUUID(), job = await printing.submit({ token: p.token, requestId });
   assert.equal(job.state, 'submitted'); assert.deepEqual(service.calls.at(-1).body, { token: p.token, requestId });
   // Resending after a lost response reaches the service's deduplication, which returns the same job.
   assert.deepEqual(await printing.submit({ token: p.token, requestId }), job);
   await printing.preview({ revision, test: true });
-  assert.deepEqual(service.calls.at(-1).body, { kind: 'box', test: true });
-  // A chosen text direction is passed on; without one the service's format setting applies.
-  await printing.preview({ revision, test: true, orientation: 'portrait' });
-  assert.deepEqual(service.calls.at(-1).body, { kind: 'box', orientation: 'portrait', test: true });
-  await assert.rejects(printing.preview({ revision, test: true, orientation: 'sideways' }), /Unsupported/);
+  assert.deepEqual(service.calls.at(-1).body, { template: 'box', test: true });
+  // The text direction belongs to the template now.
+  await assert.rejects(printing.preview({ revision, test: true, orientation: 'portrait' }), /Unsupported/);
   await printing.preview({ revision, kind: 'location', locationId: location }, 'sv');
   assert.equal(service.calls.at(-1).body.reference, `location:${location}`); assert.match(service.calls.at(-1).body.fields.location, /Lagerhylla|Bänk|Skåp/);
   await assert.rejects(printing.preview({ revision, kind: 'location', locationId: 'IVAR-Z-H9-P9' }), { status: 404 });
@@ -159,4 +164,63 @@ test('HTTP printing is management-only and the removed direct printer routes are
   assert.equal((await fetch(base + '/api/manage/printing/jobs', { headers })).status, 200);
   assert.equal((await fetch(base + '/api/manage/printing/roll', { method: 'POST', headers, body: JSON.stringify({ revision: view.revision }) })).status, 404);
   assert.equal((await fetch(base + '/api/manage/printing', { method: 'PUT', headers: { ...headers, Origin: 'https://wrong.example' }, body: JSON.stringify({ revision: view.revision, config: { enabled: false, url: '' } }) })).status, 403);
+});
+
+test('label templates: each label type has a standard template and others, and a box remembers a non-standard choice', async t => {
+  const { store, printing, service } = await setup(t), revision = printing.revision(), box = fixture.boxes[0];
+  const list = await printing.templates();
+  const byId = Object.fromEntries(list.templates.map(x => [x.id, x]));
+  assert.deepEqual(byId.box.functions, ['box']); assert.deepEqual(byId.location.functions, ['box', 'location']); assert.deepEqual(byId.lines.functions, []);
+  assert.deepEqual(byId['box-portrait'].functions, ['box']); assert.equal(byId['box-portrait'].fitsRoll, true); assert.equal(byId['box-small'].fitsRoll, false);
+  assert.deepEqual(list.functions.box, { default: 'box', extra: [] });
+  assert.throws(() => printing.saveFunctions({ functions: { box: { default: 'box', extra: ['box'] } } }), /each once/);
+  assert.throws(() => printing.saveFunctions({ functions: { shelf: { default: 'box', extra: [] } } }), /Unsupported label function/);
+  printing.saveFunctions({ functions: { box: { default: 'box', extra: ['box-portrait'] } } });
+  assert.deepEqual(printing.view().functions.location, { default: 'location', extra: [] });
+
+  // An explicit template gets only the fields it asks for, including the box ID that is not shown in the dialog.
+  let p = await printing.preview({ revision, boxId: box.boxId, template: 'box-portrait', fields: { title: 'Edited', description: 'ignored' } });
+  assert.deepEqual(service.calls.at(-1).body.fields, { title: 'Edited', location: service.calls.at(-1).body.fields.location, boxId: box.boxId });
+  assert.equal(p.template, 'box-portrait'); assert.equal(p.fallback, false);
+  await assert.rejects(printing.preview({ revision, boxId: box.boxId, template: 'lines' }), /cannot fill/);
+  await assert.rejects(printing.preview({ revision, boxId: box.boxId, fields: { boxId: 'other' } }), /Unsupported label field/);
+  await assert.rejects(printing.preview({ revision, boxId: box.boxId, template: 'gone' }), { status: 409 });
+
+  // Printing the portrait template remembers it for the box; it is then the box's starting choice.
+  await printing.submit({ token: p.token, requestId: randomUUID() });
+  assert.equal(printing.inventory.get(box.boxId).labelTemplate, 'box-portrait'); assert.equal(store.audit().ok, true);
+  p = await printing.preview({ revision, boxId: box.boxId });
+  assert.equal(service.calls.at(-1).body.template, 'box-portrait');
+  // A remembered template that was removed from the label service falls back to the standard one and is not remembered.
+  service.state.templates = service.state.templates.filter(x => x.id !== 'box-portrait');
+  p = await printing.preview({ revision, boxId: box.boxId });
+  assert.equal(p.template, 'box'); assert.equal(p.fallback, true);
+  await printing.submit({ token: p.token, requestId: randomUUID() });
+  assert.equal(printing.inventory.get(box.boxId).labelTemplate, 'box-portrait');
+  // Printing the standard template on purpose forgets the earlier choice.
+  p = await printing.preview({ revision, boxId: box.boxId, template: 'box' });
+  await printing.submit({ token: p.token, requestId: randomUUID() });
+  assert.equal(printing.inventory.get(box.boxId).labelTemplate, null); assert.equal(store.read().boxes.find(b => b.boxId === box.boxId).labelTemplate, undefined);
+  // Location labels never touch a box.
+  p = await printing.preview({ revision, kind: 'location', locationId: box.currentLocationId });
+  assert.deepEqual(Object.keys(service.calls.at(-1).body.fields), ['location']);
+});
+
+test('a remembered label template is part of the box, set over HTTP and checked by the audit', async t => {
+  const service = await labelService(t), store = new Store(':memory:'); store.importLegacy(structuredClone(fixture));
+  const app = createApp({ store, env: { STORAGE_ADMIN_KEY: 'admin', STORAGE_API_KEY: 'read', LABEL_SERVICE_URL: service.url, LABEL_SERVICE_KEY: KEY } });
+  app.listen(0, '127.0.0.1'); await once(app, 'listening');
+  t.after(async () => { app.closeAllConnections(); await new Promise(resolve => app.close(resolve)); store.close(); });
+  const base = `http://127.0.0.1:${app.address().port}`, headers = { 'x-api-key': 'admin', 'content-type': 'application/json' }, id = fixture.boxes[0].boxId;
+  const put = templateId => fetch(`${base}/api/manage/boxes/${encodeURIComponent(id)}/label-template`, { method: 'PUT', headers, body: JSON.stringify({ templateId }) });
+  assert.equal((await (await put('box-portrait')).json()).labelTemplate, 'box-portrait');
+  assert.equal((await put('Bad Id')).status, 400);
+  assert.equal((await fetch(`${base}/api/manage/boxes/${encodeURIComponent(id)}/label-template`, { method: 'PUT', headers: { 'x-api-key': 'read', 'content-type': 'application/json' }, body: '{"templateId":null}' })).status, 401);
+  const templates = await (await fetch(base + '/api/manage/printing/templates', { headers })).json();
+  assert.ok(templates.templates.some(x => x.id === 'box-portrait'));
+  assert.equal((await fetch(base + '/api/manage/printing/templates', { method: 'PUT', headers, body: JSON.stringify({ functions: { box: { default: 'box-portrait', extra: ['box'] } } }) })).status, 200);
+  assert.equal(store.settings().labelTemplates.box.default, 'box-portrait');
+  assert.equal((await put(null)).status, 200); assert.equal(store.audit().ok, true);
+  store.db.prepare("UPDATE boxes SET record = json_set(record, '$.labelTemplate', 'NOT VALID') WHERE id = ?").run(id);
+  assert.equal(store.audit().ok, false);
 });
