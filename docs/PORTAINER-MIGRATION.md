@@ -264,3 +264,22 @@ a safety backup of the replaced database in the volume.
 - Checks: `/healthz` 0.26.0; audit ok, 164 / 250 / 310 / 164; the served `app.js` and `box-draft.js`
   contain the new fields; public API 401 without key; unlisted host 403;
   `https://verkstad.snille.net/healthz` 200.
+
+## Update 2026-10-28: 0.27.0
+
+- Released `0.27.0` (commit `c36bf91`): label templates per label type, no text direction setting, and
+  a remembered label template per box. Image built from `git archive c36bf91`;
+  `mrsnille/storagesystem-base:0.27.0` and `:latest`, digest
+  `sha256:4744c521e9e1b1a372ba2ccbe6c6155b1165461e09fe36adaa84b5b2985cc2ce`. The agent pushed it after
+  the owner added a global permission rule for `docker push mrsnille/*`.
+- Tested first in Docker Desktop: `scripts/verify-container.ps1` passed, then a temporary container
+  on a copy of the production database (v0.27.0, audit ok, 164 boxes, `labelTemplate` present, standard
+  templates `box` and `location`). The container, volume and copy were removed afterwards.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.27.0.sqlite` (git-ignored).
+- Stack 13 updated through the Portainer API; only `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.27.0; audit ok, 164 / 253 / 314 / 164; `/api/manage/printing/templates` lists the
+  live label service's templates (`box`, `location`, `lines`, `box-portrait`, `location-portrait`,
+  `name-badges`; loaded roll S0722540 57 x 32 mm); a preview of a real box with `box-portrait` was
+  portrait and printable (nothing printed); public API 401 without key; unlisted host 403;
+  `https://verkstad.snille.net/healthz` 200. No physical label was printed.
