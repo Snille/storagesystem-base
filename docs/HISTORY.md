@@ -1,5 +1,10 @@
 # History
 
+## 0.28.0 - 2026-10-28
+
+- **A photo per storage unit.** The storage map shows a photo of the chosen shelving unit, bench or cabinet in its top right corner. **Choose photo** lists the album's photos (unused ones first); the photo stays in the photo service and only its asset ID is saved, per storage map slug, in the `unitPhotos` settings record (`PUT /api/manage/storage-units/<slug>/photo` with `{"assetId": "…"}` or `null`). Only photos in the album and existing units are accepted. Clicking the photo opens it in the photo viewer. The album inbox counts a unit photo as used (`assignedUnits`), so it does not look unassigned and cannot also be added to a box. `GET /api/manage/storage-map` returns `unitPhotos` with short-lived image links.
+- **Storage unit labels.** A third label type, Storage unit label, with the fields `unit` ("Lagerhylla: B"), `kind` ("Lagerhylla"), `name` ("B") and `unitId` ("b"). `kind` and `unit` follow the interface language. **Print storage unit label** under the storage map opens the label dialog. The label service has no built-in storage unit template, so make one there and choose it under Printing → Label templates per label type.
+
 ## 0.27.1 - 2026-10-28
 
 - **Printing and printing a label are two dialogs.** **Printing** in the header holds only the settings: the label service connection, the printer check, the label templates per label type and the recent print submissions. **Print label** on a box, and **Print location label** on the storage map, open a separate label dialog for that box or place. It shows the preview at once with the box's remembered or standard template. When the label type has more than one template, they are buttons above the preview (for example landscape and portrait), and choosing one shows its preview. Editing the text is folded away under Change the text on this label.

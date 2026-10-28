@@ -6,8 +6,8 @@ import { LabelServiceClient } from './label-client.js';
 const fingerprint = box => sourceRevision({ boxId: box.boxId, sessionId: box.sessionId, label: box.label, locationId: box.locationId, summary: box.summary });
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 // The fields each label function can fill. A template suits a function when it asks only for these fields.
-const provided = { box: ['title', 'description', 'location', 'boxId'], location: ['location', 'locationId'] };
-const editable = ['title', 'description', 'location'];
+const provided = { box: ['title', 'description', 'location', 'boxId'], location: ['location', 'locationId'], unit: ['unit', 'kind', 'name', 'unitId'] };
+const editable = ['title', 'description', 'location', 'unit', 'kind', 'name'];
 // The label service's built-in templates carry the function's name; they are the standard until another is chosen.
 const builtInChoice = Object.fromEntries(labelFunctions.map(f => [f, { default: f, extra: [] }]));
 
@@ -73,15 +73,25 @@ export class Printing {
   }
   async preview(input, language) {
     object(input);
-    if (Object.keys(input).some(k => !['revision', 'kind', 'template', 'test', 'boxId', 'locationId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
+    if (Object.keys(input).some(k => !['revision', 'kind', 'template', 'test', 'boxId', 'locationId', 'unitId', 'fields'].includes(k)) || (input.test !== undefined && typeof input.test !== 'boolean')
       || (input.kind !== undefined && !labelFunctions.includes(input.kind))
       || (input.template !== undefined && (typeof input.template !== 'string' || !labelTemplateId.test(input.template)))) throw new InputError('Unsupported label preview request.');
     if (input.fields !== undefined && Object.entries(object(input.fields, 'fields')).some(([k, v]) => !editable.includes(k) || typeof v !== 'string')) throw new InputError('Unsupported label field.');
     this.assertRevision(input.revision);
     const kind = input.kind || 'box';
-    let box, locationId, fields, reference;
+    let box, locationId, unitId, fields, reference;
     if (input.test === true) {
-      if (input.boxId || input.locationId || input.fields) throw new InputError('Test labels use fixed sample text.');
+      if (input.boxId || input.locationId || input.unitId || input.fields) throw new InputError('Test labels use fixed sample text.');
+    } else if (kind === 'unit') {
+      if (input.boxId !== undefined || input.locationId !== undefined || typeof input.unitId !== 'string') throw new InputError('Choose a storage unit.');
+      const unit = this.inventory.storageMap(language).units.find(u => u.slug === input.unitId);
+      if (!unit) throw new InputError('Storage unit not found.', 404);
+      // The unit's title reads "Shelving unit: B"; its two parts are also fields of their own.
+      const [kindName, ...rest] = unit.title.split(': ');
+      unitId = unit.slug; reference = `unit:${unitId}`.slice(0, 200);
+      fields = { unit: unit.title, kind: rest.length ? kindName : '', name: rest.length ? rest.join(': ') : unit.title, unitId };
+    } else if (input.unitId !== undefined) {
+      throw new InputError('Unsupported label preview request.');
     } else if (kind === 'location') {
       if (input.boxId !== undefined || typeof input.locationId !== 'string') throw new InputError('Choose a registered location or a test label.');
       if (!this.store.locationIds().includes(input.locationId)) throw new InputError('Location not found.', 404);
@@ -98,7 +108,8 @@ export class Printing {
     const client = this.client(), choice = this.functions()[kind];
     const candidates = input.template ? [input.template] : [...new Set([box?.labelTemplate, choice.default, kind].filter(Boolean))];
     const known = (await client.templates()).templates, template = candidates.find(id => known.some(t => t.id === id));
-    if (!template) throw new InputError('The label template is not available in the label service. Choose another template.', 409);
+    if (!template) throw new InputError(kind === 'unit' && !input.template ? 'Make a storage unit label template in the label service and choose it under Printing.'
+      : 'The label template is not available in the label service. Choose another template.', 409);
     if (input.test !== true) {
       const wanted = Object.keys(known.find(t => t.id === template).fields || {});
       if (wanted.some(k => !provided[kind].includes(k))) throw new InputError('This template asks for fields that this label type cannot fill.');
@@ -109,15 +120,16 @@ export class Printing {
     const now = Date.now(); for (const [id, p] of this.previews) if (p.expires <= now) this.previews.delete(id);
     if (this.previews.size >= 100) throw new InputError('Too many label previews. Wait for an older preview to expire.', 429);
     // A box label printed with the template it was meant to use is remembered for that box; a fallback is not.
-    this.previews.set(result.token, { revision: input.revision, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, locationId, language,
+    this.previews.set(result.token, { revision: input.revision, boxId: box?.boxId, boxFingerprint: box ? fingerprint(box) : null, locationId, unitId, language,
       kind, remember: box && template === candidates[0] ? template : undefined, expires: Math.min(Date.parse(result.expiresAt) || now, now + 10 * 60 * 1000) });
     return { token: result.token, kind, template, fallback: template !== candidates[0], fields: result.fields, layout: result.layout, svg: result.svg,
-      printable: result.printable, warnings: result.warnings, boxId: box?.boxId, locationId, test: input.test === true };
+      printable: result.printable, warnings: result.warnings, boxId: box?.boxId, locationId, unitId, test: input.test === true };
   }
   assertPreview(preview) {
     this.assertRevision(preview.revision);
     if (Date.now() >= preview.expires) throw new InputError('Label preview expired. Create a new preview.', 409);
     if (preview.locationId && !this.store.locationIds().includes(preview.locationId)) throw new InputError('Location is no longer registered. Create a new label preview.', 409);
+    if (preview.unitId && !this.inventory.storageMap(preview.language).units.some(u => u.slug === preview.unitId)) throw new InputError('Storage unit no longer exists. Create a new label preview.', 409);
     if (preview.boxId) {
       const current = this.inventory.get(preview.boxId, preview.language);
       if (!current || fingerprint(current) !== preview.boxFingerprint) throw new InputError('Box contents or location changed. Create a new label preview.', 409);

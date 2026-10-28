@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import { Settings, sourceRevision } from './settings.js';
-import { InputError, object, text } from './validation.js';
+import { InputError, object, text, unitSlug } from './validation.js';
 import { currentSession } from './inventory.js';
 import { equal } from './auth.js';
 
@@ -144,15 +144,40 @@ export class Catalog {
   async album(refresh = false) {
     const config = this.config(); const revision = sourceRevision(config);
     const [all, cover] = await Promise.all([this.assets(config, { refresh }), this.coverAssetId(config, refresh)]);
-    const used = new Set(this.store.read().photos.map(p => p.immichAssetId));
+    const units = this.store.settings().unitPhotos || {};
+    const used = new Set([...this.store.read().photos.map(p => p.immichAssetId), ...Object.values(units)]);
     const assets = all.filter(a => a.id !== cover || used.has(a.id));
     const data = this.store.read(); const sessionBoxes = new Map(data.boxes.map(b => [currentSession(data, b.boxId)?.sessionId, b.boxId]));
     const expires = String(Date.now() + 15 * 60 * 1000);
     const imageUrl = (asset, variant) => `/api/album-preview/${encodeURIComponent(asset)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(asset, expires, revision, variant)}`;
     return { sourceRevision: revision, albumId: config.albumId, assets: assets.map(a => ({
       ...a, assignedBoxIds: [...new Set(data.photos.filter(p => p.immichAssetId === a.id && sessionBoxes.has(p.sessionId)).map(p => sessionBoxes.get(p.sessionId)))],
+      assignedUnits: Object.keys(units).filter(slug => units[slug] === a.id),
       thumbnailUrl: imageUrl(a.id, 'thumbnail'), previewUrl: imageUrl(a.id, 'preview'), originalUrl: imageUrl(a.id, 'original')
     })) };
+  }
+
+  // The photo of each storage unit, with short-lived image links like the album's.
+  unitPhotos() {
+    const units = this.store.settings().unitPhotos || {};
+    if (!Object.keys(units).length) return {};
+    let revision; try { revision = sourceRevision(this.config()); } catch { return {}; }
+    const expires = String(Date.now() + 15 * 60 * 1000);
+    const imageUrl = (id, variant) => `/api/album-preview/${encodeURIComponent(id)}?variant=${variant}&expires=${expires}&revision=${revision}&grant=${this.grant(id, expires, revision, variant)}`;
+    return Object.fromEntries(Object.entries(units).map(([slug, id]) => [slug, { assetId: id, thumbnailUrl: imageUrl(id, 'thumbnail'), previewUrl: imageUrl(id, 'preview'), originalUrl: imageUrl(id, 'original') }]));
+  }
+  // A unit photo is chosen from the album, so only the link is stored; null removes it.
+  async setUnitPhoto(slug, input) {
+    object(input);
+    if (!unitSlug.test(slug) || Object.keys(input).some(k => k !== 'assetId') || (input.assetId !== null && (typeof input.assetId !== 'string' || !input.assetId))) throw new InputError('Choose a photo from the album or remove the photo.');
+    if (!this.inventory.storageMap().units.some(unit => unit.slug === slug)) throw new InputError('Storage unit not found.', 404);
+    if (input.assetId !== null && !(await this.assets(this.config())).some(a => a.id === input.assetId)) throw new InputError('Choose a photo from the album.', 409);
+    this.store.transaction(() => {
+      const units = { ...this.store.settings().unitPhotos };
+      if (input.assetId === null) delete units[slug]; else units[slug] = input.assetId;
+      this.store.writeSettings({ unitPhotos: units });
+    });
+    return { slug, photo: this.unitPhotos()[slug] || null };
   }
 
   // The album cover chosen in Immich is the workshop overview image on the start page.

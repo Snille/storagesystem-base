@@ -12,7 +12,10 @@ export function mountPrinting(request) {
     ...($('print-key').value.trim() ? { apiKey: $('print-key').value.trim() } : {}) });
   const dirty = () => state && ($('print-enabled').checked !== state.config.enabled || $('print-url').value.trim() !== state.config.url
     || Boolean($('print-key').value.trim()) || $('print-clear-key').checked);
-  const functionName = name => t(name === 'location' ? 'Location label' : 'Box label');
+  const functionNames = { box: 'Box label', location: 'Location label', unit: 'Storage unit label' };
+  const functionName = name => t(functionNames[name] || functionNames.box);
+  // The fields a template may print that can be edited before printing.
+  const editable = ['title', 'description', 'location', 'unit', 'kind', 'name'];
   // The label service names its built-in templates in English, so those names are translated here.
   const templateName = id => { const found = templates.find(x => x.id === id); return found ? (found.builtIn ? t(found.name) : found.name) : id; };
   // The name with what the operator needs to know before choosing it.
@@ -31,9 +34,11 @@ export function mountPrinting(request) {
   // Per label type a standard template and other templates offered when printing, from those that suit the type.
   function functionSettings() {
     const list = $('print-function-list'); list.replaceChildren();
-    for (const name of ['box', 'location']) {
+    for (const name of ['box', 'location', 'unit']) {
       const choice = state.functions[name], suitable = templates.filter(x => x.functions.includes(name));
-      const ids = [...new Set([...suitable.map(x => x.id), choice.default, ...choice.extra])];
+      // Storage units have no built-in template, so their placeholder standard is not offered as a choice.
+      const placeholder = choice.default === name && !templates.some(x => x.id === name);
+      const ids = [...new Set([...suitable.map(x => x.id), ...(placeholder ? [] : [choice.default]), ...choice.extra])];
       const set = document.createElement('fieldset'), legend = document.createElement('legend'); legend.textContent = functionName(name);
       const label = document.createElement('label'); label.textContent = t('Standard template');
       const select = document.createElement('select'); select.name = `${name}-default`;
@@ -47,6 +52,7 @@ export function mountPrinting(request) {
       // The standard template is always offered, so it is not also an extra one.
       const sync = () => { for (const box of extras.querySelectorAll('input')) { box.disabled = box.value === select.value; if (box.disabled) box.checked = false; } };
       select.addEventListener('change', sync); sync();
+      if (!ids.length) { set.append(legend, Object.assign(document.createElement('p'), { className: 'hint', textContent: t('Make a storage unit label template in the label service and choose it under Printing.') })); list.append(set); continue; }
       set.append(legend, label, extras); list.append(set);
     }
   }
@@ -107,7 +113,9 @@ export function mountPrinting(request) {
   }));
   $('print-functions').addEventListener('submit', event => { event.preventDefault(); run(settingsStatus, async () => {
     const form = new FormData($('print-functions'));
-    const functions = Object.fromEntries(['box', 'location'].map(name => [name, { default: form.get(`${name}-default`), extra: form.getAll(`${name}-extra`) }]));
+    // A label type without any suitable template keeps its saved choice.
+    const functions = Object.fromEntries(['box', 'location', 'unit'].filter(name => form.get(`${name}-default`))
+      .map(name => [name, { default: form.get(`${name}-default`), extra: form.getAll(`${name}-extra`) }]));
     state.functions = (await api('/templates', { functions }, 'PUT')).functions; functionSettings(); settingsStatus(t('Label templates saved.'));
   }); });
 
@@ -153,12 +161,12 @@ export function mountPrinting(request) {
   // Edited fields are sent only after the first preview has shown which fields the template prints.
   async function showPreview(edited) {
     const stamp = ++generation;
-    const fields = edited ? Object.fromEntries(['title', 'description', 'location'].filter(key => !$(`print-${key}-row`).hidden).map(key => [key, $(`print-${key}`).value])) : undefined;
+    const fields = edited ? Object.fromEntries(editable.filter(key => !$(`print-${key}-row`).hidden).map(key => [key, $(`print-${key}`).value])) : undefined;
     const result = await api('/preview', { revision: state.revision, kind: target.kind, template: chosenTemplate(),
-      ...(target.kind === 'location' ? { locationId: target.id } : { boxId: target.id }), ...(fields ? { fields } : {}) });
+      [{ box: 'boxId', location: 'locationId', unit: 'unitId' }[target.kind]]: target.id, ...(fields ? { fields } : {}) });
     if (stamp !== generation) return;
     preview = result; requestId = crypto.randomUUID(); lastJob = null; draw(result.layout, result.svg);
-    for (const key of ['title', 'description', 'location']) {
+    for (const key of editable) {
       $(`print-${key}-row`).hidden = typeof result.fields?.[key] !== 'string';
       if (!$(`print-${key}-row`).hidden) $(`print-${key}`).value = result.fields[key];
     }
@@ -166,11 +174,12 @@ export function mountPrinting(request) {
     status([result.fallback && tr('The chosen template is missing in the label service, so {0} was used.', templateName(result.template)),
       t(result.printable ? 'Preview ready. Print sends one label.' : 'Text does not fit. Shorten the label text before printing.')].filter(Boolean).join(' '));
   }
-  // Opens the label dialog for a box ({boxId}) or a registered location ({locationId}) and shows the standard preview at once.
-  const open = ({ boxId, locationId } = {}) => run(status, async () => {
-    target = locationId ? { kind: 'location', id: locationId } : { kind: 'box', id: boxId };
+  // Opens the label dialog for a box ({boxId}), a registered location ({locationId}) or a storage unit ({unitId, title})
+  // and shows the standard preview at once.
+  const open = ({ boxId, locationId, unitId, title } = {}) => run(status, async () => {
+    target = unitId ? { kind: 'unit', id: unitId } : locationId ? { kind: 'location', id: locationId } : { kind: 'box', id: boxId };
     status(''); invalidate(); $('print-fields').hidden = true; $('print-edit').open = false; $('print-template').replaceChildren(); $('print-template-row').hidden = true;
-    $('label-dialog-title').textContent = locationId ? `${t('Location label')}: ${locationId}` : t('Box label'); $('label-dialog').showModal();
+    $('label-dialog-title').textContent = `${functionName(target.kind)}${locationId || title ? `: ${locationId || title}` : ''}`; $('label-dialog').showModal();
     await load();
     if (!state.config.enabled) throw new Error(t('Printing is disabled. Save the label service address and key first.'));
     const box = target.kind === 'box' ? (await (await request('boxes')).json()).boxes.find(b => b.boxId === boxId) : null;

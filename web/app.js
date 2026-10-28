@@ -151,7 +151,9 @@ const locationEditor = mountLocationEditor(() => positions, locationId => {
   if (!selected) $('box-identity').value = suggestBoxId(locationId, boxes.map(b => b.boxId)) || t('Assigned automatically on save');
 });
 
-const storageMap = mountStorageMap(request, () => boxes, box => details(box).catch(error => message(error.message, true)), locationId => printing.open({ locationId }));
+const storageMap = mountStorageMap(request, () => boxes, box => details(box).catch(error => message(error.message, true)), locationId => printing.open({ locationId }),
+  (unitId, title) => printing.open({ unitId, title }),
+  (title, photo) => openViewer({ label: title, photos: [{ immichAssetId: photo.assetId, role: 'location', originalUrl: photo.originalUrl }] }, 0, true));
 $('open-storage-map').addEventListener('click', async () => {
   try {
     await load();
@@ -606,18 +608,20 @@ async function showAlbum(fromEditor = false, refresh = false) {
 function renderAlbum() {
   if (!albumState) return;
   const area = $('album-photos'); area.replaceChildren();
-  const visible = albumState.assets.filter(a => !$('unused-only').checked || !a.assignedBoxIds.length);
+  const visible = albumState.assets.filter(a => !$('unused-only').checked || !(a.assignedBoxIds.length || a.assignedUnits?.length));
   $('album-status').textContent = tr('{0} visible of {1} images. Select images to inventory.', visible.length, albumState.assets.length);
   if (!visible.length) area.append(element('p', t('No photos to show. Add photos to the album or turn off the unassigned filter.'), 'hint'));
   for (const asset of visible) {
     const retained = pickerFromEditor && sessionPhotos.some(p => p.immichAssetId === asset.id);
-    const elsewhere = asset.assignedBoxIds.some(id => !pickerFromEditor || id !== selected?.boxId);
+    // A storage unit's photo stays with the unit.
+    const elsewhere = asset.assignedBoxIds.some(id => !pickerFromEditor || id !== selected?.boxId) || Boolean(asset.assignedUnits?.length);
     const card = element('button', undefined, 'album-photo'); card.type = 'button'; card.disabled = retained || elsewhere;
     card.setAttribute('aria-label', tr('Select {0}', asset.fileName)); card.setAttribute('aria-pressed', String(albumChosen.has(asset.id)));
     const image = element('img'); image.src = asset.previewUrl || asset.thumbnailUrl; image.alt = asset.fileName; image.loading = 'lazy';
     image.addEventListener('error', () => image.replaceWith(element('span', t('Preview unavailable. Refresh the album to renew previews.'), 'photo-failure')));
     card.append(image, element('span', asset.fileName, 'photo-name'));
-    if (retained || asset.assignedBoxIds.length) card.append(element('span', retained ? t('Already in this session') : tr('Linked to {0}', asset.assignedBoxIds.join(', ')), 'photo-state'));
+    const links = [...asset.assignedBoxIds, ...(asset.assignedUnits || []).map(slug => (unit => unit ? storageMap.title(unit) : slug)(storageMap.units().find(u => u.slug === slug)))];
+    if (retained || links.length) card.append(element('span', retained ? t('Already in this session') : tr('Linked to {0}', links.join(', ')), 'photo-state'));
     card.addEventListener('click', () => {
       if (albumChosen.has(asset.id)) albumChosen.delete(asset.id); else albumChosen.add(asset.id);
       card.setAttribute('aria-pressed', String(albumChosen.has(asset.id)));

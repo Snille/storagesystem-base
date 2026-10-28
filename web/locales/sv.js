@@ -682,5 +682,18 @@ export default {
   "Free lines": "Fria rader",
   "Printing is disabled. Save the label service address and key first.": "Utskrift är avstängd. Spara etikettjänstens adress och nyckel först.",
   "Print a label from a box (Print label) or from a place on the storage map.": "Skriv ut en etikett från en låda (Skriv ut etikett) eller från en plats på lagerkartan.",
-  "Change the text on this label": "Ändra texten på den här etiketten"
+  "Change the text on this label": "Ändra texten på den här etiketten",
+  "Show the photo": "Visa bilden",
+  "Loading album…": "Läser in albumet…",
+  "Storage unit type": "Typ av lagerenhet",
+  "Storage unit name": "Lagerenhetens namn",
+  "Choose photo": "Välj bild",
+  "Change photo": "Byt bild",
+  "Remove photo": "Ta bort bild",
+  "Choose a photo of this storage unit from the album. Put the photo in the same album as the box photos.": "Välj en bild på lagerenheten från albumet. Lägg bilden i samma album som lådbilderna.",
+  "Print storage unit label": "Skriv ut etikett för lagerenheten",
+  "Storage unit label": "Lagerenhetsetikett",
+  "Make a storage unit label template in the label service and choose it under Printing.": "Gör en mall för lagerenhetsetiketter i etikettjänsten och välj den under Utskrift.",
+  "Storage unit not found.": "Lagerenheten finns inte.",
+  "Choose a photo from the album.": "Välj en bild från albumet."
 };

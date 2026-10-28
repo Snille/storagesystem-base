@@ -21,7 +21,8 @@ async function labelService(t) {
     { id: 'location', name: 'Location label', builtIn: true, fields: { location: '' } },
     { id: 'lines', name: 'Free lines', builtIn: true, fields: { lines: '' } },
     { id: 'box-portrait', name: 'Box portrait', media: ['w162h90'], fields: { title: {}, location: {}, boxId: {} } },
-    { id: 'box-small', name: 'Box small roll', media: ['w54h144'], fields: { title: {} } }] };
+    { id: 'box-small', name: 'Box small roll', media: ['w54h144'], fields: { title: {} } },
+    { id: 'unit-landscape', name: 'Unit landscape', fields: { kind: {}, name: {}, unitId: {} } }] };
   const server = createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
@@ -223,4 +224,21 @@ test('a remembered label template is part of the box, set over HTTP and checked 
   assert.equal((await put(null)).status, 200); assert.equal(store.audit().ok, true);
   store.db.prepare("UPDATE boxes SET record = json_set(record, '$.labelTemplate', 'NOT VALID') WHERE id = ?").run(id);
   assert.equal(store.audit().ok, false);
+});
+
+test('storage unit labels fill unit, kind, name and unitId, and need a template of their own', async t => {
+  const { printing, service } = await setup(t), revision = printing.revision();
+  assert.deepEqual((await printing.templates()).templates.find(x => x.id === 'unit-landscape').functions, ['unit']);
+  // No built-in template exists for storage units, so one must be chosen first.
+  await assert.rejects(printing.preview({ revision, kind: 'unit', unitId: 'g' }), /storage unit label template/);
+  printing.saveFunctions({ functions: { unit: { default: 'unit-landscape', extra: [] } } });
+  const p = await printing.preview({ revision, kind: 'unit', unitId: 'g' }, 'sv');
+  assert.deepEqual(service.calls.at(-1).body.fields, { kind: 'Lagerhylla', name: 'G', unitId: 'g' });
+  assert.equal(service.calls.at(-1).body.reference, 'unit:g'); assert.equal(p.unitId, 'g');
+  await printing.preview({ revision, kind: 'unit', unitId: 'g', fields: { name: 'G1' } }, 'en');
+  assert.deepEqual(service.calls.at(-1).body.fields, { kind: 'Shelving unit', name: 'G1', unitId: 'g' });
+  await assert.rejects(printing.preview({ revision, kind: 'unit', unitId: 'nope' }), { status: 404 });
+  await assert.rejects(printing.preview({ revision, kind: 'box', unitId: 'g' }), /Unsupported/);
+  await printing.submit({ token: p.token, requestId: randomUUID() });
+  assert.equal(service.prints(), 1);
 });

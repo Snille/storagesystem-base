@@ -1,6 +1,6 @@
 import { t, tr } from './i18n.js';
 
-export function mountStorageMap(request, getBoxes, openBox, printLocation) {
+export function mountStorageMap(request, getBoxes, openBox, printLocation, printUnit, showPhoto) {
   const $ = id => document.getElementById(id);
   const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
   let model = { units: [], unplaced: [] }; let matches = null;
@@ -15,6 +15,8 @@ export function mountStorageMap(request, getBoxes, openBox, printLocation) {
       for (const id of model.unplaced) { const box = boxes.get(id); if (!box) continue; const button = node('button', box.label, 'quiet'); button.addEventListener('click', () => openBox(box)); area.append(button); }
     };
     const unit = model.units.find(unit => unit.slug === $('storage-map-unit').value);
+    unitPhoto(unit);
+    $('storage-map-print-unit').hidden = !unit;
     if (!unit) { area.append(node('p', t('No registered storage positions yet.'), 'hint')); showUnplaced(); return; }
     const occupied = unit.positions.filter(position => position.boxIds.length).length;
     $('storage-map-status').textContent = tr('{0} occupied · {1} registered free positions', occupied, unit.positions.length - occupied);
@@ -55,6 +57,48 @@ export function mountStorageMap(request, getBoxes, openBox, printLocation) {
     table.append(body); wrapper.append(table); area.append(wrapper);
     showUnplaced();
   }
+  // The unit's photo is an album photo; the map stores only which one.
+  function unitPhoto(unit) {
+    const photo = unit && model.unitPhotos?.[unit.slug], button = $('storage-map-photo');
+    $('storage-map-photo-picker').hidden = true;
+    $('storage-map-choose-photo').hidden = !unit; $('storage-map-choose-photo').textContent = t(photo ? 'Change photo' : 'Choose photo');
+    $('storage-map-remove-photo').hidden = !photo; button.hidden = !photo; button.replaceChildren();
+    if (!photo) return;
+    const image = node('img'); image.src = photo.previewUrl; image.alt = tr('Photo of {0}', title(unit)); button.append(image);
+    button.title = t('Show the photo');
+    image.addEventListener('error', () => { button.hidden = true; });
+  }
+  const current = () => model.units.find(unit => unit.slug === $('storage-map-unit').value);
+  async function savePhoto(assetId) {
+    const unit = current(); if (!unit) return;
+    const response = await request(`storage-units/${encodeURIComponent(unit.slug)}/photo`, { method: 'PUT', body: JSON.stringify({ assetId }) });
+    const result = await response.json();
+    model.unitPhotos = { ...model.unitPhotos }; if (result.photo) model.unitPhotos[unit.slug] = result.photo; else delete model.unitPhotos[unit.slug];
+    unitPhoto(unit);
+  }
+  $('storage-map-photo').addEventListener('click', () => { const unit = current(); if (unit && model.unitPhotos?.[unit.slug]) showPhoto(title(unit), model.unitPhotos[unit.slug]); });
+  $('storage-map-remove-photo').addEventListener('click', () => savePhoto(null).catch(error => { $('storage-map-status').textContent = error.message; }));
+  $('storage-map-photo-cancel').addEventListener('click', () => { $('storage-map-photo-picker').hidden = true; });
+  // Album photos not used by a box or another unit come first; used ones say where they are used.
+  $('storage-map-choose-photo').addEventListener('click', async () => {
+    const picker = $('storage-map-photo-picker'), list = $('storage-map-photo-list'), unit = current(); if (!unit) return;
+    picker.hidden = false; list.replaceChildren(); $('storage-map-photo-status').textContent = t('Loading album…');
+    try {
+      const album = await (await request('album')).json();
+      const used = asset => asset.assignedBoxIds.length + asset.assignedUnits.filter(slug => slug !== unit.slug).length;
+      const assets = [...album.assets].sort((a, b) => used(a) - used(b));
+      $('storage-map-photo-status').textContent = assets.length ? '' : t('No photos to show. Add photos to the album or turn off the unassigned filter.');
+      for (const asset of assets) {
+        const button = node('button'); button.type = 'button';
+        const image = node('img'); image.src = asset.thumbnailUrl; image.alt = asset.fileName; image.loading = 'lazy';
+        const where = [...asset.assignedBoxIds, ...asset.assignedUnits.map(slug => (unit => unit ? title(unit) : slug)(model.units.find(u => u.slug === slug)))];
+        button.append(image, node('span', where.length ? tr('Linked to {0}', where.join(', ')) : asset.fileName));
+        button.addEventListener('click', () => savePhoto(asset.id).catch(error => { $('storage-map-photo-status').textContent = error.message; }));
+        list.append(button);
+      }
+    } catch (error) { $('storage-map-photo-status').textContent = error.message; }
+  });
+  $('storage-map-print-unit').addEventListener('click', () => { const unit = current(); if (unit) printUnit(unit.slug, title(unit)); });
   $('close-storage-map').addEventListener('click', () => $('storage-map-dialog').close());
   $('storage-map-unit').addEventListener('change', render);
   // Units are listed alphabetically by their shown name, with numbers in numeric order.

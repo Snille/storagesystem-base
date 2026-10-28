@@ -186,7 +186,9 @@ export function createApp({ store, env = process.env }) {
       }
       if (path === '/api/manage/boxes' && method === 'GET') return json({ boxes: inventory.list(lang).map(withUrls) });
       if (path === '/api/manage/positions' && method === 'GET') return json({ positions: inventory.positions(lang) });
-      if (path === '/api/manage/storage-map' && method === 'GET') return json(inventory.storageMap(lang));
+      if (path === '/api/manage/storage-map' && method === 'GET') return json({ ...inventory.storageMap(lang), unitPhotos: catalog.unitPhotos() });
+      const unitPhotoMatch = path.match(/^\/api\/manage\/storage-units\/([^/]+)\/photo$/);
+      if (unitPhotoMatch && method === 'PUT') return json(await catalog.setUnitPhoto(decodeURIComponent(unitPhotoMatch[1]), await body(req)));
       if (path === '/api/manage/positions' && method === 'POST') return json(inventory.addPosition(await body(req), lang));
       const coverMatch = path.match(/^\/api\/manage\/boxes\/([^/]+)\/cover$/);
       if (coverMatch && method === 'PUT') {

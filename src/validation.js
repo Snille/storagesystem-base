@@ -90,6 +90,7 @@ export function validateSettings(settings) {
   if (settings.printing !== undefined) validateLegacyPrinting(settings.printing);
   if (settings.labelService !== undefined) validateLabelService(settings.labelService);
   if (settings.labelTemplates !== undefined) validateLabelTemplates(settings.labelTemplates);
+  if (settings.unitPhotos !== undefined) validateUnitPhotos(settings.unitPhotos);
   for (const [section, fields] of Object.entries({
     appearance: ['language'], security: ['publicApiKey', 'appBaseUrl'],
     immich: ['provider', 'baseUrl', 'accountLabel', 'accessMode', 'apiKey', 'shareKey', 'albumId']
@@ -215,7 +216,18 @@ export function validateLabelService(config) {
 
 // Label service template identifiers, and the label functions this system fills with content.
 export const labelTemplateId = /^[a-z0-9-]{2,64}$/;
-export const labelFunctions = ['box', 'location'];
+export const labelFunctions = ['box', 'location', 'unit'];
+// Storage units are named by their storage map slug, for example b, bench-2 or cabinet-3d-print.
+export const unitSlug = /^[a-z0-9-]{1,100}$/;
+
+// One album photo per storage unit, shown on the storage map.
+export function validateUnitPhotos(value) {
+  object(value, 'unitPhotos');
+  for (const [slug, assetId] of Object.entries(value)) {
+    if (!unitSlug.test(slug) || typeof assetId !== 'string' || !assetId.trim() || assetId.length > 200) throw new InputError('Invalid storage unit photo.');
+  }
+  return value;
+}
 
 // Per function: the template used unless another is chosen, and the other templates offered when printing.
 export function validateLabelTemplates(config) {

@@ -82,6 +82,6 @@ test('management, public search and MCP share ranking; storage map requires mana
   assert.deepEqual(management.matches.map(box => [box.boxId, box.score]), publicSearch.matches.map(box => [box.boxId, box.score]));
   assert.equal(mcp.result.structuredContent.matches[0].boxId, 'SCREWS');
   assert.equal((await request('/api/manage/storage-map', 'read')).status, 401);
-  assert.deepEqual(await (await request('/api/manage/storage-map?lang=en', 'admin')).json(), inventory.storageMap('en'));
+  assert.deepEqual(await (await request('/api/manage/storage-map?lang=en', 'admin')).json(), { ...inventory.storageMap('en'), unitPhotos: {} });
   assert.deepEqual(store.read(), before);
 });

@@ -688,5 +688,18 @@ export default {
   "Free lines": "Free lines",
   "Printing is disabled. Save the label service address and key first.": "Printing is disabled. Save the label service address and key first.",
   "Print a label from a box (Print label) or from a place on the storage map.": "Print a label from a box (Print label) or from a place on the storage map.",
-  "Change the text on this label": "Change the text on this label"
+  "Change the text on this label": "Change the text on this label",
+  "Show the photo": "Show the photo",
+  "Loading album…": "Loading album…",
+  "Storage unit type": "Storage unit type",
+  "Storage unit name": "Storage unit name",
+  "Choose photo": "Choose photo",
+  "Change photo": "Change photo",
+  "Remove photo": "Remove photo",
+  "Choose a photo of this storage unit from the album. Put the photo in the same album as the box photos.": "Choose a photo of this storage unit from the album. Put the photo in the same album as the box photos.",
+  "Print storage unit label": "Print storage unit label",
+  "Storage unit label": "Storage unit label",
+  "Make a storage unit label template in the label service and choose it under Printing.": "Make a storage unit label template in the label service and choose it under Printing.",
+  "Storage unit not found.": "Storage unit not found.",
+  "Choose a photo from the album.": "Choose a photo from the album."
 };

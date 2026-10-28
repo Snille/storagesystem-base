@@ -186,3 +186,23 @@ test('PhotoPrism albums and Immich shared-link albums use their provider contrac
   assert.equal((await (await ctx.request('/api/manage/albums')).json()).albums[0].label, 'Shared fixture');
   assert.equal((await (await ctx.request('/api/manage/album')).json()).assets[0].id, 'shared-photo');
 });
+
+test('a storage unit photo is chosen from the album, shown on the storage map and marked as used', async t => {
+  const ctx = await setup(t, respond); await ctx.configure();
+  ctx.store.mutate(data => Object.assign(data, structuredClone(fixture)));
+  const put = (slug, assetId, key) => ctx.request(`/api/manage/storage-units/${slug}/photo`, { method: 'PUT', payload: { assetId }, key });
+  const chosen = await (await put('g', 'asset-2')).json();
+  assert.equal(chosen.photo.assetId, 'asset-2'); assert.match(chosen.photo.previewUrl, /^\/api\/album-preview\/asset-2\?variant=preview/);
+  assert.equal((await fetch(ctx.base + chosen.photo.previewUrl)).status, 200);
+  const map = await (await ctx.request('/api/manage/storage-map')).json();
+  assert.equal(map.unitPhotos.g.assetId, 'asset-2'); assert.equal(map.unitPhotos['bench-2'], undefined);
+  const album = await (await ctx.request('/api/manage/album')).json();
+  assert.deepEqual(album.assets.find(a => a.id === 'asset-2').assignedUnits, ['g']);
+  // Only album photos, only existing units, only the management key.
+  assert.equal((await put('g', 'not-in-album')).status, 409);
+  assert.equal((await put('no-such-unit', 'asset-2')).status, 404);
+  assert.equal((await put('Bad Slug', 'asset-2')).status, 400);
+  assert.equal((await put('g', 'asset-1', 'read-fixture')).status, 401);
+  assert.equal((await (await put('g', null)).json()).photo, null);
+  assert.equal(ctx.store.settings().unitPhotos.g, undefined); assert.equal(ctx.store.audit().ok, true);
+});

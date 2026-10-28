@@ -68,17 +68,19 @@
     <p id="print-status" role="status" aria-live="polite"></p>
     <div class="actions"><button id="print-submit" disabled>Print one label</button><button id="print-job-check" class="quiet" disabled>Check print job</button></div>
     <details id="print-edit"><summary>Change the text on this label</summary>
-      <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label id="print-location-row">Location<input id="print-location" maxlength="240"></label></div>
+      <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label id="print-location-row">Location<input id="print-location" maxlength="240"></label><label id="print-unit-row">Storage unit<input id="print-unit" maxlength="240"></label><label id="print-kind-row">Storage unit type<input id="print-kind" maxlength="240"></label><label id="print-name-row">Storage unit name<input id="print-name" maxlength="240"></label></div>
       <button id="print-preview" class="quiet">Prepare label preview</button>
     </details>
     <p class="hint">A completed job means the label service delivered the label to the printer driver. Check the physical label for text and orientation.</p>
   </dialog>
   <dialog id="storage-map-dialog" aria-labelledby="storage-map-title">
-    <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
+    <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><div class="map-unit-photo"><button id="storage-map-photo" class="quiet map-photo" type="button" hidden></button><div class="actions"><button id="storage-map-choose-photo" class="quiet" type="button">Choose photo</button><button id="storage-map-remove-photo" class="quiet" type="button" hidden>Remove photo</button></div></div><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
+    <section id="storage-map-photo-picker" class="panel" hidden><p class="hint">Choose a photo of this storage unit from the album. Put the photo in the same album as the box photos.</p><p id="storage-map-photo-status" class="hint" role="status"></p><div id="storage-map-photo-list" class="map-photo-list"></div><button id="storage-map-photo-cancel" class="quiet" type="button">Cancel</button></section>
     <p id="storage-map-query" class="hint"></p>
     <label>Storage unit<select id="storage-map-unit"></select></label>
     <p id="storage-map-status" class="hint" role="status"></p>
     <div id="storage-map-body"></div>
+    <div class="actions"><button id="storage-map-print-unit" class="quiet" type="button">Print storage unit label</button></div>
   </dialog>
   <dialog id="languages-dialog">
     <form id="languages-form">
