@@ -283,3 +283,19 @@ a safety backup of the replaced database in the volume.
   `name-badges`; loaded roll S0722540 57 x 32 mm); a preview of a real box with `box-portrait` was
   portrait and printable (nothing printed); public API 401 without key; unlisted host 403;
   `https://verkstad.snille.net/healthz` 200. No physical label was printed.
+
+## Update 2026-10-28: 0.27.1
+
+- Released `0.27.1` (commit `b34b542`): Printing in the header holds only the settings; Print label on
+  a box and Print location label on the storage map open a separate label dialog with the templates as
+  buttons. Image built from `git archive b34b542`; `mrsnille/storagesystem-base:0.27.1` and `:latest`,
+  digest `sha256:f0a3bbb2268d9bb752a33caea55e376298d6d9e2a4492bb79877c3e8f537b086`, pushed by the agent.
+- Tested first in Docker Desktop: `scripts/verify-container.ps1` passed, then a temporary container on
+  a copy of the production database (v0.27.1, audit ok, the page has the label dialog). The container,
+  volume and copy were removed afterwards.
+- Before the update the stack's database was saved locally as
+  `data/migration-2026-10-24/portainer-before-0.27.1.sqlite` (git-ignored).
+- Stack 13 updated through the Portainer API; only `STORAGE_IMAGE` changed (8 env values kept).
+- Checks: `/healthz` 0.27.1; audit ok, 164 / 253 / 314 / 164; the page has the label dialog; a preview of
+  a real box with `box-portrait` was portrait and printable (nothing printed); public API 401 without
+  key; unlisted host 403; `https://verkstad.snille.net/healthz` 200. No physical label was printed.
