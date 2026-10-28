@@ -51,7 +51,6 @@ export default {
   "Recent print submissions": "Senaste utskriftsbegäran",
   "Printing": "Utskrift",
   "Label preview": "Etikettförhandsvisning",
-  "Test label": "Testetikett",
   "Print one label": "Skriv ut en etikett",
   "Prepare label preview": "Förhandsvisa etikett",
   "Save print settings": "Spara utskriftsinställningar",
@@ -72,10 +71,8 @@ export default {
   "Landscape": "Liggande",
   "Portrait": "Stående",
   "rotated on the label": "roterad på etiketten",
-  "Label type": "Etikettyp",
   "Box label": "Lådetikett",
   "Location label": "Platsetikett",
-  "Label source": "Etikettkälla",
   "Title": "Rubrik",
   "Description": "Beskrivning",
   "Location": "Plats",
@@ -682,5 +679,8 @@ export default {
   "The chosen template is missing in the label service, so {0} was used.": "Den valda mallen saknas i etikettjänsten, så {0} användes.",
   "The label template is not available in the label service. Choose another template.": "Etikettmallen finns inte i etikettjänsten. Välj en annan mall.",
   "This template asks for fields that this label type cannot fill.": "Mallen behöver fält som den här etikettypen inte kan fylla i.",
-  "Free lines": "Fria rader"
+  "Free lines": "Fria rader",
+  "Printing is disabled. Save the label service address and key first.": "Utskrift är avstängd. Spara etikettjänstens adress och nyckel först.",
+  "Print a label from a box (Print label) or from a place on the storage map.": "Skriv ut en etikett från en låda (Skriv ut etikett) eller från en plats på lagerkartan.",
+  "Change the text on this label": "Ändra texten på den här etiketten"
 };

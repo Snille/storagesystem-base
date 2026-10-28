@@ -38,3 +38,9 @@ a.button{display:inline-block;border:1px solid transparent;border-radius:7px;pad
 #print-functions fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 14px; }
 #print-functions .check-label { margin: 8px 0; }
 #print-functions .check-label:has(input:disabled) { opacity: .5; }
+#label-dialog .choices { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; }
+#label-dialog .choice { display: flex; align-items: center; gap: 8px; font-weight: 400; border: 1px solid var(--line); border-radius: 7px; padding: 9px 12px; cursor: pointer; }
+#label-dialog .choice:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+#label-dialog .choice input { width: auto; margin: 0; }
+#label-dialog details { margin: 14px 0; }
+#label-dialog summary { cursor: pointer; }

@@ -50,7 +50,6 @@ export default {
   "Recent print submissions": "Recent print submissions",
   "Printing": "Printing",
   "Label preview": "Label preview",
-  "Test label": "Test label",
   "Print one label": "Print one label",
   "Prepare label preview": "Prepare label preview",
   "Save print settings": "Save print settings",
@@ -71,10 +70,8 @@ export default {
   "Landscape": "Landscape",
   "Portrait": "Portrait",
   "rotated on the label": "rotated on the label",
-  "Label type": "Label type",
   "Box label": "Box label",
   "Location label": "Location label",
-  "Label source": "Label source",
   "Title": "Title",
   "Description": "Description",
   "Location": "Location",
@@ -688,5 +685,8 @@ export default {
   "The chosen template is missing in the label service, so {0} was used.": "The chosen template is missing in the label service, so {0} was used.",
   "The label template is not available in the label service. Choose another template.": "The label template is not available in the label service. Choose another template.",
   "This template asks for fields that this label type cannot fill.": "This template asks for fields that this label type cannot fill.",
-  "Free lines": "Free lines"
+  "Free lines": "Free lines",
+  "Printing is disabled. Save the label service address and key first.": "Printing is disabled. Save the label service address and key first.",
+  "Print a label from a box (Print label) or from a place on the storage map.": "Print a label from a box (Print label) or from a place on the storage map.",
+  "Change the text on this label": "Change the text on this label"
 };

@@ -52,21 +52,26 @@
     </form></details>
     <div class="actions"><button id="print-check" class="quiet">Check printer connection</button><a id="print-admin" class="button quiet" target="_blank" rel="noopener noreferrer" hidden>Open label service</a></div>
     <section id="print-device-result" class="panel" hidden aria-live="polite"></section>
-    <details id="print-functions-panel"><summary>Label templates per label type</summary><form id="print-functions">
+    <details id="print-functions-panel" open><summary>Label templates per label type</summary><form id="print-functions">
       <p class="hint">Make the templates in the label service, for example one landscape and one portrait version. Choose the standard template for each label type here. The other templates you tick can be chosen when you print. A box remembers the template it was last printed with.</p>
       <div id="print-function-list"></div>
       <button id="print-functions-save">Save label templates</button>
     </form></details>
-    <div class="form-grid"><label>Label type<select id="print-kind"><option value="box">Box label</option><option value="location">Location label</option></select></label>
-      <label>Label source<select id="print-box"></select></label>
-      <label>Label template<select id="print-template"></select></label></div>
-    <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label id="print-location-row">Location<input id="print-location" maxlength="240"></label></div>
-    <button id="print-preview" class="quiet">Prepare label preview</button>
+    <p id="print-settings-status" role="status" aria-live="polite"></p>
+    <p class="hint">Print a label from a box (Print label) or from a place on the storage map.</p>
+    <details><summary>Recent print submissions</summary><div id="print-history" class="actions"></div></details>
+  </dialog>
+  <dialog id="label-dialog" aria-labelledby="label-dialog-title">
+    <div class="dialog-title"><h2 id="label-dialog-title">Print label</h2><button id="close-label" class="quiet" aria-label="Close">✕</button></div>
+    <fieldset id="print-template-row" class="choices" hidden><legend>Label template</legend><div id="print-template" class="actions"></div></fieldset>
     <div id="print-paper" class="label-paper"></div>
     <p id="print-status" role="status" aria-live="polite"></p>
     <div class="actions"><button id="print-submit" disabled>Print one label</button><button id="print-job-check" class="quiet" disabled>Check print job</button></div>
+    <details id="print-edit"><summary>Change the text on this label</summary>
+      <div id="print-fields" hidden><p class="hint">These edits affect this label only.</p><label id="print-title-row">Title<input id="print-title" maxlength="240"></label><label id="print-description-row">Description<textarea id="print-description" maxlength="2000"></textarea></label><label id="print-location-row">Location<input id="print-location" maxlength="240"></label></div>
+      <button id="print-preview" class="quiet">Prepare label preview</button>
+    </details>
     <p class="hint">A completed job means the label service delivered the label to the printer driver. Check the physical label for text and orientation.</p>
-    <details><summary>Recent print submissions</summary><div id="print-history" class="actions"></div></details>
   </dialog>
   <dialog id="storage-map-dialog" aria-labelledby="storage-map-title">
     <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>

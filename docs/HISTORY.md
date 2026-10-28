@@ -1,5 +1,10 @@
 # History
 
+## 0.27.1 - 2026-10-28
+
+- **Printing and printing a label are two dialogs.** **Printing** in the header holds only the settings: the label service connection, the printer check, the label templates per label type and the recent print submissions. **Print label** on a box, and **Print location label** on the storage map, open a separate label dialog for that box or place. It shows the preview at once with the box's remembered or standard template. When the label type has more than one template, they are buttons above the preview (for example landscape and portrait), and choosing one shows its preview. Editing the text is folded away under Change the text on this label.
+- The free choice of label type, source and test label is removed from the app. Test prints of a roll are made on the label service's own page.
+
 ## 0.27.0 - 2026-10-28
 
 - **Label templates per label type.** Printing now lists every template the label service offers (`GET /api/manage/printing/templates`), not only the two built-in labels. Under Printing → Label templates per label type, each label type (Box label, Location label) gets a standard template and other templates to offer when printing, for example a landscape and a portrait version. Only templates whose fields the label type can fill are offered (box: `title`, `description`, `location`, `boxId`; location: `location`, `locationId`). A template that is not made for the loaded roll is marked. Saved in the `labelTemplates` settings record (`PUT /api/manage/printing/templates`), so backups and restores carry it.
