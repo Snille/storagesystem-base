@@ -1,6 +1,6 @@
 # Shared semantic search and decision preview
 
-Current source: 0.30.0 (prepared), reviewed 2026-10-30. Production 0.29.0 reports `enabled: false`.
+Current source/production: 0.30.0, reviewed 2026-10-30. Production has ordinary semantic search enabled and 166/166 current vectors.
 Management-only means the configured management access mode (key or explicitly
 open management), not a separate mandatory key in every deployment.
 

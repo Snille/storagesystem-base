@@ -6,14 +6,14 @@ A fresh implementation of [Storage System](https://github.com/Snille/storagesyst
 
 For the next development session, start with [current state and continuation notes](docs/STATUS.md) and [the prioritized backlog](TODO.md).
 
-This application has been **production since 2026-10-25**. Version **0.29.0** is
+This application has been **production since 2026-10-25**. Version **0.30.0** is
 running in Portainer and at `verkstad.snille.net` / `hylla.snille.net`; [VERSION](VERSION)
-is the single application version source (currently **0.30.0**, prepared for deployment). The previous application is retained as
+is the single application version source (currently **0.30.0**). The previous application is retained as
 a rollback source, not the active backend. This repository has independent Git history.
 
 Implemented: box inventory/session history, Immich album/photo workflows, reviewed
-editable AI drafts and updates with fallback, shared lexical UI/REST/MCP search,
-AI-phrased public answers, browser microphone input, storage map/unit photos and
+editable AI drafts and updates with fallback, shared lexical/semantic UI/REST/MCP search,
+supported semantic answers and legacy AI phrasing, browser microphone input, storage map/unit photos and
 labels, panorama overview points, English/Swedish UI, appearance/security settings,
 validated migration, audit, export, SQLite backup/restore and template-based printing
 through the separate label service. Home Assistant runtime/card acceptance has passed
@@ -21,7 +21,7 @@ in isolation. PhotoPrism is fixture-tested only.
 
 Source 0.30.0 adds explicitly enabled shared semantic search and answer rules for
 browser, REST/HA and MCP, with current-text fallback and source-bound identity
-verification. Production remains 0.29.0 until the controlled update. Translation tooling and further location management are also unfinished.
+verification. Production uses the accepted semantic configuration. Translation tooling and further location management are also unfinished.
 See [remaining work](TODO.md), [verification boundaries](docs/VERIFICATION.md),
 [compatibility](docs/COMPATIBILITY.md) and [deployment](docs/DEPLOYMENT.md).
 
@@ -120,7 +120,7 @@ Open **Search & answers → Search log** to browse the shared SQLite log
 for web, REST/HA, MCP searches and decision previews. It shows the received text,
 returned matches, server answer, timestamp, source and duration, with text/source
 filters and older pages. Keeps 90 days/up to 10,000 entries; SQLite backups include
-it and JSON export does not. Earlier requests were not recorded. This feature is deployed in production 0.29.0.
+it and JSON export does not. Earlier requests were not recorded. This feature was introduced in 0.29.0 and remains available in 0.30.0.
 See [Search log](docs/SEARCH-LOG.md) for attribution and retention limits.
 
 ## AI assistance
@@ -153,7 +153,7 @@ docker compose up -d --build
 
 The development stack binds only `127.0.0.1:3210`. Its named volume is independent of the existing application. Tests run in the image build before the runtime image is produced. Change `STORAGE_PORT` and `APP_BASE_URL` together if changing the published port. Use `docker compose stop` to stop the preview while retaining data.
 
-For Portainer, use the published `mrsnille/storagesystem-base` image and [compose.portainer.yaml](compose.portainer.yaml). Pin `STORAGE_IMAGE` to a released tag or digest, configure real access settings, and set `APP_BASE_URL` to a URL reachable by HA and browsers. Production installation and updates through 0.29.0 are verified. Follow [Deployment](docs/DEPLOYMENT.md) for fresh install, release, backup and rollback. Put the database volume on local storage, never SMB/NFS.
+For Portainer, use the published `mrsnille/storagesystem-base` image and [compose.portainer.yaml](compose.portainer.yaml). Pin `STORAGE_IMAGE` to a released tag or digest, configure real access settings, and set `APP_BASE_URL` to a URL reachable by HA and browsers. Production installation and updates through 0.30.0 are verified. Follow [Deployment](docs/DEPLOYMENT.md) for fresh install, release, backup and rollback. Put the database volume on local storage, never SMB/NFS.
 
 Do not use the disposable keys above for real data or network exposure. The application is a single-instance service. A reverse proxy should provide HTTPS for network use.
 

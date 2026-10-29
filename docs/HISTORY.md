@@ -1,6 +1,6 @@
 # History
 
-## 0.30.0 - 2026-10-30 (prepared for deployment)
+## 0.30.0 - 2026-10-30
 
 - Added explicit shared semantic search activation for browser, public REST/HA and
   MCP. All four paths return the same supported selection, clarification or no-match
@@ -16,7 +16,7 @@
   workshop defaults. Reanalysis invalidates old current-content vectors and answers;
   retained filenames still locate the current box rather than historical contents.
 - Preserved the five unrelated existing owner rules, updated the network clarification
-  trigger to the owner's new wording, and prepared four additional owner rules.
+  trigger to the owner's new wording, and added four additional owner rules.
   Fourteen frozen owner cases pass across all four transports (56 checks), including
   two absent objects and an exact clarification question with three candidate places.
   Initial 11-case baseline was 7/11; configured owner rules produced 11/11. These
@@ -32,10 +32,28 @@
   result-mapping checks. No deployed inventory/settings are imported into test writes;
   source backup and inventory hashes are checked, evidence remains private. All 126
   tests and configured checks pass on Windows. Fixed the security test's adjacent-port
-  assumption by reserving an OS-assigned port; pinned Node 24.14 image checks follow.
+  assumption by reserving an OS-assigned port; all 126 also pass in the pinned Node 24.14 image build.
 - No relational schema change (still 4). New semantic journal entries and saved
   configuration are backed up/audited. Prefer disabling ordinary semantic mode for
   behavioral rollback; an older image requires a compatible backup/settings/journal.
+- Published linux/amd64 `mrsnille/storagesystem-base:0.30.0` and `:latest` from
+  release commit `08dc1645894057f5cba5a3595c140d4e0345fa04`, digest
+  `sha256:6f781b1b039a733daa6fa0bae5ad8eff9faf10fe034d4d308ca2aba85270a494`.
+  Container persistence/audit/backup/restore/MCP checks and an isolated eight-table
+  production-backup rehearsal passed. Portainer stack 13/endpoint 2 changed only
+  STORAGE_IMAGE; Compose and the seven unrelated environment values were preserved.
+- Configured indexing/verification first with ordinary search disabled, waited for
+  full 166-box coverage/cache audit and passed all 14 production previews before
+  enabling ordinary semantic mode. All 56 live web/REST/ask/MCP checks then passed.
+  Both public names report 0.30.0. Signed thumbnail and printable box-label preview
+  passed; no physical print or real HA speech was submitted. Live semantic-only
+  knee-pad verification passed in 1327 ms; related thermal-camera rejection in 1756 ms.
+- Pre/post-update backups and evidence are private under the canonical backup folder
+  `release-0.30.0-20261030`. Hash comparisons preserve inventory, sessions, photos,
+  positions, old print journal, background media and every unrelated settings row.
+  Audit remains schema 4, 166 boxes/256 sessions/320 historical photo references/
+  166 positions. Verification created journal entries only; all five unchanged owner rules were
+  preserved exactly, including their Swedish text.
 
 ## 0.30.0-dev - 2026-10-29 (not deployed)
 

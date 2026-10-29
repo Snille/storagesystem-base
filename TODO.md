@@ -1,6 +1,6 @@
 # Remaining work
 
-Reviewed 2026-10-30 for production 0.29.0 / prepared source 0.30.0. This file contains outstanding actions
+Reviewed 2026-10-30 for production/source 0.30.0. This file contains outstanding actions
 only; delivered behavior is in [Status](docs/STATUS.md) and [History](docs/HISTORY.md).
 Order is suggested. Optional work is not a production blocker.
 

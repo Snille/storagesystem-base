@@ -1,9 +1,8 @@
 # Shared embedding service
 
-Last recorded infrastructure changes: 2026-10-29. Source application 0.30.0 (prepared);
-production application remains 0.29.0.
+Last recorded infrastructure changes: 2026-10-29. Source/production application 0.30.0; ordinary semantic search was explicitly enabled on 2026-10-30.
 Ollama01 is the shared TowerCube GPU service. Mimers Brain switched embeddings on
-2026-10-22. Storage System uses its vision fallback, but **not production embeddings**.
+2026-10-22. Storage System uses its vision fallback and native production embeddings; Mimers Brain retains its compatible embedding route.
 The frozen embedding comparison passed; native authenticated routing is verified,
 while independent application decision acceptance remains open. See [Semantic runtime](SEMANTIC-RUNTIME.md).
 

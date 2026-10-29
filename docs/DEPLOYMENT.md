@@ -1,8 +1,8 @@
 # Deployment and operations
 
-Production: 0.29.0, deployed 2026-10-29; source: 0.30.0, prepared for deployment.
+Production/source: 0.30.0, deployed 2026-10-30.
 First production cutover: 2026-10-25. Last read-only health/audit
-check: 2026-10-29. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
+check: 2026-10-30. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
 counts and pre-update backup evidence are in the
 [dated migration record](archive/PORTAINER-MIGRATION-2026-10.md).
 
@@ -11,14 +11,14 @@ counts and pre-update backup evidence are in the
 | Component | Deployment |
 | --- | --- |
 | Application | Portainer stack `storagesystem`, ID 13, endpoint 2; `10.0.0.25:3210` |
-| Image | `mrsnille/storagesystem-base:0.29.0`, public Docker Hub repository |
+| Image | `mrsnille/storagesystem-base:0.30.0`, public Docker Hub repository |
 | App data | Named volume `storagesystem_app-data`, database `/data/storage.sqlite` |
 | Public names | `https://verkstad.snille.net`, `https://hylla.snille.net`; NPM proxy host 11 |
 | Management | `STORAGE_MANAGEMENT_ACCESS=open`, explicit `APP_ALLOWED_HOSTS`; trusted LAN and external Authelia |
 | HA/MCP | Existing public address and public API key retained at cutover |
 | Printing | Separate label-service stack, `http://10.0.0.25:3230`, own client key |
-| Image AI and answer phrasing | Configured OmniRoute `cx/gpt-6-luna`, fallback Ollama01 `qwen3-vl:8b-instruct-16k` |
-| Semantic runtime | Disabled in production; management preview only when explicitly enabled |
+| Image AI and legacy answer phrasing | Configured OmniRoute `cx/gpt-6-luna`, fallback Ollama01 `qwen3-vl:8b-instruct-16k` |
+| Semantic runtime | Ordinary search enabled; BGE-M3 native embeddings and Qwen identity verification on Ollama01; 166/166 current |
 
 Outside authentication and physical speaker acceptance remain outstanding. HTTP
 health through the public hostname was checked from the LAN, not an external network.

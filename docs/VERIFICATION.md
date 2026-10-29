@@ -1,10 +1,10 @@
 # Verification and acceptance
 
-Reviewed 2026-10-30 for source 0.30.0 (prepared) / production 0.29.0. This page separates current checks, recorded live
+Reviewed 2026-10-30 for source/production 0.30.0. This page separates current checks, recorded live
 acceptance and outstanding work. Historical release details are in [History](HISTORY.md)
 and the [migration record](archive/PORTAINER-MIGRATION-2026-10.md).
 
-## Release preparation (0.30.0, 2026-10-30)
+## Release verification (0.30.0, 2026-10-30)
 
 `npm run check` passes all 126 tests, syntax/catalog checks and whitespace checks.
 The old parallel port collision is fixed by reserving an OS-assigned port in the
@@ -13,7 +13,7 @@ checks explicit activation/backward defaults, shared web/REST/ask/MCP selections
 no free-form answer rephrasing, semantic journal entries, provider outages, safe
 absence/ambiguity, preferred/two-place rules, exact code guards, backup/restore,
 reanalysis/session invalidation, retained filename lookups and distinct cable
-wording/negation. Pinned Node 24.14 release-image validation follows the same code.
+wording/negation. All 126 tests also pass in the pinned Node 24.14 release-image build.
 
 The 11 owner search words were frozen before baseline inference (7/11). Fourteen
 owner cases including two absent objects and one exact question/three-candidate
@@ -25,6 +25,15 @@ cases also pass, including English synonyms requiring real identity verification
 The Swedish browser shows both requested places and the shared semantic answer.
 No runtime inventory or credentials are committed. Private source hashes and reports
 are retained under the canonical backup directory; source inventory stays unchanged.
+
+Live deployment then passed all 14 owner cases on all four interfaces (56 checks),
+166/166 cache coverage/audit, both public health names, main audit, signed thumbnail,
+API-key/Host rejection and printable box-label preview. A live semantic-only query
+selected Knäskydd in 1327 ms; a related thermal-camera request was refused in 1756 ms.
+Pre/post snapshots preserve six non-settings/journal tables and all unrelated
+settings hashes. Only the search workspace and verification journal changed.
+Physical printing, real HA speech and yes/no conversation continuation are outside
+these checks. See Status/Deployment/History for the deployed image and backup record.
 
 ## Development verification (0.30.0-dev, not deployed)
 

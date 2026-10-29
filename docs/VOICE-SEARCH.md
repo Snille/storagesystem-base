@@ -1,7 +1,7 @@
 # Workshop voice search: current flow and proposed design
 
 Hardware/pipeline evidence was recorded on 2026-10-20; application sections were
-reconciled with production 0.29.0 / source 0.30.0 (prepared) on 2026-10-30. The public backend switched to this
+reconciled with production/source 0.30.0 on 2026-10-30. The public backend switched to this
 application on 2026-10-25. Hardware selectors/firmware and physical speech were not
 retested for the documentation update. Keep the dated observations separate from
 the implemented backend and proposed semantic flow.
@@ -114,13 +114,13 @@ audio. Old backend behavior was checked against the reference source at
 `a92ed1d22f5bfb3e61a168e29bdae0b1ea04aadb`; no production backend settings or
 private prompts were exported.
 
-## Current application behavior (production 0.29.0 / source 0.30.0 (prepared))
+## Current application behavior (production/source 0.30.0)
 
 Shared lexical search serves browser, REST and MCP, with Swedish word variants,
 RC synonyms, short transpositions and retained filename lookup. Reviewed image-AI
 text becomes searchable only after an explicit session save.
 
-`/api/public/ask` phrases up to five lexical matches with the image task's AI
+In legacy (ordinary semantic mode disabled), `/api/public/ask` phrases up to five lexical matches with the image task's AI
 connection/fallback and returns the local answer on failure. The deployed choice
 is OmniRoute Luna with Ollama01 fallback. A 50-question comparison before cutover
 named the expected place in 32/43 answerable cases versus the old system's 30/43;
@@ -129,7 +129,7 @@ not physical speaker acceptance or proof of the future selection policy.
 
 The optional semantic index, owner-rule UI and decision preview are implemented,
 and source 0.30.0 connects identity verification/thresholds to the management preview
-and explicitly enabled ordinary search. Production is still 0.29.0 until deployment. Contextual follow-up
+and explicitly enabled ordinary search. Production 0.30.0 uses this shared policy with ordinary semantic mode enabled. Contextual follow-up
 is not implemented. See [Semantic runtime](SEMANTIC-RUNTIME.md).
 
 Browser voice input (0.24.0) fills the search using SpeechRecognition when supported.

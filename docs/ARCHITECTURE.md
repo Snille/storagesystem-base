@@ -1,6 +1,6 @@
 # Architecture
 
-Current source: 0.30.0 (prepared); production: 0.29.0. Reviewed 2026-10-30. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
+Current source/production: 0.30.0. Reviewed 2026-10-30. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
 
 ## Runtime and service boundaries
 
@@ -107,9 +107,9 @@ The interface loads a bundled source-language catalog and Swedish translations t
 
 Album assignment and write ownership use the same effective current-session selection as inventory reads, rather than all historical photo rows. Saving a session without a photo releases its current ownership while leaving prior photo records untouched. Attaching an image referenced only in history is a new attachment and must pass the current source/album checks; another box's current ownership is still checked inside the final transaction.
 
-## Proposed semantic retrieval and voice decisions
+## Semantic retrieval and voice decisions
 
-[VOICE-SEARCH.md](VOICE-SEARCH.md) documents the existing physical-button-to-HA-to-Piper-to-announcement path and proposed runtime retrieval/answer contract. `src/answer-policy.js` implements a synchronous decision preview used by `Inventory.previewAnswer`. It combines current literal evidence with externally supplied, current-session-bound semantic scores, and validates explicit owner rules separately. It performs no network calls or writes, and formats selected destinations from current inventory records. The public ask/search and MCP/browser paths retain their previous behavior; no semantic runtime is activated. See [ANSWER-POLICY.md](ANSWER-POLICY.md) for evidence precedence, limits, configuration and evaluation.
+[VOICE-SEARCH.md](VOICE-SEARCH.md) documents the existing physical-button-to-HA-to-Piper-to-announcement path and proposed runtime retrieval/answer contract. `src/answer-policy.js` implements a synchronous decision preview used by `Inventory.previewAnswer`. It combines current literal evidence with externally supplied, current-session-bound semantic scores, and validates explicit owner rules separately. It performs no network calls or writes, and formats selected destinations from current inventory records. Enabled ordinary search routes browser, REST/HA and MCP through SearchService; disabled mode retains the legacy path. See [ANSWER-POLICY.md](ANSWER-POLICY.md) for evidence precedence, limits, configuration and evaluation.
 
 Retain SQLite for the observed 164 boxes/293 current photo references and their conservative doubled scenario. Store derived, versioned embeddings separately from inventory rows and compare this small corpus directly before considering a vector extension or PostgreSQL. Original image files stay in the external photo service. Revisit the database choice on measured concurrency/corpus growth rather than treating PostgreSQL as a requirement for semantic quality. The earlier compatible Ollama route was measured but silently truncates at 2048 tokens; the optional runtime below uses a native adapter with explicit rejection instead. Native routing was verified on 2026-10-29; independent decision acceptance remains an activation gate.
 
@@ -159,7 +159,7 @@ retrieval and verification enabled. A stable verifier instance bounds concurrenc
 requests report safe outcome categories. Configuration and all current semantic
 document hashes are rechecked after inference, including competitors. A changed
 policy or corpus cannot return the old semantic answer. Valid cached vectors are
-reused on verification/rule changes; public search still uses its original path.
+reused on verification/rule changes; ordinary semantic mode uses this shared policy while disabled mode uses the original path.
 
 ### Historical direct printing (0.12-0.14, removed from runtime)
 
@@ -180,12 +180,12 @@ SQLite backups include the assignment, not the external image.
 
 AI drafts/per-photo descriptions are editable before ordinary session save. Named
 connections and the image task's optional fallback are stored in `aiWorkspace`.
-`Ai.phraseAnswer` also uses this route/fallback for public `/ask`: lexical selection
-comes from Inventory, then at most five matches are phrased with bounded output and
-internal-ID rejection. Failure returns the local answer. This public behavior is
-separate from `SearchService.preview`, which applies saved rules/optional embeddings
-and, in source 0.30.0-dev, optional saved identity verification. It does not alter
-public search.
+When ordinary semantic mode is disabled, `Ai.phraseAnswer` uses this route/fallback
+for public `/ask`: lexical selection comes from Inventory, then at most five matches
+are phrased with bounded output and internal-ID rejection. Failure returns the local
+answer. Enabled semantic mode instead uses shared SearchService selections and
+current-location formatting without another model rewrite. Management preview uses
+the same saved rules/retrieval/identity policy without changing the activation flag.
 
 ## Search journal
 

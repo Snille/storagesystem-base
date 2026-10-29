@@ -80,7 +80,7 @@ Immich album images use paginated `POST /api/search/metadata` with `albumIds`, `
 ## Deployment and printing boundary
 
 Inventory/settings migration and Portainer cutover completed on 2026-10-25, with
-updates through 0.29.0. Remaining translation/ranking differences are follow-up
+updates through 0.30.0. Remaining translation/ranking differences are follow-up
 work, not an uncompleted production migration. External Authelia and physical speech
 checks remain separate from isolated HA/card acceptance. See [Verification](VERIFICATION.md).
 

@@ -1,97 +1,76 @@
 # Current status
 
-Reviewed 2026-10-30. Source: **0.30.0**, prepared for deployment; production:
-**0.29.0**. VERSION owns the source version. See TODO for remaining work and
-Deployment/History for operations and dated release evidence.
+Reviewed 2026-10-30 against source and live production. Version **0.30.0** is
+published and deployed to Portainer, with ordinary semantic search enabled.
+VERSION owns the source version; TODO contains outstanding work. History preserves
+release evidence and Deployment describes update/backup/rollback procedures.
 
-## Prepared next: 0.30.0
-
-- Explicit shared semantic mode for browser, REST/HA and MCP, using supported
-  current selections and deterministic location answers. Single words work.
-- Optional source-bound identity verification with BGE-M3/Qwen on Ollama01; current
-  direct evidence and saved rules remain usable when embeddings are unavailable.
-- One-box preference, two-place, alternative and clarification rules. The prepared
-  ten-rule profile preserves five existing rules, updates one and adds four.
-- Fourteen owner cases pass all four transports (56 checks), including two absent
-  objects and the exact cable clarification/three candidates. Real HA HTTP client
-  and result mapping pass. Seven supplementary development cases pass.
-- Reanalysis replaces source/session-bound cached evidence; old descriptions cannot
-  authorize answers. Actual inventory and the frozen backup are not modified by tests.
-- All 126 configured tests/checks pass on Windows; release image validation follows.
-  The old parallel security-test port conflict is fixed. Physical speech/printing,
-  external authentication, backup schedule and yes/no conversation context remain
-  separate checks or follow-up work. This is not general unseen model acceptance.
-
-## Latest production verification: 0.29.0, 2026-10-29
+## Latest verification (0.30.0)
 
 | Check | Result |
 | --- | --- |
-| LAN and public `/healthz` | Healthy, 0.29.0 |
-| Production integrity audit | Pass, schema 4, no errors |
-| Inventory | 166 boxes, 256 sessions, 320 photo references across history, 166 registered locations |
-| Storage map | 19 storage units; larger uncropped photo verified live on shelving unit E |
-| Shared search log | Web/API/MCP requests recorded and visible in Search & answers → Search log |
-| Search compatibility | Public REST and MCP return the same tested box order |
-| Photos/printing | Live thumbnail 200; box label preview printable, no physical print submitted |
-| API guards | Public read without key 401; unlisted API Host 403 |
-| Semantic preview | Disabled (`enabled: false`) |
-| Automated checks | 116 pass serially on Windows and in pinned Node 24.14 Docker; syntax/catalog/whitespace pass |
-| Backup/migration | Private production copy migrated 3→4; inventory/settings/positions/old journal/background preserved; log survives backup/restore |
+| LAN/public health | 0.30.0 on LAN, verkstad.snille.net and hylla.snille.net |
+| Main audit | Pass, schema 4; 166 boxes, 256 sessions, 320 historical photo references, 166 registered positions |
+| Shared semantic index | 166/166 current vectors, cache audit passes |
+| Owner cases | 14/14 on web, REST, ask and MCP: 56 live checks |
+| Absence/clarification | Both absent objects refused; exact saved cable question and three intended candidate locations |
+| Model-only smoke | English knee-pad query verified at the right place (1327 ms); thermal-camera substitution refused (1756 ms) |
+| Automated checks | npm run check and all 126 tests pass; same 126 pass in pinned Node 24.14 image build |
+| Actual HA client | HTTP search/ask/box, auth classification and result mapping pass against isolated server |
+| Image/container | Non-root persistence, restart, audit, backup/fresh restore and MCP pass |
+| Data preservation | Six inventory/media/old-journal tables and every non-search settings row have unchanged hashes |
+| Public guards/media | Missing read key 401; unlisted Host 403; signed WebP thumbnail 200; box-label preview printable |
 
-The image was built from release commit `7b51415`, published as
-`mrsnille/storagesystem-base:0.29.0` and `:latest`, digest
-`sha256:7401c56980218f03c99a90e23d48c1f0efdf78b4068569c11da9233f84d69121`.
-Only stack 13's `STORAGE_IMAGE` changed; the other seven environment values and
-Compose content were preserved. Pre/post-update backups are private. Counts are
-a dated observation, not constants. Test searches created log entries but no
-inventory edits. Real Assist/physical printing were not replayed for this update;
-the owner reports that voice searches generally work, with transcription errors.
+The release image is `mrsnille/storagesystem-base:0.30.0` / `:latest`, linux/amd64,
+built from `08dc1645894057f5cba5a3595c140d4e0345fa04`, digest
+`sha256:6f781b1b039a733daa6fa0bae5ad8eff9faf10fe034d4d308ca2aba85270a494`.
+Portainer stack 13, endpoint 2 retained Compose and the other seven environment
+values. Only searchWorkspace settings changed: five old rules preserved, one
+network trigger updated and four new rules (ten total). No inventory writes.
+Pre/post backups and reports remain private in the canonical backup directory.
+These are scoped owner/configuration checks, not general unseen accuracy claims.
 
-The old Windows adjacent-port test can still fail during parallel `npm run check`;
-the full serial suite and pinned Docker suite pass. See [Verification](VERIFICATION.md).
+## Search behavior
 
-## Available
+Browser, REST/HA and MCP use the same supported selections and short deterministic
+location answers. Single words work; owner rules may select one preferred box,
+return two places, accept alternatives or ask a short saved clarification.
+BGE-M3 (`bge-m3:cpu4`, native digest pinned) retrieves candidates on Ollama01;
+Qwen `qwen3-vl:8b-instruct-16k` verifies semantic-only identity within 15 s.
+Direct current evidence bypasses identity inference. Scores alone never authorize
+an answer; missing/stale/busy/unavailable embeddings use current text/rules.
+Reanalysis updates the separate current-content/session-bound cache automatically.
+Old descriptions cannot keep authorizing answers. Exact filename lookup still
+locates the current box, including references retained from older sessions.
 
-- Inventory creation/update, current sessions and history; automatic stable box IDs,
-  location occupancy guards, registered vacant positions and a storage map.
-- Immich album inbox, photo roles, assignment/release, photo viewer and card images.
-  Storage units can have album photos; the album cover supplies the panorama overview
-  with saved clickable/movable points.
-- AI single/multi-photo drafts and existing-box updates with editable suggestions,
-  editable photo descriptions and explicit inventory save. Named connections and
-  fallback are supported.
-- Shared lexical search across browser, REST and five read-only MCP tools.
-  `/api/public/ask` phrases candidate-based answers with AI and falls back locally.
-- Browser speech recognition where supported. The HA API/client/runtime and card
-  have passed isolated acceptance; physical speech is a separate outstanding check.
-- English/Swedish interface, independent external/AI response languages, appearance,
-  accent/background settings, security settings and UI backup/export/import/restore.
-- Printing through label-service, with templates per label type and a remembered
-  non-standard box template. This app does not connect to CUPS or the printer.
-- Optional management-only semantic indexing, answer rules and decision preview.
-  In production 0.29.0 the identity verifier remains an isolated evaluation path;
-  source 0.30.0-dev connects it to the management preview as described above.
+Semantic mode is separately switchable under Search & answers → Embedding model.
+Turning it off restores lexical selection and the legacy AI-phrasing path. Image
+analysis continues to use the saved Luna/OmniRoute connection with Ollama fallback.
+The shared SQLite search log records final answers and historical match snapshots.
 
-## Deployment and continuation
+## Available application and operations
 
-Portainer stack `storagesystem` (13, endpoint 2) runs at `10.0.0.25:3210` with volume
-`storagesystem_app-data`. `verkstad.snille.net` and `hylla.snille.net` route to it.
-Management is open on the trusted LAN, with Authelia intended for outside access;
-public API/MCP authentication remains separate. The configured AI route recorded
-at deployment is OmniRoute `cx/gpt-6-luna`, fallback Ollama01
-`qwen3-vl:8b-instruct-16k`; printing uses `10.0.0.25:3230`.
+Inventory/manual and AI-assisted sessions, album workflow, current/history photos,
+occupancy guards, storage map/unit photos, panorama points, English/Swedish UI,
+appearance/security, validated import/export and SQLite backup/restore remain
+available. Printing is handled by the separate label-service. Immich is live-tested;
+PhotoPrism is fixture-tested only. IDs and existing HA/public credentials are preserved.
 
-The former Docker Desktop development stack was removed on 2026-10-25. Recreate
-isolated development with an empty temporary database or a private backup copy;
-never use production as a test target. Several agents may share the checkout:
-review status and stage only the intended files.
+The app runs at 10.0.0.25:3210 with volume storagesystem_app-data; public names route
+through the existing proxy. Management is open on the trusted LAN with external
+Authelia; public API/MCP authentication stays independent. The old installation is
+retained as a rollback source, with later inventory reconciliation required.
 
-Next: independently accept and integrate semantic answers, verify external access
-and physical speech, and decide retirement of the old system after dependency checks.
-The old `hyllsystem-live` installation is retained as a rollback source according to
-the deployment record; its current process state was not rechecked. Existing rollback
-data predates subsequent inventory edits and must be reconciled before switching back.
+## Next
 
-Historical handoffs for 2026-10-23 through 2026-10-25 were consolidated here and in
-Deployment, Printing and Verification. Release evidence stays in [History](HISTORY.md)
-and the [dated migration record](archive/PORTAINER-MIGRATION-2026-10.md).
+- Test real button/Whisper/Piper/speaker behavior using the new supported answers.
+- Add bounded conversation context for yes/no replies after a clarification. The
+  question is delivered now; remembering that question for a later reply is not.
+- Continue fresh acceptance after reanalysis; the frozen cases are regression data.
+- Verify external authentication, automatic backup schedule/retention and physical
+  location/unit printing separately. See TODO for compatibility/optional work.
+
+Behavioral rollback is the ordinary-semantic switch. An image-only downgrade is
+not an audited rollback because older validators do not understand the new saved
+configuration and semantic journal source. Preserve/reconcile data before restoring
+an older compatible backup/image pair.
