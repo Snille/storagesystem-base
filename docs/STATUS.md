@@ -70,6 +70,42 @@ retained as a rollback source, with later inventory reconciliation required.
 - Verify external authentication, automatic backup schedule/retention and physical
   location/unit printing separately. See TODO for compatibility/optional work.
 
+## Next-session handover (2026-10-30)
+
+Erik plans hands-on workshop testing before continuing. Start with his results,
+then inspect Search & answers → Search log, filtering API / Home Assistant and
+the relevant search text/time. The journal contains received STT text, not audio
+or intended speech. Separate a mishearing from retrieval, selection and spoken
+output problems. Preserve the raw query; automatic STT repair remains deferred.
+
+The saved cable clarification is deliberately different from the two-place
+network-cable answer. A later yes/no reply has no retained question context yet.
+If implementing that next, inspect the actual HA conversation/API reference first;
+bound lifetime and device/conversation isolation, and retain button activation for
+each reply. Do not turn a bare yes/no into an inventory lookup or a global alias.
+
+Reanalysis should use ordinary reviewed session saves. The index follows current
+sessions/content automatically; do not change identifiers, manually rewrite vectors
+or reuse retired descriptions. The ten owner rules remain editable settings, not
+hardcoded destinations. Keep the original frozen cases as regression evidence;
+record a new snapshot/expected result when legitimate inventory changes invalidate
+an old expectation. Read/write private JSON explicitly as UTF-8.
+
+Private inputs/reports are in the canonical secret store under
+`storagesystem-base/database-backups/owner-search-20261029T225316Z`:
+`questions-v2.json` (14 cases), `release-config.json` (redacted ten-rule input),
+`release-acceptance/report.json` and supplementary reports. Deployment snapshots,
+stack records, check/build/push logs and live/data-preservation reports are under
+`release-0.30.0-20261030`. Backups contain credentials; keep these outside Git.
+
+The local UI test process and one-off Docker containers are stopped. Automatic
+approval review refused recursive removal of the owned local build/test folders;
+the ignored `data/ha-client-check/.venv` and temporary build tree were preserved.
+`data/release-0.30.0-build.json` records the build path. The test Python can be reused
+for the real HA client check if still present. Active unrelated Docker containers,
+named volumes, rollback images and private evidence were preserved. Cleanup is
+optional and must not block workshop testing or trigger production changes.
+
 Behavioral rollback is the ordinary-semantic switch. An image-only downgrade is
 not an audited rollback because older validators do not understand the new saved
 configuration and semantic journal source. Preserve/reconcile data before restoring
