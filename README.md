@@ -6,7 +6,7 @@ A fresh implementation of [Storage System](https://github.com/Snille/storagesyst
 
 For the next development session, start with [current state and continuation notes](docs/STATUS.md) and [the prioritized backlog](TODO.md).
 
-This application has been **production since 2026-10-25**. Version **0.28.0** is
+This application has been **production since 2026-10-25**. Version **0.29.0** is
 running in Portainer and at `verkstad.snille.net` / `hylla.snille.net`; [VERSION](VERSION)
 is the single application version source. The previous application is retained as
 a rollback source, not the active backend. This repository has independent Git history.
@@ -116,12 +116,11 @@ Under **Embedding model**, save the native Ollama origin/key, then explicitly **
 
 ## Search log
 
-The 0.29.0 source adds **Search & answers → Search log**, a shared SQLite log
+Open **Search & answers → Search log** to browse the shared SQLite log
 for web, REST/HA, MCP searches and decision previews. It shows the received text,
 returned matches, server answer, timestamp, source and duration, with text/source
 filters and older pages. Keeps 90 days/up to 10,000 entries; SQLite backups include
-it and JSON export does not. Earlier requests were not recorded. This development
-feature has not been deployed to the 0.28.0 production installation.
+it and JSON export does not. Earlier requests were not recorded. This feature is deployed in production 0.29.0.
 See [Search log](docs/SEARCH-LOG.md) for attribution and retention limits.
 
 ## AI assistance
@@ -154,7 +153,7 @@ docker compose up -d --build
 
 The development stack binds only `127.0.0.1:3210`. Its named volume is independent of the existing application. Tests run in the image build before the runtime image is produced. Change `STORAGE_PORT` and `APP_BASE_URL` together if changing the published port. Use `docker compose stop` to stop the preview while retaining data.
 
-For Portainer, use the published `mrsnille/storagesystem-base` image and [compose.portainer.yaml](compose.portainer.yaml). Pin `STORAGE_IMAGE` to a released tag or digest, configure real access settings, and set `APP_BASE_URL` to a URL reachable by HA and browsers. Production installation and updates through 0.28.0 are verified. Follow [Deployment](docs/DEPLOYMENT.md) for fresh install, release, backup and rollback. Put the database volume on local storage, never SMB/NFS.
+For Portainer, use the published `mrsnille/storagesystem-base` image and [compose.portainer.yaml](compose.portainer.yaml). Pin `STORAGE_IMAGE` to a released tag or digest, configure real access settings, and set `APP_BASE_URL` to a URL reachable by HA and browsers. Production installation and updates through 0.29.0 are verified. Follow [Deployment](docs/DEPLOYMENT.md) for fresh install, release, backup and rollback. Put the database volume on local storage, never SMB/NFS.
 
 Do not use the disposable keys above for real data or network exposure. The application is a single-instance service. A reverse proxy should provide HTTPS for network use.
 

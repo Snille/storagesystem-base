@@ -1,10 +1,10 @@
 # Verification and acceptance
 
-Reviewed 2026-10-29 for 0.28.0. This page separates current checks, recorded live
+Reviewed 2026-10-29 for 0.29.0. This page separates current checks, recorded live
 acceptance and outstanding work. Historical release details are in [History](HISTORY.md)
 and the [migration record](archive/PORTAINER-MIGRATION-2026-10.md).
 
-## Development search-log verification (0.29.0)
+## Release verification (0.29.0)
 
 All 116 tests pass with `node --test --test-concurrency=1 --test-timeout=20000`.
 JavaScript syntax and whitespace checks pass. Parallel `npm run check` still hits
@@ -17,15 +17,21 @@ fixtures at desktop size and a 390 px mobile viewport; images remain uncropped.
 New isolated checks cover the schema-4 search journal, all transport sources,
 repeated/no-result queries, final AI answers, filtering/pagination, bounded/private
 snapshots, safe failures, retention, audit and migration/backup/full restore. The
-production installation remains 0.28.0/schema 3; no real search log has been enabled
-there by these local changes. Docker Desktop was started for isolated verification:
-all 116 tests pass in pinned Node 24.14, image
-`mrsnille/storagesystem-base:0.29.0` was built, and `verify-container.ps1 -Image
-mrsnille/storagesystem-base:0.29.0` passes restart persistence, audit, backup,
-fresh restore and MCP on schema 4. Its temporary container/volume were removed.
-No image publication or production deployment is claimed. See [Search log](SEARCH-LOG.md).
+production update migrated 3→4 only after a rehearsal on a private copy. Inventory,
+settings, positions, old print journal and background digests were preserved; a
+synthetic entry survived backup/restore. Both pre- and post-update backups are private.
+The release image was built from `git archive 7b51415` for linux/amd64. All 116 tests
+pass in pinned Node 24.14; `verify-container.ps1` passes with the released image.
 
-## Production review (0.28.0)
+Live checks: LAN/public 0.29.0 health, passing schema-4 audit (166/256/320/166),
+REST/MCP search parity, thumbnail delivery, Web/API/MCP log sources, printable label
+preview and API-key/Host rejection. Browser acceptance covered the search-log tab
+and the larger photo on shelving unit E. The image is published and deployed;
+Compose and the other seven stack environment values were preserved. No real
+inventory changes, AI inference, physical printing or HA speech occurred in release
+verification. See [Deployment](DEPLOYMENT.md) and [Search log](SEARCH-LOG.md).
+
+## Earlier production review (0.28.0, before this update)
 
 On 2026-10-29 an initial `npm run check` passed all 110 tests on Windows Node
 26.12.1. Two later parallel runs hit `EADDRINUSE` in the existing open-management

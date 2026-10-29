@@ -1,6 +1,6 @@
 # Remaining work
 
-Reviewed 2026-10-29 for production 0.28.0. This file contains outstanding actions
+Reviewed 2026-10-29 for production 0.29.0. This file contains outstanding actions
 only; delivered behavior is in [Status](docs/STATUS.md) and [History](docs/HISTORY.md).
 Order is suggested. Optional work is not a production blocker.
 
@@ -41,13 +41,6 @@ and [evaluation evidence](docs/SEMANTIC-EVALUATION.md).
 - [ ] Establish/document the production backup schedule and retention, or verify an
   existing schedule. Manual downloads and pre-release backups do not prove an
   automatic backup policy. Periodically rehearse restoration on an isolated copy.
-
-## Pending release checks (0.29.0)
-
-- [ ] Before production release, rehearse schema-3-to-4 migration on a private
-  production-backup copy and retain a compatible schema-3 backup for rollback.
-  The log/GUI are implemented; 116 host and pinned-Docker tests plus isolated
-  container backup/restore checks pass. The feature is not published/deployed.
 
 ## Development checks
 

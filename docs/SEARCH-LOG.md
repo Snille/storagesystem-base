@@ -1,6 +1,6 @@
 # Shared search log
 
-Implemented in 0.29.0, not yet deployed. Open **Search & answers → Search log**
+Available in production 0.29.0. Open **Search & answers → Search log**
 (Swedish: **Sökningar och svar → Söklogg**). This is the initial tab. Filter by
 received search text and source, refresh the newest page or browse older entries.
 Dates are displayed in the browser's local timezone. Expand Matching boxes for
@@ -52,7 +52,7 @@ Full SQLite backups and controlled restore include the log. Inventory JSON expor
 and legacy import do not. The integrity audit validates records and normalized
 filter keys. Use an isolated copy for migration/restore testing. Schema-3 images
 cannot open a schema-4 database; rollback requires a compatible backup and handling
-any inventory edits since that backup. Production has not been migrated by this work.
+any inventory edits since that backup. Production migrated from schema 3 to 4 on 2026-10-29 after a private-copy rehearsal.
 
 ## Management API
 

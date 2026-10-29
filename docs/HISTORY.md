@@ -1,6 +1,6 @@
 # History
 
-## 0.29.0 - 2026-10-29 (not deployed)
+## 0.29.0 - 2026-10-29
 
 - Added a shared SQLite search journal, shown by default under Search & answers →
   Search log (Sökningar och svar → Söklogg). It records web search, public search/ask
@@ -31,8 +31,20 @@
   synthetic AI answer. The browser fixture now accepts text-only phrasing requests.
   All 116 tests also pass in pinned Node 24.14 Docker. Built the local image
   `mrsnille/storagesystem-base:0.29.0`; isolated container persistence, audit,
-  backup, fresh restore and MCP checks pass on schema 4. No image publication/deployment.
-- Production remains 0.28.0. Owner-reported HA voice field tests generally work;
+  backup, fresh restore and MCP checks pass on schema 4.
+- Deployed after owner approval: image built from `git archive 7b51415` for
+  linux/amd64, published as `mrsnille/storagesystem-base:0.29.0` and `:latest`, digest
+  `sha256:7401c56980218f03c99a90e23d48c1f0efdf78b4068569c11da9233f84d69121`.
+  Tested a private production backup copy through schema 3→4 and log backup/restore:
+  inventory/settings/positions/old print journal/background digests were preserved.
+  Final pre-update backup matched the tested snapshot. Only `STORAGE_IMAGE` changed
+  in Portainer stack 13; the other seven environment values and Compose stayed intact.
+- Production health reports 0.29.0; audit passes on schema 4 (166 boxes, 256 sessions,
+  320 photo references, 166 locations). Live REST/MCP ranking agrees; thumbnail
+  delivery, log sources and printer preview pass; API key/host rejection remains
+  401/403. Browser acceptance verified the log and the larger photo on shelving unit E.
+  No inventory edit, AI inference, physical print or HA speech test was performed
+  during deployment. Owner-reported HA voice field tests generally work;
   transcription errors such as Masterenhet → mat enhet remain a separate issue.
 
 

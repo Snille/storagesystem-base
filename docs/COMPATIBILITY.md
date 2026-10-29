@@ -1,6 +1,6 @@
 # Compatibility inventory
 
-Current application contracts reviewed against 0.28.0 source on 2026-10-29.
+Current application contracts reviewed against 0.29.0 source on 2026-10-29.
 This application is already in production. Historical reference commits below identify
 the original comparison; they are not a claim of a new exhaustive parity review.
 
@@ -80,7 +80,7 @@ Immich album images use paginated `POST /api/search/metadata` with `albumIds`, `
 ## Deployment and printing boundary
 
 Inventory/settings migration and Portainer cutover completed on 2026-10-25, with
-updates through 0.28.0. Remaining translation/ranking differences are follow-up
+updates through 0.29.0. Remaining translation/ranking differences are follow-up
 work, not an uncompleted production migration. External Authelia and physical speech
 checks remain separate from isolated HA/card acceptance. See [Verification](VERIFICATION.md).
 
@@ -90,7 +90,7 @@ output. Current location/unit templates still require physical acceptance when
 needed. Storage-unit photos/labels and additional position management are extensions,
 not requirements inherited from the reference app.
 
-## Development search journal (0.29.0)
+## Shared search journal (0.29.0)
 
 Public REST/MCP response shapes and lexical ranking are unchanged. Accepted search
 and answer requests now also write bounded private snapshots to a separate SQLite

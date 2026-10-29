@@ -1,41 +1,37 @@
 # Current status
 
-Reviewed 2026-10-29 against the source, release records and read-only production endpoints.
-Production version: **0.28.0**. Source [VERSION](../VERSION) is now **0.29.0**
-for the undeployed feature described below. This application has been
-production since 2026-10-25. Start here for continuation; use [TODO](../TODO.md) for
-remaining actions and [Deployment](DEPLOYMENT.md) for operations.
+Reviewed 2026-10-29 against the source and live production. Application/source
+version: **0.29.0** (see [VERSION](../VERSION)), deployed to Portainer. This app
+has been production since 2026-10-25. Use [TODO](../TODO.md) for outstanding actions,
+[Deployment](DEPLOYMENT.md) for operations and [History](HISTORY.md) for releases.
 
-## Development source: 0.29.0 (not deployed)
+## Latest verification: 0.29.0, 2026-10-29
 
-The shared SQLite search log and WebGUI tab are implemented; see
-[Search log](SEARCH-LOG.md). Source schema is 4; production remains schema 3/0.28.0.
-The new table migrates in isolation and follows SQLite backup/full restore. All
-116 tests pass serially; JavaScript syntax, language catalogs and whitespace pass.
-A synthetic browser check verified the log, source/text filters and a final AI answer.
-All 116 tests also pass in pinned Node 24.14 Docker; the isolated container harness
-passes persistence, audit, backup, fresh restore and MCP on schema 4. Local image:
-`mrsnille/storagesystem-base:0.29.0`. Search semantics/public response shapes
-are unchanged; no image publication or production deployment has been performed.
-Owner-reported HA voice field tests generally work; transcription mistakes remain.
-
-## Production verification (0.28.0)
-
-| Check | Result on 2026-10-29 |
+| Check | Result |
 | --- | --- |
-| LAN and public `/healthz` | Healthy, 0.28.0 |
-| Production integrity audit | Pass, schema 3, no errors |
+| LAN and public `/healthz` | Healthy, 0.29.0 |
+| Production integrity audit | Pass, schema 4, no errors |
 | Inventory | 166 boxes, 256 sessions, 320 photo references across history, 166 registered locations |
-| Storage map | 19 storage units |
+| Storage map | 19 storage units; larger uncropped photo verified live on shelving unit E |
+| Shared search log | Web/API/MCP requests recorded and visible in Search & answers → Search log |
+| Search compatibility | Public REST and MCP return the same tested box order |
+| Photos/printing | Live thumbnail 200; box label preview printable, no physical print submitted |
+| API guards | Public read without key 401; unlisted API Host 403 |
 | Semantic preview | Disabled (`enabled: false`) |
-| Label templates | Box, location and storage unit; landscape and portrait choices configured |
-| Local checks | 110 tests pass serially on Windows Node 26.12.1; syntax/whitespace pass. Parallel check hit the existing adjacent-port collision; see Verification |
+| Automated checks | 116 pass serially on Windows and in pinned Node 24.14 Docker; syntax/catalog/whitespace pass |
+| Backup/migration | Private production copy migrated 3→4; inventory/settings/positions/old journal/background preserved; log survives backup/restore |
 
-These counts are a dated observation, not a fixture or an expected constant. No
-production inventory/settings were changed, no inference or printing was requested,
-and no service was restarted for this review. Docker and physical HA/printing
-acceptance were not repeated; their earlier evidence is summarized in
-[Verification](VERIFICATION.md).
+The image was built from release commit `7b51415`, published as
+`mrsnille/storagesystem-base:0.29.0` and `:latest`, digest
+`sha256:7401c56980218f03c99a90e23d48c1f0efdf78b4068569c11da9233f84d69121`.
+Only stack 13's `STORAGE_IMAGE` changed; the other seven environment values and
+Compose content were preserved. Pre/post-update backups are private. Counts are
+a dated observation, not constants. Test searches created log entries but no
+inventory edits. Real Assist/physical printing were not replayed for this update;
+the owner reports that voice searches generally work, with transcription errors.
+
+The old Windows adjacent-port test can still fail during parallel `npm run check`;
+the full serial suite and pinned Docker suite pass. See [Verification](VERIFICATION.md).
 
 ## Available
 

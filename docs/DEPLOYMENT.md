@@ -1,6 +1,6 @@
 # Deployment and operations
 
-Production application: 0.28.0, since 2026-10-25. Source is ahead at 0.29.0. Last read-only health/audit
+Production/source: 0.29.0, deployed 2026-10-29. First production cutover: 2026-10-25. Last read-only health/audit
 check: 2026-10-29. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
 counts and pre-update backup evidence are in the
 [dated migration record](archive/PORTAINER-MIGRATION-2026-10.md).
@@ -10,7 +10,7 @@ counts and pre-update backup evidence are in the
 | Component | Deployment |
 | --- | --- |
 | Application | Portainer stack `storagesystem`, ID 13, endpoint 2; `10.0.0.25:3210` |
-| Image | `mrsnille/storagesystem-base:0.28.0`, public Docker Hub repository |
+| Image | `mrsnille/storagesystem-base:0.29.0`, public Docker Hub repository |
 | App data | Named volume `storagesystem_app-data`, database `/data/storage.sqlite` |
 | Public names | `https://verkstad.snille.net`, `https://hylla.snille.net`; NPM proxy host 11 |
 | Management | `STORAGE_MANAGEMENT_ACCESS=open`, explicit `APP_ALLOWED_HOSTS`; trusted LAN and external Authelia |
@@ -37,7 +37,7 @@ application. HTTPS/authenticating proxy behavior is external to the container.
 For remote MCP retain the working `/api/mcp` and OAuth well-known proxy exceptions
 while preserving API authentication. Original photos stay in Immich/PhotoPrism.
 
-The first startup creates an empty schema-3 database. Import legacy inventory and
+The first startup creates an empty schema-4 database. Import legacy inventory and
 settings only into an empty database, or restore an audited SQLite backup through
 Security → Data & maintenance. Separate legacy language files are not imported.
 Verify health, audit, photos, API/MCP and HA before directing clients to a new host.
@@ -58,7 +58,7 @@ Never point a development instance at the production volume.
    Record the digest. Publishing/updating is a distinct action from committing docs.
 5. Save the current stack configuration and a pre-update database backup. Update
    only `STORAGE_IMAGE` using the existing Compose and environment values. The
-   recorded API procedure is `PUT /api/stacks/13?endpointId=2` with `pullImage=true`;
+   recorded API procedure is `PUT /api/stacks/13?endpointId=2` with `RepullImageAndRedeploy: true` in the JSON body (Portainer 2.45.3);
    preserve all unrelated values. Check the current Portainer contract before use.
 6. Check LAN/public `/healthz`, authenticated inventory/audit, images, MCP, HA and a
    label preview. Check API-key/host rejection. Physical print or paid inference
@@ -74,7 +74,7 @@ changes. Backups contain settings/credentials and the custom background. Invento
 JSON export excludes settings, registered empty positions and background media.
 Neither format contains original external photos or the derived semantic cache.
 
-The 0.29.0 source extends UI restore to schemas 1-4; deployed 0.28.0 accepts 1-3. It migrates older backups on a private copy,
+UI restore accepts schemas 1-4 and migrates older backups on a private copy,
 requires typed `RESTORE`, writes a safety backup under `/data/restore-backups`, and
 replaces data in one audited transaction. CLI restore refuses an existing output
 file. Test restores on separate data. A newer schema may not be readable by an
@@ -112,10 +112,31 @@ removing them. The original Docker Desktop development stack was removed on
   cleanup commands over shared Docker resources or private backup directories.
 - PowerShell piped SSH scripts can acquire CRLF; preserve LF for remote shell code.
 
-## Pending 0.29.0 update
+## Latest release: 0.29.0 (2026-10-29)
 
-The source adds a shared search journal in schema 4. It is not deployed. Before an
-update, take a consistent schema-3 backup and validate migration on a private copy,
-including inventory/settings and the new log. Older images reject schema 4; retain
-a compatible pre-update backup and account for newer inventory edits on rollback.
-Do not assume local checks or a browser fixture upgraded the production database.
+Image built from `git archive 7b51415` for linux/amd64; tags `0.29.0` and `latest`:
+`sha256:7401c56980218f03c99a90e23d48c1f0efdf78b4068569c11da9233f84d69121`.
+All 116 tests pass on pinned Node 24.14, and the isolated container harness passes.
+A private production backup copy migrated 3→4 with matching inventory/settings/
+positions/old-journal/background digests. A synthetic log entry survived full backup
+and restoration. A final pre-update backup matched the tested snapshot; it and a
+post-update schema-4 backup are retained privately.
+
+The existing stack's Compose content and environment list were read again before
+update. Only `STORAGE_IMAGE` changed, keeping the other seven values. Portainer
+2.45.3's update is asynchronous: success of PUT is acceptance, not proof that the
+new app is running. The current body uses `RepullImageAndRedeploy: true` and
+`Prune: false`; `PullImage` is a deprecated compatibility field. Contract checked
+against the [2.45.3 handler](https://github.com/portainer/portainer/blob/2.45.3/api/http/handler/stacks/stack_update.go).
+All requests used a pinned certificate with full TLS/name verification.
+
+Subsequent LAN/public health shows 0.29.0 and the schema-4 audit passes with
+166 boxes, 256 sessions, 320 photo references and 166 locations. Live thumbnails,
+REST/MCP ranking, log entries from Web/API/MCP and box-label preview work; public
+API/Host rejection remains 401/403. Browser acceptance verified the log and the
+uncropped photo on shelving unit E. No inventory edit, AI request or physical
+print was made. Semantic indexing stays disabled.
+
+Schema-3 images cannot open schema 4. Keep the compatible pre-update backup and
+reconcile newer inventory changes before a rollback; the old system is not a
+current copy of the post-cutover inventory. See the rollback section above.

@@ -1,6 +1,6 @@
 # Roadmap
 
-Reviewed for production 0.28.0 on 2026-10-29. [TODO](../TODO.md) is the single
+Reviewed for production 0.29.0 on 2026-10-29. [TODO](../TODO.md) is the single
 outstanding-action list; this page records milestones and boundaries.
 
 | Area | Delivered | Remaining direction |
@@ -13,7 +13,7 @@ outstanding-action list; this page records milestones and boundaries.
 | Voice | Compatible HA API, isolated real-HA/card acceptance, browser microphone input | Physical speech acceptance, bounded clarification context, optional browser playback; STT normalization deferred |
 | Languages/settings | English/Swedish catalogs, external en/sv/de, independent AI language, appearance, security and maintenance UI | Translation tooling, optional German UI and legacy overrides |
 | Printing | Label-service client, box/location/unit templates, separate print dialog, per-box remembered template; earlier physical box output accepted | Current location/unit template physical acceptance; designer/sheets/QR belong in label-service |
-| Deployment | Docker Hub image, Portainer production since 2026-10-25, updates through 0.28.0, tested backup-copy restores and schema migrations | External authentication check, recurring backup-policy verification, owner-approved old-system retirement |
+| Deployment | Docker Hub image, Portainer production since 2026-10-25, updates through 0.29.0, tested backup-copy restores and schema migrations | External authentication check, recurring backup-policy verification, owner-approved old-system retirement |
 
 ## Semantic activation milestone
 
@@ -37,7 +37,7 @@ built-in instructions and task extras. Printer protocols, drivers and label desi
 belong to label-service. Real speech normalization remains deferred. Optional work
 is not an unmet gate for the already completed production migration.
 
-## Implemented development slice (0.29.0, not deployed)
+## Search-log milestone (0.29.0, deployed)
 
 The shared SQLite search journal covers browser, public REST/HA, MCP and preview
 requests, with WebGUI filters/history under Search & answers. It does not enable
