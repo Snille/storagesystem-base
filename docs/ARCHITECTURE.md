@@ -1,12 +1,12 @@
-# Architecture direction
+# Architecture
 
-This document separates the implemented development foundation from the remaining target architecture. See README and the roadmap for feature availability.
+Current for production 0.28.0, reviewed 2026-10-29. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
 
-## Initial implementation decisions
+## Runtime and service boundaries
 
-The first vertical slice uses Node.js 24.14, native ECMAScript modules, `node:http`, `node:sqlite` (`DatabaseSync`), and a small browser client served as static assets. There are no external runtime packages or frontend compilation steps. The HTTP layer is deliberately small and transport-only; it can later move to a framework without changing the inventory service. The built-in SQLite API is experimental in Node 24, so the container pins its runtime by version and image digest and tests it during the build.
+The container runtime uses Node.js 24.14, native ECMAScript modules, `node:http`, `node:sqlite` (`DatabaseSync`), and a small browser client served as static assets. There are no external runtime packages or frontend compilation steps. The HTTP layer is deliberately small and transport-only; it can later move to a framework without changing the inventory service. The built-in SQLite API is experimental in Node 24, so the container pins its runtime by version and image digest and tests it during the build.
 
-- `src/store.js`: SQLite, migration version 1, transactions, import/export, backup and audit.
+- `src/store.js`: SQLite schema 3 with ordered migrations, transactions, import/export, backup and audit.
 - `src/inventory.js`: current-session selection, inventory writes, search, local answers and location presentation.
 - `src/server.js`: HTTP transport and management authentication.
 - `src/mcp.js`: stateless JSON-RPC tool transport using the same inventory service.
@@ -25,15 +25,15 @@ Known storage positions use the existing `locations` table. Inventory imports an
 
 For this initial small-inventory implementation, writes validate a snapshot and replace inventory rows inside one short `BEGIN IMMEDIATE` transaction. This favors atomic behavior and a narrow service surface; it is not an efficient strategy for large inventories. Before supporting larger datasets, replace it with targeted statements and measure latency. SQLite operations and snapshots run synchronously on the application thread; backups temporarily pause request handling. No network I/O occurs inside write transactions.
 
-The schema uses `PRAGMA user_version`. Version 0 is initialized transactionally, version 1 is reopened, and newer unknown versions are rejected. Future changes must add ordered transactional migrations rather than edit an already deployed schema. `VERSION` remains authoritative for application version; package.json deliberately has no duplicate version.
+The schema uses `PRAGMA user_version`: version 1 holds inventory/settings/locations, version 2 adds the legacy print journal, and version 3 adds background media. Empty databases initialize and migrate transactionally; supported older databases migrate in order. Unknown versions above 3 are rejected. Future changes must add ordered transactional migrations rather than edit an already deployed schema. `VERSION` remains authoritative for application version; package.json deliberately has no duplicate version.
 
-Management uses a separate environment key sent in a header, never query authentication. Public read authentication and per-photo HMAC signatures follow the reference contract. No management session is persisted in the browser. Origin checking rejects cross-site browser requests; no permissive CORS is enabled.
+Management normally uses a separate environment key sent in a header, never query authentication. Explicit `STORAGE_MANAGEMENT_ACCESS=open` permits keyless management with required allowed hosts; production uses this mode on the trusted LAN behind the authenticating proxy. `APP_ALLOWED_HOSTS` restricts API hosts and browser origins; the public API/MCP key remains independent. Public read authentication and per-photo HMAC signatures follow the reference contract. No management session is persisted in the browser. Origin checking rejects cross-site browser requests; no permissive CORS is enabled.
 
 The photo settings API exposes credential-presence flags and a SHA-256 source revision, never stored keys or unrelated settings. A source change invalidates previews, cached catalog metadata and pending new attachments. Moving an existing key to another host/provider is prevented by clearing credentials on identity changes. Sources cannot switch servers once photos are associated, because legacy references do not yet encode server identity.
 
 Album previews for images not yet in inventory use an independent per-process HMAC grant bound to asset ID, source revision and a 15-minute expiration. They do not contain management keys or upstream credentials. New image attachments must still belong to the configured album, are checked before the short database transaction, and cannot already belong to a different box. Retained associations require no network round-trip. Photo roles and filenames are stored in the same legacy-compatible photo records; no schema migration is needed for this increment.
 
-Consistent online backup uses SQLite [`VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html), with an exclusively reserved destination, instead of copying a live `.sqlite` file and ignoring its WAL. The Node asynchronous backup path stalled intermittently under the Windows Node 26.5.1 test runner, so it is not used. Restoration audits a snapshot and creates a new file; it never replaces the running database.
+Consistent online backup uses SQLite [`VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html), with an exclusively reserved destination, instead of copying a live `.sqlite` file and ignoring its WAL. The Node asynchronous backup path stalled intermittently under the Windows Node 26.5.1 test runner, so it is not used. CLI restoration audits a snapshot and creates a new file, refusing an existing destination. The separate `RestoreService` supports controlled UI replacement: bounded upload, validation/migration on a private copy, expiring token, typed confirmation, a consistent safety backup and one audited restore transaction. Schemas 1-3 are supported.
 
 ## AI image renditions
 
@@ -59,7 +59,7 @@ Optional box `coverAssetId` metadata records an explicit current-photo cover cho
 
 Use SQLite for a single application instance, with the active database on local storage in a persistent Docker volume. Do not place the active database on SMB or NFS.
 
-Model boxes, sessions, photo references, and related data with tables, foreign keys, constraints, and transactions. Store user settings and translation overrides in the database; ship default language catalogs as application resources. Original images remain in the configured photo service.
+Model boxes, sessions, photo references, and related data with tables, foreign keys, constraints, and transactions. User settings live in the database; default language catalogs ship as application resources. A translation-override editor/import is not implemented. Original images remain in the configured photo service.
 
 Use versioned schema migrations. Provide an integrity audit whose exit status is zero only when required checks pass. Keep database transactions short and free of external network calls.
 
@@ -83,11 +83,11 @@ Excel catalog import/export is excluded: Erik retired the one-time label-import 
 
 Decision 2026-10-24: printing belongs to the separate label service (Snille/label-service), its own Portainer stack with a CUPS container (official DYMO driver) and a LAN API. It is the only program that talks to the printer, including roll reading, because two programs that each reserve the printer can collide. It owns label layout, formats, text sizes and direction, preview, one-copy submission, deduplication and the print journal.
 
-This application is a client with its own key: it builds label content from inventory data (box or registered location), lets each label type (box, location, storage unit) use a standard template and other templates from the service (settings record `labelTemplates`; a box keeps its last non-standard choice as `labelTemplate`), shows the service's preview, re-checks that the box is unchanged before printing, and submits with a request identifier the service deduplicates. A later label designer will use the same service. The stock DYMO filter (with LanguageMonitor) is used; the reference `raster2dymolw_nolm.cpp` patch was not needed.
+This application is a client with its own key: it builds label content from inventory data (box or registered location), lets each label type (box, location, storage unit) use a standard template and other templates from the service (settings record `labelTemplates`; a box keeps its last non-standard choice as `labelTemplate`), shows the service's preview, re-checks that the box is unchanged before printing, and submits with a request identifier the service deduplicates. Label design and further printer capabilities belong to that service. The stock DYMO filter (with LanguageMonitor) is used; the reference `raster2dymolw_nolm.cpp` patch was not needed.
 
 ## Deployment
 
-Target a prebuilt application image, a Compose stack usable in Portainer, a persistent application-data volume, and optional persistent print-service configuration. Document fresh install, updates, backup, restore, and health checks.
+A prebuilt public Docker Hub image and the Portainer Compose stack are deployed in production. The app uses a persistent local data volume; label-service has its own deployment/state. See [Deployment](DEPLOYMENT.md) for installation, releases, backup/restore and rollback.
 
 Develop and verify this service separately from the existing installation. Do not couple it to an existing host's systemd service or checkout layout.
 
@@ -101,7 +101,7 @@ Session-photo viewers retain original/preview URLs through album and AI-draft tr
 
 Interface text lives in `web/locales/en.js` and `web/locales/sv.js`. Keys are the English strings used in the code; each file maps them to that language's text, so English wording can change without code edits and a future translation tool has a complete catalog. `test/i18n.test.js` fails when a string in the code or `index.html` is missing from either file or when the two files have different keys. Product names, addresses and sample input are listed there as untranslated.
 
-The page background is chosen in the Appearance dialog: `appearance.background` is `hills`, `pegboard`, `blueprint` (SVGs in `web/backgrounds`), `none` or `custom`. It is public (`GET /api/appearance`) because the page shows it before anyone enters a key; changes go through `PUT /api/manage/appearance` with an optimistic revision. An uploaded image (JPEG, PNG or WebP, at most 5 MiB, bytes checked against the type) is stored in the `media` table added by schema 3, so SQLite backups and restores include it; the inventory JSON export does not. The audit checks each image's hash and type and that a selected custom background has an image. The start page shows the photo album's cover (`GET /api/manage/overview`, signed preview URLs, Immich only) and counts storage units from current box locations. The cover is shown as a panorama with the vendored Pannellum viewer (`web/overview.js`): a 2:1 image is a full sphere, a wider one a 180 degree panorama. Clickable points (`overviewPoints` settings record, keyed by the image's asset ID: `yaw`, `pitch`, storage unit slug) open that unit on the storage map; `PUT /api/manage/overview/points` saves them with an optimistic revision. A new cover that never had points saved is offered the latest saved image's points (`overviewPointsSource`), saved for it at the first change; the old image's points stay saved. Points can be dragged and all turned together in edit mode. To update Pannellum, replace the files in `web/vendor/pannellum` from the npm tarball and check them the same way.
+Appearance also stores the shared `accent` colour (default `#95c200`) and validates its format; text contrast adjusts in the browser. Theme remains per-tab. The page background is chosen in the Appearance dialog: `appearance.background` is `hills`, `pegboard`, `blueprint` (SVGs in `web/backgrounds`), `none` or `custom`. It is public (`GET /api/appearance`) because the page shows it before anyone enters a key; changes go through `PUT /api/manage/appearance` with an optimistic revision. An uploaded image (JPEG, PNG or WebP, at most 5 MiB, bytes checked against the type) is stored in the `media` table added by schema 3, so SQLite backups and restores include it; the inventory JSON export does not. The audit checks each image's hash and type and that a selected custom background has an image. The start page shows the photo album's cover (`GET /api/manage/overview`, signed preview URLs, Immich only) and counts storage units from current box locations. The cover is shown as a panorama with the vendored Pannellum viewer (`web/overview.js`): a 2:1 image is a full sphere, a wider one a 180 degree panorama. Clickable points (`overviewPoints` settings record, keyed by the image's asset ID: `yaw`, `pitch`, storage unit slug) open that unit on the storage map; `PUT /api/manage/overview/points` saves them with an optimistic revision. A new cover that never had points saved is offered the latest saved image's points (`overviewPointsSource`), saved for it at the first change; the old image's points stay saved. Points can be dragged and all turned together in edit mode. To update Pannellum, replace the files in `web/vendor/pannellum` from the npm tarball and check them the same way.
 
 The interface loads a bundled source-language catalog and Swedish translations through `web/i18n.js`. Only initial application-owned text/attributes and explicit UI text helpers are translated. Later inventory text, filenames, provider/model names and AI results are not automatically scanned or translated. The public interface-language endpoint returns only the configured interface language for the sign-in view. English remains the fallback for unmapped technical messages.
 
@@ -130,13 +130,13 @@ no semantic scores. `embeddings.js` uses native Ollama with `truncate: false` an
 checks the model digest before each request. `semantic-runtime.js` is explicitly
 enabled by server environment configuration, disabled by default and used only
 by authenticated management preview endpoints. No public search/ask/MCP behavior
-changes. The deployed gateway's native routes, independent acceptance and reviewed
-runtime rule management remain open. See SEMANTIC-RUNTIME.md.
+changes. Native deployment-route verification, runtime identity integration and independent
+acceptance remain open; reviewed rule management is implemented. See SEMANTIC-RUNTIME.md.
 
 Version 0.11.0-dev adds `SearchSettings` and `SearchService` over the same store
 and inventory service. `searchWorkspace` persists embedding configuration and
-owner answer rules in the existing settings table; the main schema stays version
-1. Shared validation runs on save/import/audit/restore. Settings views redact keys
+owner answer rules in the existing settings table; they need no additional schema
+migration (the application now uses schema 3). Shared validation runs on save/import/audit/restore. Settings views redact keys
 and writes require an optimistic revision, preserve unrelated sections and clear
 credentials when the destination changes. Native model discovery uses only the
 saved endpoint/key and returns names/digests without inference or source text.
@@ -150,11 +150,27 @@ dialog edits structured rules and model settings without exposing raw JSON or
 provider errors. Identity model/threshold selection and independent acceptance
 remain separate activation gates. No speech normalization is enabled.
 
-### Initial printing implementation (0.12.0-dev)
+### Historical direct printing (0.12-0.14, removed from runtime)
 
-`Printing` coordinates management settings, bounded shared label layout and native IPP. The server generates one PostScript document; no shell/driver dependency lives in the app. Preview tokens bind content/settings and expire. Schema 2 adds a durable unique token/request journal before external submission, preventing automatic duplicate prints after ambiguous responses or restart. CUPS status is distinct from physical output acceptance. See PRINTING.md; legacy designer, sheets and optional driver packaging remain pending.
+Direct IPP/PostScript layout and DYMO roll reading moved out in 0.15.0.
+The schema-2 `print_jobs` journal and old `printing` settings are retained only for
+validation, backup and restore; new jobs are owned by label-service. There is no
+raw printer polling, reset, recovery or direct CUPS endpoint in this application.
+See [Printing](PRINTING.md) and [History](HISTORY.md) for physical acceptance limits.
 
-The 0.12.1 print-status UI displays CUPS attributes only. An experimental raw DYMO adapter caused renewed lamp blinking in owner-observed acceptance and was withdrawn entirely from runnable source. No raw TCP monitoring, auto polling, reset or recovery endpoint ships. Driver protocol work remains gated on real hardware acceptance.
+## Storage-unit photos and current AI answers
 
+`unitPhotos` settings map storage-unit slugs to album asset IDs. The management
+storage-map response includes signed image URLs; choosing/clearing a photo uses
+`PUT /api/manage/storage-units/<slug>/photo`. Catalog validation requires an existing
+unit and current album membership, and treats these photos as assigned (`assignedUnits`)
+so they cannot also be newly attached to a box. The image stays in the photo service;
+SQLite backups include the assignment, not the external image.
 
-In 0.13.0, an optional manual DYMO adapter uses one bounded ownership/read/release connection with owner-observed non-interference on the tested 5XL. It shares the printing busy guard, checks queue/revision and never polls. Dimensions use explicit article presets. The earlier withdrawn implementation above is historical; see PRINTING.md for current behavior and physical acceptance limits.
+AI drafts/per-photo descriptions are editable before ordinary session save. Named
+connections and the image task's optional fallback are stored in `aiWorkspace`.
+`Ai.phraseAnswer` also uses this route/fallback for public `/ask`: lexical selection
+comes from Inventory, then at most five matches are phrased with bounded output and
+internal-ID rejection. Failure returns the local answer. This public behavior is
+separate from `SearchService.preview`, which applies saved rules/optional embeddings
+but does not attach the isolated identity verifier or alter public search.

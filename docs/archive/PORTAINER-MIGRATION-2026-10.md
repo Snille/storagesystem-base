@@ -1,3 +1,15 @@
+# Historical Portainer migration and release evidence
+
+Archived on 2026-10-29. **This is a dated record, not current instructions.**
+The migration/cutover completed on 2026-10-25 and releases below reached 0.28.0.
+Earlier future-tense steps, approval notes, versions, counts, missing templates and
+uncompleted checks describe their dates and may have been superseded. Use
+[Deployment and operations](../DEPLOYMENT.md), [Status](../STATUS.md) and
+[TODO](../../TODO.md) for current guidance. Keep the original hashes/results for
+release traceability; no new deployment was performed while archiving this file.
+
+---
+
 # Moving Storage System to Portainer
 
 Plan written 2026-10-24. Parts A, B and C were carried out on 2026-10-24 (see

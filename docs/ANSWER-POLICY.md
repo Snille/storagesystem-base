@@ -123,16 +123,18 @@ clarification rather than blindly following a stored rule. Conflicting matching
 rules also cause clarification. Missing translations use a generic question in
 the requested language, not an unannounced language switch.
 
-The six rules for the reviewed workshop questions remain in the private
-evaluation directory. They are evaluated separately and are not saved to the
-development or production application's settings. Rule-management UI,
-configuration persistence and follow-up conversation handling remain planned.
+The six evaluation rules remain private test evidence, not shipped defaults.
+Rule-management UI and configuration persistence are implemented through Search &
+answers (`searchWorkspace` settings); saving a rule affects the management preview,
+not public answers. Follow-up conversation handling and runtime identity/threshold
+configuration remain planned. Do not assume evaluation rules were saved to production.
 The module does not infer which alternatives a person considers equivalent.
 
 ## Verification
 
 `npm run check` includes decision and verifier fixtures alongside the existing
-suite (63 tests total). They check evidence versus wrong semantic candidates,
+suite. The full application has 110 tests as of 2026-10-29; 63 was the
+count at the initial verifier implementation. They check evidence versus wrong semantic candidates,
 current locations/read-only behavior, identifiers and units, competing
 destinations, rule failure/translation behavior, stale sessions, historical and
 negated contents, source-bound identity proofs, unavailable verification and
@@ -146,15 +148,16 @@ metric, verifies source/code hashes and runs SQLite audit without inference.
 See [SEMANTIC-EVALUATION.md](SEMANTIC-EVALUATION.md) for exact results.
 
 These are development regression results after inspecting failures, not a fresh
-independent holdout. Live endpoint ingestion, vector versioning/invalidation,
-explicit long-input handling, failure recovery and HA/physical speech acceptance
-remain required before activation.
+independent holdout. Optional endpoint ingestion, versioned vectors, long-input
+rejection and failure handling are now implemented in the management-only runtime.
+Production native-route verification, verifier/threshold integration, fresh acceptance
+and physical speech acceptance remain required before semantic voice activation.
 
 A subsequent frozen-policy source-derived check (30 new questions) scored 29/30
 but failed its zero-incorrect-confident-answer gate: a thermal-camera request
 selected a heat gun. Pure semantic similarity and margin do not establish object
-identity. The implementation is deliberately unchanged while this failed result
-is recorded. This remains a preview, not release acceptance; see the acceptance-v3
+identity. The implementation was deliberately unchanged while that failed result
+was recorded; the next section describes its subsequent verified-preview repair. This remains a preview, not release acceptance; see the acceptance-v3
 section in SEMANTIC-EVALUATION.md.
 
 The 0.10.1-dev verified preview repairs that failure in regression: 30/30 on

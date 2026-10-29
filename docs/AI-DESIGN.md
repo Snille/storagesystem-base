@@ -1,84 +1,89 @@
-# AI settings design proposal
+# AI behavior and remaining design
 
-Status: wider design direction with initial settings/single-photo implementation in 0.4.0-dev and multi-photo new-box draft review/edit/save in 0.5.0-dev. Available now: overview, named connections, task settings/extra instructions and combined analysis of one to six photos with per-photo roles and interpretations. Selected-photo updates to existing boxes with current-description context and explicit review/apply/save are available in 0.8.0-dev. Inventory answers, translation drafting and legacy customization mapping remain planned. This design replaces the organization of the reference settings rather than copying that form.
+Current for 0.28.0. Image inventory and candidate-based public answer phrasing are
+implemented. Translation drafting, an independent Inventory answers task/settings
+panel and automatic photo-to-box matching are not implemented. Semantic selection
+has a separate [preview policy](ANSWER-POLICY.md) and is not enabled publicly.
 
-## Voice-first retrieval direction
+## Implemented ownership and controls
 
-The [workshop voice/search design](VOICE-SEARCH.md) records the live button-activated flow and Erik's primary requirement: one well-supported destination in one short spoken sentence, otherwise a brief clarification or no-match answer. Full candidate lists remain available on screen. The proposed hybrid embedding/lexical retrieval and bounded follow-up context are not implemented. Keep the existing SQLite database at the measured and doubled scale; Mimers Brain's PostgreSQL/pgvector implementation is a reference, not a database prerequisite. Model choice, threshold calibration and end-to-end voice decisions need a reviewed evaluation set before activation.
+**AI assistance** provides an overview, named **Connections** and **Image inventory**
+settings. Connections hold provider, endpoint and credentials once; the task selects
+its model, output language, role suggestions, extra instructions and optional fallback
+connection/model. Supported adapters are OpenRouter, llama.cpp and OpenAI-compatible
+services. Changing connection identity clears credentials; views redact saved keys.
+Tests/model discovery are explicit and do not prove image capability.
 
-## Findings from the reference implementation
+The deployed route chosen after the recorded 15-box comparison is OmniRoute
+`cx/gpt-6-luna`, with Ollama01 `qwen3-vl:8b-instruct-16k` as fallback. Evaluation,
+cost and model limitations are recorded in [History](HISTORY.md), versions 0.15.2,
+0.21 and 0.22. Optional future comparisons require real photo/OCR and multiple-photo
+measurements; model names or token prices alone are insufficient.
 
-Reviewed `app/settings/settings-form.tsx`, `lib/config.ts`, `lib/analysis/index.ts`, `lib/public-api.ts`, `lib/types.ts` and `lib/translation-draft.ts` in the existing Storage System source.
-
-- The model picker and model ID field both edit the active connection's model.
-- Photo role detection, individual photo descriptions, whole-box suggestions and inventory answers use the primary AI configuration. Translation has a separate configuration with implicit credential fallback.
-- Prompt editing combines general defaults, provider/model overrides, role-specific system/user pairs, answer prompts, translation instructions and output cleanup lists.
-- Inventory search itself is local. AI can phrase an answer from the resulting matches; it does not perform the underlying inventory lookup.
-
-These implementation layers should not determine the normal settings navigation.
-
-## Navigation and ownership
-
-Use three sections under Settings > AI:
-
-1. **Overview**: what AI can help with, whether each task is enabled, its selected connection/model, and the last explicit test result. No invented capability or connection status.
-2. **Connections**: provider, endpoint and credentials, entered once per named connection. Reuse connections across tasks. Explain whether requests go to the configured local service or a remote provider. Connection tests are explicit actions.
-3. **Tasks**: Image inventory, Inventory answers, and Interface translation. Each task explains when it runs, what it receives, what it produces and which connection/model it uses.
-
-A provider describes the service. A connection describes one configured endpoint/account. A model is chosen once per task, with a single picker that also accepts an exact ID when discovery is unavailable. Do not show a second field for the same value.
-
-Start with one connection and Image inventory. Additional connections and task-specific models are optional. Avoid mandatory configuration for unused tasks. Never infer model image support solely from its name; distinguish reported capabilities from a successful image test.
-
-## Task copy and normal controls
-
-| Task | Explanation shown in the UI | Normal controls |
-| --- | --- | --- |
-| Image inventory | "Turn selected photos into a draft box description and searchable keywords. Review the draft before saving." | Enable, connection, model, output language, suggest photo roles |
-| Inventory answers | "Write a short answer using matching boxes from your inventory. Search also works with this turned off." | Enable, connection, model, answer language, short or detailed answer |
-| Interface translation | "Create draft translations for interface text. This does not translate your stored box descriptions." | Connection, model, target language, explicit draft action |
-
-Interface translation belongs with language maintenance, with a link from the AI task list. It is not part of daily box inventory. Existing public/voice answer distinctions remain available as advanced options within Inventory answers, preserving external API behavior.
-
-Where a language follows the application's language, show both the rule and the current resolved language. Never encode inheritance as an unexplained blank input.
-
-Implemented in 0.7.0-dev: interface language and external-response language are separate. The existing image task value `app` continues to follow the external-response default for compatibility; it is labeled **Use the external response language**, with its resolved language shown. Explicit AI English/Swedish/German choices are independent of both defaults. Header **Languages** edits the English/Swedish interface choice and the external-response default; it does not rewrite stored inventory text.
+The interface and external-response default are independent. AI language can be
+English, Swedish, German or follow the external-response default (`app` legacy
+value). It does not translate saved contents. See [README](../README.md#languages).
 
 ## Image workflow
 
-Show these stages in the analysis screen, with a brief explanation at each stage:
+1. Select one to six photos and assign label/inside/spread/location/detail roles.
+   Manual roles are retained. Explicit analysis shows the route and selected photos.
+2. Send bounded preview images and, for an existing box, the open editor's contents.
+   Return a combined name, summary, keywords, uncertainty and one interpretation
+   per selected image. Model indices are mapped back to the selected assets.
+3. Review/edit suggestions and photo descriptions. Transfer them to the ordinary
+   editor or explicitly apply them to the existing box draft. Name replacement for
+   an existing box is optional. This does not save inventory.
+4. Save an inventory session through the shared service, rechecking source,
+   membership, ownership and current-session guards. IDs/locations come from app
+   logic and owner choices, not model-generated destinations.
 
-1. Select photos and assign or suggest roles.
-2. Describe photos using their roles: label, storage location, inside, spread-out contents or detail.
-3. Build a box draft with suggested label, location, description and keywords.
-4. Review, edit and explicitly save a new inventory session.
+Immich uses its larger JPEG preview, not the small WebP thumbnail. Each image is
+bounded to 8 MiB, total 16 MiB. Analysis has a 90-second timeout and a process busy
+guard. Requests bind task/source snapshots; changed configuration or inventory
+invalidates results. No network call occurs inside an inventory transaction.
 
-This is the proposed new workflow, not a claim that the reference always executes those stages in that order. A manually assigned role takes precedence unless the user explicitly requests a new suggestion. Explain the chosen role next to the image rather than requiring a visit to prompt settings.
+The fallback is explicit: route/model must be configured together. Selected route
+failures or unusable output can invoke it; a stale-settings/inventory conflict
+cannot. Results show when fallback was used. There is no unbounded retry loop.
 
-Suggested role help: **Label** - "Read visible labels and codes." **Storage location** - "Describe where the box is stored." **Inside** - "Identify visible contents inside the box." **Spread-out contents** - "Identify items laid out for inspection." **Detail** - "Describe one item or a close-up."
+## Instructions and validation
 
-AI actions must show which selected photos or inventory text will be sent to which connection before running. Image tests send only explicitly selected test material and do not save inventory. Never describe a local connection as a guarantee about that service's onward data handling.
+Built-in instructions remain inspectable but read-only; task extra instructions
+are editable. Full prompt management was closed by the owner on 2026-10-24.
+Do not restore per-model/role raw prompt editors as unfinished required work.
+Legacy AI/prompts/customization records remain preserved but inactive; they are
+not silently converted into active settings.
 
-## Advanced instructions
+OpenRouter and compatible requests send a strict output schema; the application
+also validates non-empty text, exact photo-index coverage and unusable CJK output.
+Existing-box updates retain saved keywords and de-duplicate them. llama.cpp disables
+template thinking explicitly. These guards reduce malformed output; they do not
+verify quantities, OCR, object identity or factual accuracy. The owner must review.
 
-Provide one collapsed **Advanced instructions** area per task. For Image inventory, split it into Photo roles, Photo descriptions and Box draft. Show an editable extra-instructions field first, for example: "Mention dimensions only when visible. Keep product codes exactly as written."
+## Public answers and future selection
 
-Keep required output formats, identifier validation and integrity rules application-owned. Advanced raw prompt templates, if supported, must explicitly show the task/stage, effective instructions and restore-default action. System/user separation is expert detail rather than the initial editing experience. Mark changed instructions as Custom; default instructions are visible and inspectable.
+`POST /api/public/ask` runs shared lexical inventory search, then can phrase the top
+five matches with the image task's route/fallback, in the requested language. Routes
+have a 15-second answer timeout. Empty/unusable output or an answer speaking internal
+box/location IDs falls back to the local answer. The response contract remains
+`{query, answer, source, count, matches}`; `source` can be `ai` or `search`.
 
-Do not recreate implicit provider/model prompt switching in the normal UI. If reusable instruction profiles are needed later, select a named profile explicitly for a task and display that selection next to its model. Merely changing models must not silently change instructions.
+This is answer phrasing, not semantic lookup or independently verified destination
+selection. The proposed stricter one-destination/clarification/abstention policy
+belongs in application logic; optional phrasing must respect its selected stored
+locations. Public phrasing today is not proof that this future policy is active.
+See [Voice search](VOICE-SEARCH.md) for button activation and follow-up requirements.
 
-Legacy cleanup lists remain compatibility data until evaluated against representative outputs. Prefer structured output validation over adding user-maintained cleanup phrases to the basic UI. Do not silently delete imported customization or assume structured output makes every cleanup rule obsolete.
+## Deferred tasks
 
-## Tests, feedback and migration
+- Independent answer-task connection/model controls, if needed; current phrasing
+  shares the image route.
+- Translation editing/drafts/export in language maintenance, keeping inventory text
+  separate and reviewed before saving.
+- Compatible handling of imported language overrides if still wanted.
+- Runtime identity configuration and independent acceptance before semantic answers.
 
-- Separate Test connection from Try image analysis and Preview answer. A reachable service is not proof that the selected model accepts images or follows the required response format.
-- A test preview shows its input, connection/model, output and errors. Only display latency/token/cost information actually returned or measured; label estimates explicitly.
-- Keep AI failure recoverable: inventory editing and local search remain usable. Preserve the draft, explain which stage failed and offer an explicit retry.
-- Resolve one immutable task configuration at the beginning of a request and pass it through the adapter; do not reread mutable global settings partway through a job. Never hold a database transaction during external requests.
-- Before migrating existing settings, present the effective legacy connection, model and instruction overrides for each task. Preserve original imported settings and require an explicit mapping for ambiguous customizations. Avoid implicit credential inheritance between connections.
-- First implement connection setup and a single isolated image-analysis preview. Add box draft review/save next, then optional answer phrasing. Interface translation follows separately.
-
-Acceptance checks must cover redacted credentials, configuration changes during requests, explicit instruction inheritance, image-model failures, preservation of user drafts, review before save, and the same saved inventory behavior through UI, REST and MCP. Use disposable inventory data; no production updates or physical printer tests are part of this work.
-
-## Adapter references
-
-The initial adapter follows OpenRouter's official [image input](https://openrouter.ai/docs/guides/overview/multimodal/image-understanding), [model catalog](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties) and [current API key](https://openrouter.ai/docs/api/api-reference/api-keys/get-current-api-key) contracts. Image input uses a base64 thumbnail in a chat content array. The initial implementation requests JSON object output and validates the fields in application code; it does not claim server-enforced strict JSON Schema support for every compatible service/model.
+Manual inventory and lexical search remain usable when AI is unavailable. Provider
+errors must not expose credentials/raw upstream bodies. Test with synthetic or
+isolated inventory; real provider calls are separate from ordinary offline checks.

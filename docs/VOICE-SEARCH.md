@@ -1,8 +1,10 @@
 # Workshop voice search: current flow and proposed design
 
-Recorded 2026-10-20. Application version: 0.9.1-dev. This document distinguishes
-the existing production setup, the implemented replacement, and proposed work.
-No production configuration, firmware or database was changed for this review.
+Hardware/pipeline evidence was recorded on 2026-10-20; application sections were
+reconciled with production 0.28.0 on 2026-10-29. The public backend switched to this
+application on 2026-10-25. Hardware selectors/firmware and physical speech were not
+retested for the documentation update. Keep the dated observations separate from
+the implemented backend and proposed semantic flow.
 
 Implementation update (0.10.0-dev): the isolated decision layer is available
 through `Inventory.previewAnswer`; see ANSWER-POLICY.md. It is regression-tested
@@ -28,14 +30,14 @@ behavior. See the prospective user-query test in SEMANTIC-EVALUATION.md.
 Keep button activation. Proposed clarification support does not authorize
 automatically opening the microphone or introducing wake-word activation.
 
-## Existing production flow
+## Button-to-HA flow (hardware inspected 2026-10-20)
 
 ```mermaid
 flowchart TD
     B[Physical button: push to talk] --> E[ESPHome Workshop Voice Agent]
     E --> W[Verkstan Assist pipeline: faster-whisper, Swedish]
     W --> C[conversation.storage_system]
-    C --> A[Old Storage System: POST /api/public/ask]
+    C --> A[Storage System Base: POST /api/public/ask]
     A --> S[Rule-based search: up to five candidate boxes]
     S --> R[AI answer from candidates, or local fallback]
     R --> C
@@ -69,8 +71,9 @@ wake-word detector.
 The deployed HA conversation integration forwards recognized text unchanged to
 `POST /api/public/ask`, with a body containing only `query`. It does not mark the
 request as a voice request, send conversation context, or limit spoken candidates.
-The old route calls `answerInventoryQuestion` in **public** mode. Its separate
-voice prompt is used by the old web voice-search path, not by this HA call.
+At the original inspection the old route called `answerInventoryQuestion` in
+public mode. Since cutover this call reaches the new app's lexical search and AI
+phrasing; it still carries no conversation context or dedicated voice mode.
 
 The old backend first performs lexical search, including word variants,
 handwritten synonyms and short transpositions. It does not use embeddings or AI
@@ -111,17 +114,31 @@ audio. Old backend behavior was checked against the reference source at
 `a92ed1d22f5bfb3e61a168e29bdae0b1ea04aadb`; no production backend settings or
 private prompts were exported.
 
-## Implemented replacement today
+## Current application behavior (0.28.0)
 
-0.9.1-dev has shared lexical search for browser, REST and MCP, with Swedish word
-variants, reference RC synonyms, short transpositions and retained filename
-lookup. Image AI can propose saved descriptions/keywords, which become searchable
-only after review and save.
+Shared lexical search serves browser, REST and MCP, with Swedish word variants,
+RC synonyms, short transpositions and retained filename lookup. Reviewed image-AI
+text becomes searchable only after an explicit session save.
 
-Semantic retrieval, a dedicated voice decision policy and contextual follow-up
-questions are **not implemented**. The replacement's current `/ask` uses a local
-answer template and may also list multiple matches. Its existing real-HA Docker
-acceptance proves transport/integration behavior, not precise spoken selection.
+`/api/public/ask` phrases up to five lexical matches with the image task's AI
+connection/fallback and returns the local answer on failure. The deployed choice
+is OmniRoute Luna with Ollama01 fallback. A 50-question comparison before cutover
+named the expected place in 32/43 answerable cases versus the old system's 30/43;
+both missed the same 11 lexical retrieval cases. This is recorded regression,
+not physical speaker acceptance or proof of the future selection policy.
+
+The optional semantic index, owner-rule UI and decision preview are implemented,
+but the preview does not attach the isolated identity verifier, production indexing
+is disabled, and public search/ask/HA do not use this policy. Contextual follow-up
+is not implemented. See [Semantic runtime](SEMANTIC-RUNTIME.md).
+
+Browser voice input (0.24.0) fills the search using SpeechRecognition when supported.
+Chrome/Edge use their vendor's speech service; this is separate from workshop
+Whisper. It does not speak the answer. Browser playback/Read answer is optional
+future work. Real Whisper-error measurement/normalization was deferred by the owner.
+
+The real-HA Docker/card checks establish integration behavior. Physical button,
+Piper, speaker quality and external access still need separate owner acceptance.
 
 ## Proposed retrieval and speech flow
 
@@ -269,8 +286,9 @@ out of that rewrite and benchmark actual write/search latency before expanding
 scope. The [isolated embedding comparison](SEMANTIC-EVALUATION.md) now measures
 local CPU retrieval and a separate experimental decision policy. BGE-M3 dense
 leads that exploratory set; the tested equal-weight lexical fusion reduces top-1.
-The application still has no semantic implementation or measured production
-embedding endpoint. Untouched questions and route verification remain required.
+A native optional runtime now exists with a versioned SQLite cache and strict
+length handling, as described in SEMANTIC-RUNTIME.md. Public semantic activation,
+untouched questions and authenticated native route verification remain open.
 
 Reconsider PostgreSQL/pgvector if measured load calls for many concurrent writers,
 multiple application replicas, a substantially larger chunk corpus or server-side

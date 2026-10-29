@@ -1,6 +1,10 @@
 # Semantic runtime preview
 
-Version 0.10.2-dev adds an optional background vector index and management-only
+Current for 0.28.0, reviewed 2026-10-29. Production reports `enabled: false`.
+Management-only means the configured management access mode (key or explicitly
+open management), not a separate mandatory key in every deployment.
+
+Version 0.10.2-dev introduced an optional background vector index and management-only
 decision preview. Version 0.11.0-dev adds saved model/rule configuration and the
 Search & answers dialog. Public search/ask, MCP, browser search and HA retain their
 existing behavior. This does not complete independent acceptance or enable the
@@ -15,8 +19,8 @@ are excluded. This serializer differs from the earlier offline corpus; results
 are a new regression measurement, not an unchanged reproduction of that corpus.
 
 Vectors live in a separate SQLite file, defaulting to
-`<inventory database path>.semantic.sqlite`. The main inventory schema remains
-version 1. Each cache row carries the box ID, current session ID, content hash,
+`<inventory database path>.semantic.sqlite`. The cache is independent of the main inventory database (currently schema 3);
+semantic settings/indexing introduce no main-schema migration. Each cache row carries the box ID, current session ID, content hash,
 dimension and profile hash. The profile includes document version, endpoint,
 model, immutable model digest and native API protocol. Keys and original source
 text are not saved in the cache. Vectors are derived private data and must remain
@@ -60,7 +64,8 @@ responses, context rejection and timeouts fail closed. Provider errors and keys
 are not exposed through HTTP. Each upstream request has a 15-second timeout.
 
 **Deployment route still pending:** on 2026-10-23 the existing authenticated LAN
-gateway returned 404 for both native paths. It has not been changed. The live test
+gateway returned 404 for both native paths. That route has not been reverified
+from production; later vision-route provisioning does not establish native access. The live test
 used a temporary localhost SSH tunnel to the existing Ollama process. That proves
 the application adapter/model path, not the eventual authenticated LXC route.
 An approved route for these two paths is required before enabling this preview

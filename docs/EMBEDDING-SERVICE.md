@@ -1,10 +1,15 @@
 # Shared embedding service
 
-Verified on 2026-10-21. Ollama01 runs on TowerCube with RTX 4000 Ada GPU
-acceleration. It will serve both applications after application-specific
-acceptance. Mimers Brain switched on 2026-10-22 (see "Mimers Brain cutover");
-Storage System has not been switched for embeddings. Since 2026-10-24 the same
-service also runs Storage System's image model (see "Vision model for Storage System").
+Last recorded infrastructure changes: 2026-10-24. Documentation reconciled with
+application 0.28.0 on 2026-10-29; this review did not inspect/reconfigure the LXC.
+Ollama01 is the shared TowerCube GPU service. Mimers Brain switched embeddings on
+2026-10-22. Storage System uses its vision fallback, but **not production embeddings**.
+The frozen embedding comparison passed; the native authenticated route and independent
+application decision acceptance remain open. See [Semantic runtime](SEMANTIC-RUNTIME.md).
+
+The initial provisioning/GPU probes below are dated evidence. Their old resource
+measurements are not current capacity/latency guarantees. The latest recorded resource
+settings are 16 GiB container RAM, 14 GiB service memory and two loaded models.
 
 ## Vision model for Storage System
 
@@ -38,7 +43,7 @@ Added 2026-10-24 with the owner's approval, on the condition that Mimers Brain k
 | Network interface MAC | BC:24:11:1C:8A:D7 |
 | UniFi identity | CT - Ollama 01; fixed-IP reservation verified |
 | OS | Ubuntu 26.04 LTS, unprivileged LXC |
-| Allocation | 4 vCPU, 8 GiB RAM, 1 GiB swap, 40 GiB disk |
+| Allocation (last changed 2026-10-24) | 4 vCPU, 16 GiB RAM, 1 GiB swap, 40 GiB disk |
 | Current storage | TowerCube `local-lvm` |
 | Retained build copy | MiniCube CT 141 on `nvme`, stopped with `onboot: 0` |
 | Operator | snille, SSH keys; Webmin on HTTPS port 10000 |
@@ -54,12 +59,12 @@ exact address. No provisioning permissions or existing guests were changed.
 Native Ollama 0.40.6 runs under a dedicated service account through systemd,
 without Docker. The official Linux amd64 archive was verified against release
 SHA-256 `c164ab8b1b28e2a247c29719b8e404c423c5b83ae64c3ab4e59d50c7ff7fc5e0`.
-The installed release lives under `/opt/ollama/0.40.6`; models live under
-`/var/lib/ollama/models`. Service CPU quota is four CPUs and memory limit is
-6 GiB inside the 8 GiB LXC. Cloud features are disabled.
+The recorded release lives under `/opt/ollama/0.40.6`; models live under
+`/var/lib/ollama/models`. Service CPU quota is four CPUs; the 2026-10-24 change
+raised its memory limit to 14 GiB inside the 16 GiB LXC. Cloud features are disabled.
 
-The service holds one model and uses a startup warm-up unit so the first real
-request does not need to load it. Keep-alive is indefinite. `ollama ps` reports
+The service permits two loaded models since the vision deployment. A startup
+warm-up unit preloads embeddings; the first vision request can still incur loading/JIT. Keep-alive is indefinite. `ollama ps` reports
 100% GPU on TowerCube. The original CPU build was verified on MiniCube.
 
 `bge-m3:cpu4` uses `PARAMETER num_thread 4`; the name is preserved for Mimers
@@ -72,20 +77,22 @@ Embeddings have 1024 dimensions. The observed loaded context is 4096 tokens.
 The Storage System comparison used Hugging Face BGE-M3 through Sentence
 Transformers. This Ollama artifact/runtime is a separate deployment candidate;
 its model name and dimensionality alone do not establish equivalent retrieval.
-Repeat the frozen retrieval comparison through the intended endpoint before
-selecting application thresholds or enabling semantic search.
+The frozen comparison was repeated successfully on 2026-10-22 (see below); that
+does not select application thresholds or permit semantic activation.
 
 ## API boundary
 
 Native Ollama listens only on loopback. Nginx exposes the LAN API with separate
 Bearer keys for Mimers Brain and Storage System. Credentials are maintained
 outside this repository and are never included in reports or configuration
-examples. Neither app's existing credentials/settings have been replaced.
+examples. The applications use separate keys/settings; Mimers Brain's approved cutover is
+recorded below and Storage System's later vision route is described above.
 
-Only `GET /v1/models` and `POST /v1/embeddings` are exposed. Requests without a
-valid key return 401; native management routes return 404 with an otherwise
-valid key. Model management is available locally through SSH. Request body size
-is bounded to 2 MiB and proxy timeouts are bounded. The endpoint uses LAN HTTP;
+The recorded routes are `GET /v1/models`, `POST /v1/embeddings` (2 MiB body) and,
+since 2026-10-24, Storage-System-key-only `POST /v1/chat/completions` (24 MiB).
+Requests without a valid key return 401. Native tags/embed routes returned 404 in
+the last recorded check; verify them from the deployment before native runtime use.
+Model management is available locally through SSH; proxy timeouts are bounded. The endpoint uses LAN HTTP;
 it is not a public Internet service.
 
 ## TowerCube migration and GPU configuration
@@ -136,7 +143,7 @@ or if `ComputeCache` is deleted, rerun the sweep script
 `data/infrastructure/ollama01/jit-sweep.py` before applications depend on low
 first-request latency.
 
-## Verification and limits
+## Initial provisioning/GPU verification (2026-10-21/22)
 
 - Standard provisioning verifies resources, reboot, networking, timezone,
   operator SSH/sudo, updates, Webmin and Postfix. Exactly one standard completion
@@ -166,8 +173,9 @@ first-request latency.
   took 58-171 ms, and GPU inference, preload and all base services were active.
 - Three Mimer CPU/new-GPU vectors have minimum cosine similarity 0.99999966
   and maximum component difference about 0.0000943, unchanged by the graph
-  setting. Full recall/threshold acceptance remains pending. No Mimer vectors
-  were regenerated and no existing application settings were changed.
+  setting. At this initial probe full recall/threshold acceptance was pending;
+  the later Mimers Brain cutover below records its completed comparison. No
+  existing application settings were changed during this initial probe.
 - Both API keys, operator credential and Ollama identity match their canonical
   copies after restore. API authentication and management-route rejection pass.
 - The Proxmox Note was explicitly approved, written through Notes MCP and read
@@ -213,7 +221,7 @@ does not establish the route's effective input limit.
 
 1. The optional 0.10.2-dev Storage System runtime now uses native Ollama with
    `truncate: false` and immutable digest checks; oversized input rejection is
-   verified live. The current authenticated gateway returns 404 for native tags
+   verified live. The last recorded authenticated gateway check returned 404 for native tags
    and embed paths, so the tested temporary SSH tunnel does not establish the
    deployment route. Validate an approved authenticated native route and complete
    application/failure acceptance before activation. See SEMANTIC-RUNTIME.md.

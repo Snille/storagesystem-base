@@ -1,5 +1,28 @@
 # History
 
+## Documentation maintenance - 2026-10-29 (application remains 0.28.0)
+
+- Reconciled README, current status, roadmap/backlog, architecture, compatibility,
+  AI/voice/semantic guidance, printing and verification with current source and
+  read-only production checks. Production 0.28.0 is healthy; schema-3 audit passes
+  (166 boxes, 256 sessions, 320 photo references, 166 locations); semantic indexing
+  is disabled. All 110 tests pass serially; later parallel check runs exposed an
+  existing adjacent-port `EADDRINUSE` assumption in the security test, recorded in
+  Verification/TODO. Syntax and whitespace pass. No runtime change or new image is implied.
+- Added a current deployment/backup/rollback guide; consolidated three obsolete
+  session handoffs and removed them. Archived the dated Portainer migration/release
+  record, preserving image hashes and rollout evidence. Kept frozen evaluation and
+  failed-run evidence explicitly historical rather than treating it as live status.
+- Corrected completed-versus-pending work: production migration, AI answer phrasing,
+  browser voice input, editable drafts/photos and current unit label templates are
+  available; public semantic activation, external/physical acceptance and language
+  tooling remain separate. Backup schedule verification is outstanding; automatic
+  backups are not established by manual pre-release snapshots.
+
+Historical sections below describe the code, tests and operational state of each
+release at its date. Later releases supersede earlier implementation boundaries;
+use [Status](STATUS.md) for the current system.
+
 ## 0.28.0 - 2026-10-28
 
 - **A photo per storage unit.** The storage map shows a photo of the chosen shelving unit, bench or cabinet in its top right corner. **Choose photo** lists the album's photos (unused ones first); the photo stays in the photo service and only its asset ID is saved, per storage map slug, in the `unitPhotos` settings record (`PUT /api/manage/storage-units/<slug>/photo` with `{"assetId": "…"}` or `null`). Only photos in the album and existing units are accepted. Clicking the photo opens it in the photo viewer. The album inbox counts a unit photo as used (`assignedUnits`), so it does not look unassigned and cannot also be added to a box. `GET /api/manage/storage-map` returns `unitPhotos` with short-lived image links.

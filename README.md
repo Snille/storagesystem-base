@@ -6,15 +6,26 @@ A fresh implementation of [Storage System](https://github.com/Snille/storagesyst
 
 For the next development session, start with [current state and continuation notes](docs/STATUS.md) and [the prioritized backlog](TODO.md).
 
-A runnable development preview is available. The version is defined only in [VERSION](VERSION).
+This application has been **production since 2026-10-25**. Version **0.28.0** is
+running in Portainer and at `verkstad.snille.net` / `hylla.snille.net`; [VERSION](VERSION)
+is the single application version source. The previous application is retained as
+a rollback source, not the active backend. This repository has independent Git history.
 
-Implemented: manual box inventory with session history; photo source settings and an album inbox; a shared inventory service for the browser, REST and MCP; SQLite storage and schema migration; validated legacy inventory/settings import into an empty database; inventory JSON export; consistent SQLite backup and restore to a new database; data integrity audit; and a non-root Docker image with local Compose and a Portainer stack template.
+Implemented: box inventory/session history, Immich album/photo workflows, reviewed
+editable AI drafts and updates with fallback, shared lexical UI/REST/MCP search,
+AI-phrased public answers, browser microphone input, storage map/unit photos and
+labels, panorama overview points, English/Swedish UI, appearance/security settings,
+validated migration, audit, export, SQLite backup/restore and template-based printing
+through the separate label service. Home Assistant runtime/card acceptance has passed
+in isolation. PhotoPrism is fixture-tested only.
 
-This is **not a production replacement**. AI connections, single-photo tests, multi-photo new-box drafts and selected-photo updates to existing boxes with explicit review/edit/save are available. AI answer phrasing, full settings/translation editing and full label design remain planned; the first 57 x 32 mm CUPS label workflow is implemented. The Immich album-to-inventory flow is verified live with a dedicated account, including browser selection/save, REST and MCP image retrieval, using an isolated in-memory inventory. Single-photo AI is verified live through OpenRouter and Spark llama.cpp. PhotoPrism remains fixture-tested only. REST/MCP shape compatibility is tested; remaining language/migration parity still requires acceptance testing. Real Home Assistant runtime acceptance is available through the isolated Docker harness. See [Compatibility](docs/COMPATIBILITY.md) and [Verification](docs/VERIFICATION.md).
+Semantic indexing and answer rules are **management preview only**, disabled in
+production; runtime identity configuration, independent acceptance and public activation
+remain open. Translation tooling and further location management are also unfinished.
+See [remaining work](TODO.md), [verification boundaries](docs/VERIFICATION.md),
+[compatibility](docs/COMPATIBILITY.md) and [deployment](docs/DEPLOYMENT.md).
 
-The existing application is the functional reference. This repository has independent Git history and is not a GitHub fork. The existing installation remains the production system while this implementation is developed and verified separately.
-
-## Intended capabilities
+## Capabilities
 
 - Inventory boxes, storage locations, inventory sessions, photo references, and history.
 - Read album photos from Immich or PhotoPrism.
@@ -57,7 +68,7 @@ The imported `security.publicApiKey` takes precedence over `STORAGE_API_KEY`. Th
 
 ## Languages
 
-Open **Languages** in the header after signing in. **Interface language** controls the application's menus, buttons and guidance (English or Swedish). The choice is saved for this instance and is restored before sign-in on reload. Saved box names, descriptions, keywords and photo filenames are never translated by the interface catalog.
+Open **Appearance → Languages** after opening the inventory. **Interface language** controls the application's menus, buttons and guidance (English or Swedish). The choice is saved for this instance and is restored before sign-in on reload. Saved box names, descriptions, keywords and photo filenames are never translated by the interface catalog.
 
 **Default language for external responses** controls generated local answers and location names returned to Home Assistant, REST and MCP when a caller does not specify a language (English, Swedish or German). It does not control the interface or translate saved contents. Existing `appearance.language` settings retain this meaning; the interface uses the separate `appearance.uiLanguage` setting.
 
@@ -97,7 +108,7 @@ In the viewer, **Use as card image** saves the displayed image as the box's cove
 
 ## Voice search and semantic-search direction
 
-See [workshop voice flow and proposed semantic design](docs/VOICE-SEARCH.md) for the current button-activated HA/ESPHome/Piper/announcement path, short answers, clarification behavior and the SQLite capacity decision. A [shared decision preview](docs/ANSWER-POLICY.md) combines current literal evidence, supplied semantic candidates and explicit owner rules. `Inventory.verifiedPreviewAnswer` additionally supports an optional bounded local identity check before a semantic-only match can become an answer. An explicitly enabled [semantic runtime preview](docs/SEMANTIC-RUNTIME.md) adds background vectors in a separate SQLite cache, immutable model/content/session binding and native Ollama requests that reject truncation. It is disabled by default and management-only; the deployed gateway still requires an approved native route. Public search/ask, browser search and HA retain their current behavior. Saved embedding settings and answer-rule editing are available through **Search & answers**; independent acceptance, runtime identity/threshold settings and conversational follow-up remain planned. The read-only production measurement on 2026-10-20 found 164 boxes and 293 current photo references; doubling that scale does not require a PostgreSQL migration.
+See [workshop voice flow and proposed semantic design](docs/VOICE-SEARCH.md) for the current button-activated HA/ESPHome/Piper/announcement path, short answers, clarification behavior and the SQLite capacity decision. A [shared decision preview](docs/ANSWER-POLICY.md) combines current literal evidence, supplied semantic candidates and explicit owner rules. `Inventory.verifiedPreviewAnswer` additionally supports an optional bounded local identity check before a semantic-only match can become an answer. An explicitly enabled [semantic runtime preview](docs/SEMANTIC-RUNTIME.md) adds background vectors in a separate SQLite cache, immutable model/content/session binding and native Ollama requests that reject truncation. It is disabled by default and management-only; the last recorded gateway check did not provide native tags/embed; verify an approved route from production. Public search/ask, browser search and HA retain their current behavior. Saved embedding settings and answer-rule editing are available through **Search & answers**; independent acceptance, runtime identity/threshold settings and conversational follow-up remain planned. The read-only production measurement on 2026-10-20 found 164 boxes and 293 current photo references; doubling that scale does not require a PostgreSQL migration.
 
 Open **Search & answers → Answer rules** to choose **Either location is fine**, **Return both locations** (two boxes), or **Ask which type** with a short question. Select current boxes by name/location and save the rule. Rules require current inventory evidence; an unsupported destination cannot create an answer. **Try a question** uses saved rules even with embeddings disabled. It displays the short answer/clarification plus detailed candidates without changing inventory. For example, an explicitly configured network-cable rule can ask whether a finished cable is needed; follow-up conversation is not implemented yet.
 
@@ -109,19 +120,19 @@ Choose **AI assistance** for an overview, **Connections** for service addresses/
 
 **Test saved connection & list models** checks the saved endpoint/model catalog (and OpenRouter key authentication). It does not confirm image capability. Choose an image model once per task, through the model suggestions or an exact ID, and save. **Advanced instructions** adds task-specific preferences; changing models does not silently change them. Read the built-in instructions there.
 
-Under **Try a photo**, load the configured album, select one image and optionally assign its role. The disclosure names the destination/model before **Analyze selected photo** sends its preview image. Immich analysis uses the larger `preview` rendition (verified as JPEG on the live source), with an 8 MiB limit, while the album grid keeps small thumbnails. PhotoPrism still uses its existing preview tile. JPEG, PNG and WebP are accepted by the app, but compatible servers may support fewer formats. It returns a suggested label, description, keywords, role and uncertainty; inspect these against the photo. No inventory is saved. Only explicit analysis actions send photos to AI, and paid services may charge. There are no automatic retries. One analysis runs at a time per process, with a 90-second AI timeout. Configuration changes invalidate pending results.
+Under **Try a photo**, load the configured album, select one image and optionally assign its role. The disclosure names the destination/model before **Analyze selected photo** sends its preview image. Immich analysis uses the larger `preview` rendition (verified as JPEG on the live source), with an 8 MiB limit, while the album grid keeps small thumbnails. PhotoPrism still uses its existing preview tile. JPEG, PNG and WebP are accepted by the app, but compatible servers may support fewer formats. It returns a suggested label, description, keywords, role and uncertainty; inspect these against the photo. No inventory is saved. Only explicit analysis actions send photos to AI, and paid services may charge. A configured fallback can answer selected route/output failures; stale settings or inventory never trigger it. There is no unbounded retry loop. One analysis runs at a time per process, with a 90-second AI timeout. Configuration changes invalidate pending results.
 
 ### Create a box from several photos
 
 In **Album inbox**, select one to six unassigned photos of the same box, then choose **Create AI draft**. Set each role: Label, Inside a box, Spread-out contents, Storage location or Detail; automatic suggestions are optional. The disclosure identifies the saved image connection/model and the number of photos before **Analyze photos together** sends them in one request. Manual roles are preserved. The model combines complementary views, avoids counting repeated views as different items and reports uncertain or conflicting observations. These instructions guide the model; they do not guarantee identification or quantity accuracy.
 
-Review the combined label, description, keywords and uncertainty, and expand each photo's interpretation if useful. **Review & edit in box form** transfers the suggestion and photos into the ordinary new-box editor without saving. Correct the text, review uncertainty notes and roles, and choose the storage position. The box ID is generated automatically. Only **Save inventory session** creates the box/session. An existing box ID is rejected for this new-box workflow. For an existing box, use the update workflow below.
+Review and edit the combined label, description, keywords, uncertainty and each photo description before applying the suggestion. Photo descriptions can also be edited in the box form. **Review & edit in box form** transfers the suggestion and photos into the ordinary new-box editor without saving. Correct the text, review uncertainty notes and roles, and choose the storage position. The box ID is generated automatically. Only **Save inventory session** creates the box/session. An existing box ID is rejected for this new-box workflow. For an existing box, use the update workflow below.
 
 Total preview image data is limited to 16 MiB per analysis, in addition to the 8 MiB per-image bound. Photos and source configuration are revalidated when attaching them on final save. No inventory writes occur during analysis or transfer to the editor. Closing the editor discards the unsaved form.
 
 To add evidence to an existing box, open it and choose **Update inventory**. Attach any new photos via **Choose from album**, set their roles (for example Spread), and select **Include in AI analysis** on one to six current or newly attached photos. New attachments start selected; existing photos can be selected too. Choose **Analyze selected photos**, confirm the destination/roles, then **Analyze photos together**. The current editor name, contents description and keywords accompany the selected photos as context. The model is instructed to preserve useful prior contents and flag contradictions; an item missing from a close-up is not evidence of removal. Review the current description beside the complete proposal. **Apply suggestion to open editor** replaces the draft description/keywords and selected-photo interpretations; the box name changes only if explicitly selected (or previously empty). Location, box ID, manual notes and unselected photos remain intact. Edit the resulting fields and choose **Save inventory session** to persist a new historical session. Analysis and applying a suggestion do not save inventory. Changes by another client invalidate a stale analysis/save. Current photos can be analyzed even if removed from the source album; new attachments still require album membership.
 
-AI answer phrasing and translation drafting remain planned. Local search and manual inventory work without AI. See [AI design](docs/AI-DESIGN.md) for the wider direction.
+Public `/api/public/ask` already phrases the top lexical matches with the image task's AI route/fallback, returning `source: "ai"` or the local `source: "search"` fallback. It does not use the semantic preview or its stricter selection policy. Translation drafting remains planned. Local search and manual inventory work without AI. See [AI design](docs/AI-DESIGN.md) for the wider direction.
 
 ## Docker and Portainer
 
@@ -133,7 +144,7 @@ docker compose up -d --build
 
 The development stack binds only `127.0.0.1:3210`. Its named volume is independent of the existing application. Tests run in the image build before the runtime image is produced. Change `STORAGE_PORT` and `APP_BASE_URL` together if changing the published port. Use `docker compose stop` to stop the preview while retaining data.
 
-For Portainer, build and publish this image to your own registry, then use [compose.portainer.yaml](compose.portainer.yaml). Set `STORAGE_IMAGE` to an immutable published tag or digest, set distinct non-development keys, and set `APP_BASE_URL` to a URL reachable by HA and browsers. No registry image has been published by this project yet. The stack template is not a tested production deployment. Put the database volume on local storage, never SMB/NFS.
+For Portainer, use the published `mrsnille/storagesystem-base` image and [compose.portainer.yaml](compose.portainer.yaml). Pin `STORAGE_IMAGE` to a released tag or digest, configure real access settings, and set `APP_BASE_URL` to a URL reachable by HA and browsers. Production installation and updates through 0.28.0 are verified. Follow [Deployment](docs/DEPLOYMENT.md) for fresh install, release, backup and rollback. Put the database volume on local storage, never SMB/NFS.
 
 Do not use the disposable keys above for real data or network exposure. The application is a single-instance service. A reverse proxy should provide HTTPS for network use.
 
@@ -166,6 +177,9 @@ The UI offers inventory JSON import/export, data audit, SQLite backup download a
 
 ## Documentation
 
+- [Current status](docs/STATUS.md)
+- [Deployment and operations](docs/DEPLOYMENT.md)
+- [Remaining work](TODO.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Compatibility](docs/COMPATIBILITY.md)
@@ -179,8 +193,28 @@ Run `./scripts/verify-ha-container.ps1` after building the application image. It
 
 Excel catalog import/export is retired from scope (2026-10-20): the historical one-time label import is no longer needed.
 
-## Label printing preview
+## Label printing
 
-Since 0.15.0-dev, **Printing** goes through the separate [label service](https://github.com/Snille/label-service), the only program that talks to the label printer. This application chooses the content (a box label, a location-only label for a registered location, or a test label), lets you edit the label text, shows the service's preview and sends one print. It checks that the box has not changed between preview and print. Save the label service address and this system's client key under **Label service connection** (or set `LABEL_SERVICE_URL` and `LABEL_SERVICE_KEY`). Roll reading, the selected format, text sizes and text direction are managed on the label service's own page. Printing is disabled until configured. See [printing](docs/PRINTING.md).
+All printing uses the separate [label-service](https://github.com/Snille/label-service).
+**Printing** in the header configures its connection and standard/additional templates
+per label type. **Print label** on a box, **Print location label** and **Print storage
+unit label** on the map open a separate dialog with the service's preview and template
+buttons. Edit just the label text there. A box remembers its non-standard template.
+Direction is defined by the template, not a setting in this app. Test prints, roll
+reading, media and printer administration belong to the service.
 
-Versions 0.12-0.14 printed directly through CUPS. Their settings and print journal remain in the database (schema 2) for audit, backup and restore, but are no longer used.
+Save the connection/client key in the UI or set `LABEL_SERVICE_URL` and
+`LABEL_SERVICE_KEY`. Physical box-label output through the service has owner acceptance;
+current location/unit templates still need their own physical check when used.
+See [Printing](docs/PRINTING.md) for API, deduplication and acceptance boundaries.
+
+## Overview and storage-unit photos
+
+The album cover supplies the panoramic overview with clickable points that open a
+storage unit on the map. Edit points to place, drag or turn them together. Point sets
+are saved per image; a new cover can inherit the latest saved set before its first edit.
+
+On the storage map **Choose photo** assigns an album image to that unit, and clicking
+it opens the photo viewer. Unit photos count as assigned in the album inbox and cannot
+also be newly attached to a box. The photo remains in the external service; settings
+store its asset ID. The album cover is kept out of ordinary new photo selection.
