@@ -1,11 +1,31 @@
 # Shared embedding service
 
-Last recorded infrastructure changes: 2026-10-24. Documentation reconciled with
-application 0.28.0 on 2026-10-29; this review did not inspect/reconfigure the LXC.
+Last recorded infrastructure changes: 2026-10-29. Source application 0.30.0-dev;
+production application remains 0.29.0.
 Ollama01 is the shared TowerCube GPU service. Mimers Brain switched embeddings on
 2026-10-22. Storage System uses its vision fallback, but **not production embeddings**.
-The frozen embedding comparison passed; the native authenticated route and independent
-application decision acceptance remain open. See [Semantic runtime](SEMANTIC-RUNTIME.md).
+The frozen embedding comparison passed; native authenticated routing is verified,
+while independent application decision acceptance remains open. See [Semantic runtime](SEMANTIC-RUNTIME.md).
+
+## Native route for Storage System (2026-10-29)
+
+Added exact native `GET /api/tags` and `POST /api/embed` locations to
+`/etc/nginx/conf.d/embedding.conf`, guarded by the existing Storage-only
+`chat_authorized` map. They inherit the 2 MiB body limit; embed has a 120 s gateway
+read timeout (the application retains its stricter request timeout). Other native
+routes remain inaccessible. Mimers Brain gains no new native access and its
+existing compatible model/embedding routes are unchanged.
+
+Saved configuration: `/root/config-backup-native-20261029-221550/embedding.conf`.
+`nginx -t` passed before reload; Ollama stayed active without restart. Laptop checks
+verified Storage tags/embed 200 with a 1024-vector, unauthenticated tags 401,
+Mimers-native tags 403, native `/api/ps` 404 and GET embed 403. A synthetic probe
+from the production Storage System container also returned tags/embed 200/200,
+1024 dimensions, embedding 32 ms. Mimers compatible embeddings returned 200/1024.
+Only synthetic text was used for these route/compatibility probes.
+
+The application preview was separately tested on a read-only backup imported
+into isolated memory. No production search settings or stored vectors changed.
 
 The initial provisioning/GPU probes below are dated evidence. Their old resource
 measurements are not current capacity/latency guarantees. The latest recorded resource

@@ -14,7 +14,13 @@ export function mountSearchSettings(request, message) {
   const fields = () => ({ enabled: $('search-enabled').checked, baseUrl: $('search-server').value.trim().replace(/\/+$/, ''), model: $('search-model').value.trim(),
     modelRevision: $('search-model-revision').value.trim(), dimensions: Number($('search-dimensions').value) });
   const savedFields = () => Object.fromEntries(Object.keys(fields()).map(key => [key, state.embedding[key]]));
-  const modelDirty = () => state && (JSON.stringify(fields()) !== JSON.stringify(savedFields()) || $('search-key').value !== '' || $('search-clear-key').checked);
+  const verificationFields = () => ({ enabled: $('search-verification-enabled').checked, baseUrl: $('search-verification-server').value.trim().replace(/\/+$/, ''),
+    model: $('search-verification-model').value.trim(), timeoutMs: Number($('search-verification-timeout').value),
+    similarity: $('search-verification-similarity').value === '' ? null : Number($('search-verification-similarity').value),
+    margin: $('search-verification-margin').value === '' ? null : Number($('search-verification-margin').value) });
+  const savedVerificationFields = () => Object.fromEntries(Object.keys(verificationFields()).map(key => [key, state.verification[key]]));
+  const modelDirty = () => state && (JSON.stringify(fields()) !== JSON.stringify(savedFields()) || $('search-key').value !== '' || $('search-clear-key').checked
+    || JSON.stringify(verificationFields()) !== JSON.stringify(savedVerificationFields()) || $('search-verification-key').value !== '' || $('search-verification-clear-key').checked);
   function updateDirty() {
     const dirty = modelDirty();
     for (const button of dialog.querySelectorAll('button[type="submit"]')) button.disabled = busy;
@@ -107,14 +113,20 @@ export function mountSearchSettings(request, message) {
     $('search-model-revision').value = e.modelRevision; $('search-dimensions').value = e.dimensions;
     $('search-key').value = ''; $('search-clear-key').checked = false;
     $('search-key-status').textContent = t(e.apiKeyConfigured ? 'A key is saved. Its value is never returned to this page.' : 'No key saved for this connection.');
+    const v = state.verification;
+    $('search-verification-enabled').checked = v.enabled; $('search-verification-server').value = v.baseUrl;
+    $('search-verification-model').value = v.model; $('search-verification-timeout').value = v.timeoutMs;
+    $('search-verification-similarity').value = v.similarity ?? ''; $('search-verification-margin').value = v.margin ?? '';
+    $('search-verification-key').value = ''; $('search-verification-clear-key').checked = false;
+    $('search-verification-key-status').textContent = t(v.apiKeyConfigured ? 'A key is saved. Its value is never returned to this page.' : 'No key saved for this connection.');
     $('search-environment-note').hidden = !state.usingEnvironment;
     $('search-rule-form').hidden = true; $('search-preview-result').hidden = true; editingId = null;
     ruleList(); updateDirty();
   }
-  async function save(embedding, rules) {
+  async function save(embedding, rules, verification = savedVerificationFields()) {
     busy = true; updateDirty(); generation++;
     try {
-      state = await api('search-settings', { revision: state.revision, embedding, rules }, 'PUT');
+      state = await api('search-settings', { revision: state.revision, embedding, rules, verification }, 'PUT');
       models = []; $('search-models').replaceChildren(); populate(); await refreshStatus();
     } finally { busy = false; updateDirty(); }
   }
@@ -139,7 +151,7 @@ export function mountSearchSettings(request, message) {
     } catch (error) { message(error.message, true); }
   });
   $('close-search-settings').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => { generation++; historyGeneration++; clearTimeout(timer); $('search-key').value = ''; });
+  dialog.addEventListener('close', () => { generation++; historyGeneration++; clearTimeout(timer); $('search-key').value = ''; $('search-verification-key').value = ''; });
   $('search-history-filter').addEventListener('submit', event => { event.preventDefault(); loadHistory(); });
   $('search-history-source').addEventListener('change', () => loadHistory());
   $('search-history-newest').addEventListener('click', () => loadHistory());
@@ -153,7 +165,11 @@ export function mountSearchSettings(request, message) {
   });
   $('search-model-form').addEventListener('submit', async event => {
     event.preventDefault();
-    try { await save({ ...fields(), apiKey: $('search-key').value, clearCredentials: $('search-clear-key').checked }, state.rules); status(t('Embedding settings saved.')); }
+    try {
+      await save({ ...fields(), apiKey: $('search-key').value, clearCredentials: $('search-clear-key').checked }, state.rules,
+        { ...verificationFields(), apiKey: $('search-verification-key').value, clearCredentials: $('search-verification-clear-key').checked });
+      status(t('Search model settings saved.'));
+    }
     catch (error) { status(t(error.message), true); }
   });
   $('search-load-models').addEventListener('click', async () => {
@@ -201,6 +217,9 @@ export function mountSearchSettings(request, message) {
       const reasons = { conflicting_rules: 'Several saved rules match this question. Review their questions.',
         rule_evidence_missing: 'A selected box no longer supports this rule. Review its contents.' };
       if (reasons[result.reason]) $('search-preview-meta').textContent += ` · ${t(reasons[result.reason])}`;
+      const verificationOutcomes = { supported: 'Identity supported by current inventory', unsupported: 'Item identity was not supported',
+        unavailable: 'Identity verification unavailable or timed out', invalid: 'Invalid identity response', busy: 'Identity verifier busy', oversized: 'Inventory text exceeds the verification limit' };
+      if (verificationOutcomes[result.verification?.outcome]) $('search-preview-meta').textContent += ` · ${t(verificationOutcomes[result.verification.outcome])}`;
       $('search-preview-matches').replaceChildren(...result.matches.map(box => node('li', `${box.label} · ${location(box)}`)));
       $('search-preview-result').hidden = false; status(t('Preview complete. No inventory was changed.'));
     } catch (error) { if (dialog.open && token === generation) status(t(error.message), true); }

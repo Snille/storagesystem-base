@@ -1,8 +1,40 @@
 # Verification and acceptance
 
-Reviewed 2026-10-29 for 0.29.0. This page separates current checks, recorded live
+Reviewed 2026-10-29 for source 0.30.0-dev / production 0.29.0. This page separates current checks, recorded live
 acceptance and outstanding work. Historical release details are in [History](HISTORY.md)
 and the [migration record](archive/PORTAINER-MIGRATION-2026-10.md).
+
+## Development verification (0.30.0-dev, not deployed)
+
+All 121 tests pass serially on Windows Node 26.12.1 and pinned Node 24.14 Docker.
+`npm run check` passed syntax checks but again hit the existing unrelated
+`security.test.js` adjacent-port `EADDRINUSE` during parallel tests. The serial
+command below remains the temporary workaround; the flaky test is still in TODO.
+New checks cover optional legacy verification settings, independent credential
+redaction/retention/clearing, invalid thresholds/URLs/timeouts, source-bound runtime
+proof, unsupported/invalid/unavailable identity, direct-evidence bypass, request
+injection rejection, settings/current-text/competitor races, busy/timeout behavior
+and full verification-settings backup/restore. All data is synthetic/isolated.
+
+The Swedish browser fixture verified saving disabled identity-model settings,
+blank returned key fields with presence indicator, persistence after reload, a
+normal direct-evidence preview and its separate search-log entry. The new fieldset
+was visually checked. No real credentials or upstream model were used in UI tests.
+
+The authenticated native gateway was separately probed from the production app
+container with synthetic text: tags/embed 200/200, 1024 dimensions. Mimers Brain's
+existing compatible embeddings passed after the Nginx reload; access boundaries
+were checked from the laptop. No application deployment/settings change occurred.
+
+`verify-runtime-preview.js` then imported a read-only production backup's 166 boxes
+into memory and built a separate audited cache in 16.1 s. Seven development queries
+all received full semantic rankings. Two English knee-pad queries were verified as
+Knäskydd (10.7 s first, 1.4 s next); a thermal-camera substitution was refused in
+1.6 s. Original backup/inventory hashes stayed unchanged. Historical regression
+thresholds were supplied only to this isolated test. This is not independent
+acceptance, speech testing, public semantic activation or production calibration.
+Fresh owner-labelled questions are deferred until further hands-on testing.
+See [Semantic runtime](SEMANTIC-RUNTIME.md) for inputs and private evidence.
 
 ## Release verification (0.29.0)
 

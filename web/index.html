@@ -295,7 +295,21 @@
         <button id="search-load-models" type="button" class="quiet">Load saved server models</button><p class="hint">Save the server first. Loading models sends no inventory text and does not verify embedding support.</p>
         <details><summary>Model version and dimensions</summary><label>Immutable model digest<input id="search-model-revision" maxlength="64" spellcheck="false"></label><p class="hint">Choosing a listed model fills its digest. A changed digest requires new vectors.</p><label>Vector dimensions<input id="search-dimensions" type="number" min="1" max="8192" value="1024" required></label></details>
         <label class="check-label"><input id="search-enabled" type="checkbox">Use embeddings in this preview</label><p class="hint">Enabling sends current inventory descriptions to the saved Ollama server and builds a separate cache. Public search is not enabled by this setting.</p>
-        <div class="actions"><button type="submit">Save embedding settings</button><button id="search-retry-index" type="button" class="quiet">Retry indexing</button></div>
+          <fieldset><legend>Item identity verification</legend>
+            <p class="hint">A similarity score alone cannot authorize an answer. Verification checks the best candidate against current inventory text. Enable only after testing the model and thresholds.</p>
+            <label>Compatible API base URL<input id="search-verification-server" type="url" maxlength="1000"></label>
+            <label>Verification server key<input id="search-verification-key" type="password" autocomplete="new-password" maxlength="4096"></label><p id="search-verification-key-status" class="hint"></p>
+            <label class="check-label"><input id="search-verification-clear-key" type="checkbox">Clear saved verification key</label>
+            <p class="hint">Changing the server clears its saved key. A blank key otherwise keeps it.</p>
+            <label>Verification model<input id="search-verification-model" maxlength="200"></label>
+            <label>Verification timeout (ms)<input id="search-verification-timeout" type="number" min="100" max="90000" step="100" required></label>
+            <label>Minimum cosine similarity<input id="search-verification-similarity" type="number" min="-1" max="1" step="any"></label>
+            <label>Minimum lead over the next candidate<input id="search-verification-margin" type="number" min="0" max="2" step="any"></label>
+            <p class="hint">Thresholds have no preset acceptance values. They qualify a candidate for verification; they never prove item identity.</p>
+            <label class="check-label"><input id="search-verification-enabled" type="checkbox">Verify semantic candidates in this preview</label>
+            <p class="hint">When needed, sends the question and one candidate's current text to the saved verification server. No photos or locations are sent. Public search is unchanged.</p>
+          </fieldset>
+          <div class="actions"><button type="submit">Save search model settings</button><button id="search-retry-index" type="button" class="quiet">Retry indexing</button></div>
       </form>
       <p id="search-index-status" role="status" class="hint"></p>
     </section>

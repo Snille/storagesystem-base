@@ -5,7 +5,7 @@ snapshot and subsequent comparisons/failed and repaired policy runs. Statements
 about application versions, missing features and deployment status describe the
 named experiment, not current production. Preserve failed results and source hashes.
 
-As of 2026-10-29 the app is production 0.28.0; optional indexing/rules/decision
+As of 2026-10-29 the app is production 0.29.0 (source 0.30.0-dev); optional indexing/rules/decision
 previews exist, but production embeddings are disabled and public semantic retrieval
 is not activated. Current implementation is in [Semantic runtime](SEMANTIC-RUNTIME.md)
 and [Answer policy](ANSWER-POLICY.md); remaining acceptance is in [TODO](../TODO.md).

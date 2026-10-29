@@ -21,13 +21,21 @@ const rule = action => ({ id: 'extension-leads', queries: ['Skarvsladd'], action
   ...(action === 'clarify' ? { question: { sv: 'Ska det vara en färdig kabel?', en: 'Do you need a finished cable?' } } : {}) });
 
 async function native(t) {
-  const state = { calls: [], digest: 'a'.repeat(64), delay: 0, status: 200 };
+  const state = { calls: [], digest: 'a'.repeat(64), delay: 0, status: 200, verificationDelay: 0, verificationStatus: 200,
+    proof: { supported: true, relation: 'same_item', field: 'summary', quote: fixture.sessions[1].summary } };
   const server = createServer(async (req, res) => {
     let text = ''; for await (const chunk of req) text += chunk;
     const input = text ? JSON.parse(text) : null; state.calls.push({ path: req.url, input, authorization: req.headers.authorization });
     if (state.delay && input?.input === 'delayed query') await new Promise(resolve => setTimeout(resolve, state.delay));
-    res.writeHead(state.status, { 'content-type': 'application/json' });
-    res.end(JSON.stringify(req.url === '/api/tags' ? { models: [{ name: 'synthetic:1', digest: state.digest }] } : { model: 'synthetic:1', embeddings: [[1, 0]] }));
+    if (req.url === '/v1/chat/completions') {
+      if (state.verificationDelay) await new Promise(resolve => setTimeout(resolve, state.verificationDelay));
+      res.writeHead(state.verificationStatus, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(state.proof) } }] }));
+    } else {
+      res.writeHead(state.status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(req.url === '/api/tags' ? { models: [{ name: 'synthetic:1', digest: state.digest }] }
+        : { model: 'synthetic:1', embeddings: [input.input.includes('Träskruvar') ? [0, 1] : [1, 0]] }));
+    }
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
@@ -140,12 +148,14 @@ test('rules and model configuration survive full backup/restore; runtime invento
   const store = new Store(join(dir, 'source.sqlite'));
   try {
     store.importLegacy(structuredClone(fixture)); const settings = new SearchSettings(store), view = settings.view();
-    settings.save({ revision: view.revision, embedding: { ...fields(view), baseUrl: 'http://localhost:11434', apiKey: 'synthetic-backup-key' }, rules: [rule('clarify')] });
+    settings.save({ revision: view.revision, embedding: { ...fields(view), baseUrl: 'http://localhost:11434', apiKey: 'synthetic-backup-key' }, rules: [rule('clarify')],
+      verification: { ...verifierFields(view), baseUrl: 'http://localhost:11434/v1', apiKey: 'synthetic-verifier-key' } });
     await store.backup(join(dir, 'backup.sqlite')); await restore(join(dir, 'backup.sqlite'), join(dir, 'restored.sqlite'));
     const restored = new Store(join(dir, 'restored.sqlite'));
     try {
       assert.deepEqual(restored.settings(), store.settings()); assert.deepEqual(restored.read(), store.read());
       assert.equal(new SearchSettings(restored).view().rules[0].question.sv, 'Ska det vara en färdig kabel?');
+      assert.equal(new SearchSettings(restored).view().verification.apiKeyConfigured, true);
       assert.equal(restored.audit().ok, true);
     } finally { restored.close(); }
   } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
@@ -165,4 +175,111 @@ test('HTTP search settings are protected and shared preview never changes public
   assert.equal((await fetch(base + '/api/public/ask', { method: 'POST', headers: { 'x-api-key': 'read', 'content-type': 'application/json' }, body: '{"query":"solder"}' }).then(r => r.json())).source, 'search');
   assert.equal((await fetch(base + '/api/public/search?q=solder', { headers: { 'x-api-key': 'read' } }).then(r => r.json())).matches[0].boxId, fixture.boxes[0].boxId);
   assert.match(await (await fetch(base + '/search-settings.js')).text(), /mountSearchSettings/);
+});
+
+const verifierFields = view => { const { apiKeyConfigured, ...v } = view.verification; return v; };
+const verifierConfig = config => ({ enabled: true, baseUrl: `${config.baseUrl}/v1`, model: 'synthetic-identity',
+  timeoutMs: 1000, similarity: 0.8, margin: 0.2, apiKey: 'synthetic-verifier-key' });
+
+test('verification settings are optional for old data, explicit, redacted, and preserve independent credentials', t => {
+  const { store, settings } = setup(t);
+  store.writeSettings({ searchWorkspace: { embedding: fields(settings.view()), rules: [] } });
+  let view = settings.view();
+  assert.equal(view.verification.enabled, false); assert.equal(view.verification.similarity, null);
+  const verification = { ...verifierFields(view), baseUrl: 'http://localhost:11434/v1/', model: 'identity', apiKey: 'synthetic-verifier-key' };
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification });
+  assert.equal(view.verification.apiKeyConfigured, true); assert.equal(JSON.stringify(view).includes('synthetic-verifier-key'), false);
+  assert.equal(view.verification.baseUrl, 'http://localhost:11434/v1');
+  for (const invalid of [
+    { ...verifierFields(view), enabled: true }, { ...verifierFields(view), timeoutMs: 99 },
+    { ...verifierFields(view), timeoutMs: 90001 }, { ...verifierFields(view), margin: -1 },
+    { ...verifierFields(view), similarity: 2 }, { ...verifierFields(view), baseUrl: 'http://user:key@localhost/v1' },
+    { ...verifierFields(view), apiKey: 'line\nbreak' }, { ...verifierFields(view), identityEvidence: [] }
+  ]) assert.throws(() => settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: invalid }));
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), apiKey: '' } });
+  assert.equal(view.verification.apiKeyConfigured, true);
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), baseUrl: 'http://localhost:11435/v1' } });
+  assert.equal(view.verification.apiKeyConfigured, false);
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), apiKey: 'replacement-fixture' } });
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), clearCredentials: true } });
+  assert.equal(view.verification.apiKeyConfigured, false); assert.equal(store.audit().ok, true);
+});
+
+test('runtime preview requires source-bound identity proof and keeps thresholds and public requests separate', async t => {
+  const { state, config } = await native(t), { store, settings } = setup(t);
+  const inventory = new Inventory(store), service = new SearchService(inventory, {}); t.after(() => service.close());
+  const before = store.read();
+  let view = settings.save({ revision: settings.revision(), embedding: config, rules: [], verification: verifierConfig(config) });
+  await until(() => service.status().state === 'ready');
+  const query = 'joining electronics';
+  let result = await service.preview({ query, revision: view.revision }, 'sv');
+  assert.equal(result.reason, 'verified_semantic_evidence'); assert.equal(result.verification.outcome, 'supported');
+  assert.deepEqual(result.selectedBoxIds, [fixture.boxes[0].boxId]);
+  const request = state.calls.find(c => c.path === '/v1/chat/completions');
+  assert.equal(request.authorization, 'Bearer synthetic-verifier-key');
+  assert.equal(JSON.stringify(request.input).includes(fixture.boxes[0].boxId), false);
+  const count = () => state.calls.filter(c => c.path === '/v1/chat/completions').length;
+  const previous = count();
+  result = await service.preview({ query: 'solder' }, 'sv');
+  assert.equal(result.reason, 'direct_current_evidence'); assert.equal(result.verification.outcome, 'not_required'); assert.equal(count(), previous);
+  state.proof = { supported: false, relation: 'related_item', quote: '' };
+  result = await service.preview({ query }, 'sv'); assert.equal(result.decision, 'no_supported_match'); assert.equal(result.verification.outcome, 'unsupported');
+  state.proof = { supported: true, relation: 'same_item', field: 'summary', quote: 'Invented item' };
+  result = await service.preview({ query }, 'sv'); assert.equal(result.decision, 'no_supported_match'); assert.equal(result.verification.outcome, 'invalid');
+  state.verificationStatus = 503;
+  result = await service.preview({ query }, 'sv'); assert.equal(result.decision, 'no_supported_match'); assert.equal(result.verification.outcome, 'unavailable');
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), enabled: false } });
+  const calls = count(); result = await service.preview({ query }, 'sv');
+  assert.equal(result.decision, 'no_supported_match'); assert.equal(count(), calls);
+  for (const extra of [{ thresholds: { similarity: -1, margin: 0 } }, { confirmedIntent: 'solder' }, { identityEvidence: [state.proof] }]) {
+    await assert.rejects(service.preview({ query, ...extra }), { status: 400 });
+  }
+  assert.equal(inventory.ask(query, 'sv').source, 'search'); assert.deepEqual(store.read(), before);
+});
+
+test('settings changes and inventory changes during verification cannot return an old-policy answer', async t => {
+  const { state, config } = await native(t), { store, settings } = setup(t);
+  const service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  let view = settings.save({ revision: settings.revision(), embedding: config, rules: [], verification: verifierConfig(config) });
+  await until(() => service.status().state === 'ready'); state.verificationDelay = 150;
+  const pending = service.preview({ query: 'joining electronics', revision: view.revision }, 'sv');
+  await until(() => state.calls.some(c => c.path === '/v1/chat/completions'));
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), model: 'different-identity' } });
+  await assert.rejects(pending, { status: 409 });
+  const count = state.calls.filter(c => c.path === '/v1/chat/completions').length;
+  const stale = service.preview({ query: 'joining electronics', revision: view.revision }, 'sv');
+  await until(() => state.calls.filter(c => c.path === '/v1/chat/completions').length > count);
+  store.mutate(data => { data.sessions.find(s => s.sessionId === 'S-1').summary = 'Different current contents.'; });
+  await assert.rejects(stale, { status: 400 });
+  assert.equal(store.audit().ok, true);
+});
+
+test('changing a competitor during identity verification invalidates the original ranking', async t => {
+  const { state, config } = await native(t), { store, settings } = setup(t);
+  const service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  settings.save({ revision: settings.revision(), embedding: config, rules: [], verification: verifierConfig(config) });
+  await until(() => service.status().state === 'ready'); state.verificationDelay = 150;
+  const pending = service.preview({ query: 'joining electronics' }, 'sv');
+  await until(() => state.calls.some(c => c.path === '/v1/chat/completions'));
+  store.mutate(data => { data.sessions.find(s => s.sessionId === 'S-2').summary = 'Another candidate now mentions electronics.'; });
+  await assert.rejects(pending, { status: 409 });
+});
+
+test('runtime identity busy and timeout outcomes abstain without overlapping verifier calls', async t => {
+  const { state, config } = await native(t), { store, settings } = setup(t);
+  const service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  let view = settings.save({ revision: settings.revision(), embedding: config, rules: [], verification: verifierConfig(config) });
+  await until(() => service.status().state === 'ready'); state.verificationDelay = 150;
+  const first = service.preview({ query: 'joining electronics' }, 'sv');
+  await until(() => state.calls.some(c => c.path === '/v1/chat/completions'));
+  const second = await service.preview({ query: 'joining electronics' }, 'sv');
+  assert.equal(second.decision, 'no_supported_match'); assert.equal(second.verification.outcome, 'busy');
+  assert.equal(state.calls.filter(c => c.path === '/v1/chat/completions').length, 1);
+  assert.equal((await first).verification.outcome, 'supported');
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [], verification: { ...verifierFields(view), timeoutMs: 100 } });
+  await service.transition;
+  await until(() => service.status().state === 'ready');
+  state.verificationDelay = 200;
+  const timedOut = await service.preview({ query: 'joining electronics', revision: view.revision }, 'sv');
+  assert.equal(timedOut.decision, 'no_supported_match'); assert.equal(timedOut.verification.outcome, 'unavailable');
 });

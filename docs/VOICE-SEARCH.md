@@ -1,7 +1,7 @@
 # Workshop voice search: current flow and proposed design
 
 Hardware/pipeline evidence was recorded on 2026-10-20; application sections were
-reconciled with production 0.28.0 on 2026-10-29. The public backend switched to this
+reconciled with production 0.29.0 / source 0.30.0-dev on 2026-10-29. The public backend switched to this
 application on 2026-10-25. Hardware selectors/firmware and physical speech were not
 retested for the documentation update. Keep the dated observations separate from
 the implemented backend and proposed semantic flow.
@@ -114,7 +114,7 @@ audio. Old backend behavior was checked against the reference source at
 `a92ed1d22f5bfb3e61a168e29bdae0b1ea04aadb`; no production backend settings or
 private prompts were exported.
 
-## Current application behavior (0.28.0)
+## Current application behavior (production 0.29.0 / source 0.30.0-dev)
 
 Shared lexical search serves browser, REST and MCP, with Swedish word variants,
 RC synonyms, short transpositions and retained filename lookup. Reviewed image-AI
@@ -128,8 +128,9 @@ both missed the same 11 lexical retrieval cases. This is recorded regression,
 not physical speaker acceptance or proof of the future selection policy.
 
 The optional semantic index, owner-rule UI and decision preview are implemented,
-but the preview does not attach the isolated identity verifier, production indexing
-is disabled, and public search/ask/HA do not use this policy. Contextual follow-up
+and source 0.30.0-dev connects optional saved identity verification/thresholds to
+the management preview. Production indexing is disabled, and public search/ask/HA
+do not use this policy. Contextual follow-up
 is not implemented. See [Semantic runtime](SEMANTIC-RUNTIME.md).
 
 Browser voice input (0.24.0) fills the search using SpeechRecognition when supported.
@@ -287,15 +288,17 @@ scope. The [isolated embedding comparison](SEMANTIC-EVALUATION.md) now measures
 local CPU retrieval and a separate experimental decision policy. BGE-M3 dense
 leads that exploratory set; the tested equal-weight lexical fusion reduces top-1.
 A native optional runtime now exists with a versioned SQLite cache and strict
-length handling, as described in SEMANTIC-RUNTIME.md. Public semantic activation,
-untouched questions and authenticated native route verification remain open.
+length handling, as described in SEMANTIC-RUNTIME.md. Public semantic activation
+and untouched questions remain open. The authenticated native route was verified
+from the production container on 2026-10-29; see SEMANTIC-RUNTIME.md.
 
 Reconsider PostgreSQL/pgvector if measured load calls for many concurrent writers,
 multiple application replicas, a substantially larger chunk corpus or server-side
 vector indexing/operations. None follows from 164 boxes and a projected doubling.
-The embedding service's availability/latency and the production network path to
-it need explicit verification; the development Spark route still depends on the
-laptop's GSA connection.
+The authenticated Ollama01 production network path is verified; identity/threshold
+quality and latency still need acceptance for production voice use. The earlier
+development Spark route depended on the laptop's GSA connection; the isolated
+2026-10-29 runtime check used the LAN Ollama01 model instead.
 
 ## Acceptance before enabling semantic voice search
 

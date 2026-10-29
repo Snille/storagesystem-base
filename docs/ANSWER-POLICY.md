@@ -6,6 +6,12 @@ evaluate selection and answer behavior before public activation. Optional runtim
 embeddings arrived in 0.10.2-dev; saved rule/model configuration and management UI
 arrived in 0.11.0-dev. See SEMANTIC-RUNTIME.md.
 
+Source 0.30.0-dev now connects the verifier to the management preview through
+optional saved endpoint/model/key, timeout and explicit thresholds. Old settings
+default to disabled with no thresholds. Production remains 0.29.0 with embeddings
+disabled; the implementation is not public-search activation. See the runtime
+document for the isolated 166-box functional/latency check and its acceptance limits.
+
 ## Service boundary
 
 `Inventory.previewAnswer(query, options, language)` reads current inventory and
@@ -93,8 +99,9 @@ timeout. Unavailable, timed-out, malformed or unsupported verification cannot
 authorize a semantic-only answer; direct inventory evidence still works. No
 provider/model/key is enabled or persisted automatically. Evaluation explicitly
 uses a 60-second timeout against the already running local model. Production
-endpoint selection, rule/intent configuration, latency budget, resource sharing
-with image analysis and deployment reachability remain open.
+model/threshold acceptance, rule/intent configuration, latency budget and resource
+sharing acceptance with image analysis remain open. Native deployment reachability
+was verified on 2026-10-29; management runtime wiring exists in source 0.30.0-dev.
 
 ## Owner interaction rules
 

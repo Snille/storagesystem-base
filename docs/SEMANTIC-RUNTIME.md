@@ -1,6 +1,6 @@
 # Semantic runtime preview
 
-Current for 0.29.0, reviewed 2026-10-29. Production reports `enabled: false`.
+Current source: 0.30.0-dev, reviewed 2026-10-29. Production 0.29.0 reports `enabled: false`.
 Management-only means the configured management access mode (key or explicitly
 open management), not a separate mandatory key in every deployment.
 
@@ -63,17 +63,20 @@ finite, nonzero vector of the configured dimension. Redirects, malformed/oversiz
 responses, context rejection and timeouts fail closed. Provider errors and keys
 are not exposed through HTTP. Each upstream request has a 15-second timeout.
 
-**Deployment route still pending:** on 2026-10-23 the existing authenticated LAN
-gateway returned 404 for both native paths. That route has not been reverified
-from production; later vision-route provisioning does not establish native access. The live test
-used a temporary localhost SSH tunnel to the existing Ollama process. That proves
-the application adapter/model path, not the eventual authenticated LXC route.
-An approved route for these two paths is required before enabling this preview
-in a deployment; the adapter does not fall back to the truncating compatible API.
+**Native route verified 2026-10-29:** the authenticated LAN gateway now permits
+Storage System `GET /api/tags` and `POST /api/embed`, using the existing
+Storage-only authorization map. A synthetic probe from the actual production app
+container returned 200/200, 1024 dimensions and a 32 ms embedding response.
+Unauthenticated tags returned 401, Mimers Brain's key returned 403 for native tags,
+native model administration stayed 404, and GET embed was denied. Mimers Brain's
+existing compatible embedding route still returned a valid 1024-vector.
+Nginx was backed up, syntax-checked and reloaded; Ollama was not restarted.
+The earlier localhost-tunnel runs remain dated evidence. The adapter still does
+not fall back to the truncating compatible API. See [Embedding service](EMBEDDING-SERVICE.md).
 
 ## Explicit configuration and management API
 
-Search & answers now saves embedding configuration and owner rules as
+Search & answers now saves embedding configuration, optional identity-verification configuration and owner rules as
 `searchWorkspace` in the ordinary settings table. The main database backup retains
 these settings and credentials; inventory-only JSON does not. Environment values
 below are the fallback only until a search configuration has been saved. The UI
@@ -93,11 +96,11 @@ current Compose templates do not forward the optional environment fallback value
 
 Existing management authentication and origin checks protect these endpoints:
 
-- `GET/PUT /api/manage/search-settings`: redacted configuration/revision and complete optimistic writes. Blank keys retain existing credentials, changing server clears them, and explicit clearing is supported. New/changed rules must reference existing boxes. Unchanged imported rules may remain stale; they cannot authorize answers without current evidence.
+- `GET/PUT /api/manage/search-settings`: redacted configuration/revision and complete optimistic writes. Blank keys retain existing credentials, changing server clears them, and explicit clearing is supported independently for embedding/verification connections. Omitted `verification` retains its previous value for older clients. New/changed rules must reference existing boxes. Unchanged imported rules may remain stale; they cannot authorize answers without current evidence.
 - `POST /api/manage/search-settings/models`: explicit saved-revision native model discovery. Only the saved endpoint/key are used. The response contains names/digests, not a claim of embedding support. No inventory is sent. Concurrent catalog requests are bounded and stale settings/provider errors fail safely.
 - `GET /api/manage/semantic`: enabled/state/current coverage, model metadata and cache audit.
 - `POST /api/manage/semantic/rebuild`: schedule an incremental reconcile/retry; returns 202 without waiting for inference. A valid existing cache is reused.
-- `POST /api/manage/semantic/preview?lang=sv`: JSON `{ "query": "...", "revision": "saved revision" }`; returns the shared decision preview using saved rules, full current semantic ranking and lexical fallback on unavailable retrieval. Works with embeddings disabled. The UI always sends the revision; omitted revision uses the current snapshot for compatibility. Request-supplied thresholds, rules, intent aliases and identity proofs are rejected. Semantic-only scores cannot authorize answers here.
+- `POST /api/manage/semantic/preview?lang=sv`: JSON `{ "query": "...", "revision": "saved revision" }`; returns the shared decision preview using saved rules, full current semantic ranking and lexical fallback on unavailable retrieval. With verification explicitly enabled, threshold-qualified semantic-only candidates require a source-bound identity check. Works with embeddings disabled. The UI always sends the revision; omitted revision uses the current snapshot for compatibility. Request-supplied thresholds, rules, intent aliases and identity proofs are rejected. Scores alone cannot authorize answers. `verification` response metadata contains enabled/outcome, never keys or upstream error text.
 
 Changing saved embedding settings replaces the worker outside inventory
 transactions, invalidates old-profile reuse and applies without restarting the
@@ -116,9 +119,23 @@ This is linguistic inflection, not speech-error correction. Deleted or changed
 inventory cannot be overridden by a saved rule. Conflicts/missing evidence are
 explained in the preview. No predefined workshop-specific rules are shipped.
 
-This preview does not attach the optional identity verifier or configure semantic
-thresholds. Independent acceptance, identity model/latency configuration,
-deployment routing and public-interface activation remain separate work.
+Source 0.30.0-dev attaches the optional identity verifier through saved
+`verification`: `enabled`, compatible `baseUrl`, `model`, `timeoutMs`, `similarity`,
+`margin`, and optional private `apiKey`. The UI exposes these under Embedding model.
+Old databases default to disabled, blank endpoint/model and null thresholds;
+there is no automatic model, key reuse or threshold calibration. The timeout
+defaults to 15000 ms, with an explicit allowed range of 100–90000 ms. Similarity
+must be in [-1,1], margin in [0,2]; both must be supplied before enabling.
+Changing the verification API base clears its key. These settings are validated
+on save/import/audit/restore and included in private SQLite backups.
+
+Only the best candidate's bounded current text and the question reach the verifier;
+locations, IDs and photos do not. Direct evidence does not invoke it. Busy,
+unavailable, invalid, oversized or unsupported verification cannot authorize an
+answer. Settings are rechecked after verification, and a current-content snapshot
+also guards changes to other ranking competitors. Identity settings/rules do not
+invalidate valid embedding vectors. Production configuration, independent
+acceptance and public-interface activation remain separate work.
 
 ## Verification
 
@@ -144,3 +161,24 @@ source/current-and-archived-code hashes and binds cached vectors to the exact
 current sessions/content/profile. Previously collected questions are regression
 evidence. Neither retrieval metrics nor a cache audit establish independent
 decision, Home Assistant speech or production acceptance.
+
+## Isolated runtime check (2026-10-29)
+
+`scripts/verify-runtime-preview.js BACKUP CONFIG_JSON QUESTIONS_JSON NEW_PRIVATE_OUTPUT`
+reads a backup without writes and imports inventory only into memory. Config JSON
+contains explicit embedding/verification fields and rules; keys come exclusively
+from `STORAGE_EMBEDDING_KEY` / `STORAGE_VERIFICATION_KEY`. Questions are a JSON array
+of `{ id, query, language }`. It creates a new derived cache/report directory,
+archives code hashes/source, audits inventory/cache and verifies the original backup
+and inventory hashes are unchanged. It does not change deployed settings.
+
+A 166-box backup indexed via the authenticated native gateway in 16097 ms.
+Seven development queries all obtained complete semantic rankings. Qwen
+`qwen3-vl:8b-instruct-16k` verified two English knee-pad queries as Knäskydd;
+first verification took 10699 ms including retrieval, next 1376 ms. A thermal-camera
+query was refused (1613 ms). `Masterenhet` used direct evidence; `mat enhet` remained
+unsupported. The run reused the old regression thresholds (0.46485787630081177 /
+0.011070549488067627) explicitly in its private test config, without production
+calibration or deployment. Evidence is under the canonical private backup directory
+`semantic-preview-20261029T221927Z/evidence`. Fresh owner-labelled acceptance is
+deferred at the owner's request until more hands-on testing.

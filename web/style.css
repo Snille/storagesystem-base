@@ -63,3 +63,4 @@ a.button{display:inline-block;border:1px solid transparent;border-radius:7px;pad
 #label-dialog summary { cursor: pointer; }
 
 .search-history-list{display:grid;gap:12px;margin:16px 0}.search-history-entry{border:1px solid var(--line);border-radius:10px;padding:16px;overflow-wrap:anywhere}.search-history-entry h4{margin:0 0 8px}.search-history-entry p{white-space:pre-wrap}.search-history-entry ul{padding-left:22px}.search-history-entry li{margin:6px 0}#search-history-filter{align-items:end}#search-history-filter label{flex:1;min-width:160px}
+#search-model-form fieldset{min-width:0;border:1px solid var(--line);border-radius:10px;margin:20px 0;padding:12px 16px}#search-model-form fieldset>label{margin-bottom:14px}#search-model-form legend{font-size:14px;font-weight:650;padding:0 6px}

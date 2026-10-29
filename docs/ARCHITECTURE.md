@@ -1,6 +1,6 @@
 # Architecture
 
-Current source/production: 0.29.0. Reviewed 2026-10-29. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
+Current source: 0.30.0-dev; production: 0.29.0. Reviewed 2026-10-29. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
 
 ## Runtime and service boundaries
 
@@ -111,7 +111,7 @@ Album assignment and write ownership use the same effective current-session sele
 
 [VOICE-SEARCH.md](VOICE-SEARCH.md) documents the existing physical-button-to-HA-to-Piper-to-announcement path and proposed runtime retrieval/answer contract. `src/answer-policy.js` implements a synchronous decision preview used by `Inventory.previewAnswer`. It combines current literal evidence with externally supplied, current-session-bound semantic scores, and validates explicit owner rules separately. It performs no network calls or writes, and formats selected destinations from current inventory records. The public ask/search and MCP/browser paths retain their previous behavior; no semantic runtime is activated. See [ANSWER-POLICY.md](ANSWER-POLICY.md) for evidence precedence, limits, configuration and evaluation.
 
-Retain SQLite for the observed 164 boxes/293 current photo references and their conservative doubled scenario. Store derived, versioned embeddings separately from inventory rows and compare this small corpus directly before considering a vector extension or PostgreSQL. Original image files stay in the external photo service. Revisit the database choice on measured concurrency/corpus growth rather than treating PostgreSQL as a requirement for semantic quality. The earlier compatible Ollama route was measured but silently truncates at 2048 tokens; the optional runtime below uses a native adapter with explicit rejection instead. An approved native deployment route and independent acceptance remain activation gates.
+Retain SQLite for the observed 164 boxes/293 current photo references and their conservative doubled scenario. Store derived, versioned embeddings separately from inventory rows and compare this small corpus directly before considering a vector extension or PostgreSQL. Original image files stay in the external photo service. Revisit the database choice on measured concurrency/corpus growth rather than treating PostgreSQL as a requirement for semantic quality. The earlier compatible Ollama route was measured but silently truncates at 2048 tokens; the optional runtime below uses a native adapter with explicit rejection instead. Native routing was verified on 2026-10-29; independent decision acceptance remains an activation gate.
 
 The 0.10.1-dev `verifiedPreviewAnswer` service adds an optional injected identity
 verifier for semantic-only candidates. `identity-verifier.js` sends bounded
@@ -130,8 +130,9 @@ no semantic scores. `embeddings.js` uses native Ollama with `truncate: false` an
 checks the model digest before each request. `semantic-runtime.js` is explicitly
 enabled by server environment configuration, disabled by default and used only
 by authenticated management preview endpoints. No public search/ask/MCP behavior
-changes. Native deployment-route verification, runtime identity integration and independent
-acceptance remain open; reviewed rule management is implemented. See SEMANTIC-RUNTIME.md.
+changes. The native deployment route was verified on 2026-10-29 and source
+0.30.0-dev integrates runtime identity verification; independent acceptance and
+public activation remain open. See SEMANTIC-RUNTIME.md.
 
 Version 0.11.0-dev adds `SearchSettings` and `SearchService` over the same store
 and inventory service. `searchWorkspace` persists embedding configuration and
@@ -149,6 +150,16 @@ disabled, while public UI/REST/MCP/HA search remains unchanged. The Search & ans
 dialog edits structured rules and model settings without exposing raw JSON or
 provider errors. Identity model/threshold selection and independent acceptance
 remain separate activation gates. No speech normalization is enabled.
+
+Source 0.30.0-dev adds optional `searchWorkspace.verification` with independent
+compatible endpoint/model/key, explicit similarity/margin and bounded timeout.
+Missing configuration means disabled and no preset thresholds. Management preview
+passes saved thresholds to `Inventory.verifiedPreviewAnswer` only with complete
+retrieval and verification enabled. A stable verifier instance bounds concurrency;
+requests report safe outcome categories. Configuration and all current semantic
+document hashes are rechecked after inference, including competitors. A changed
+policy or corpus cannot return the old semantic answer. Valid cached vectors are
+reused on verification/rule changes; public search still uses its original path.
 
 ### Historical direct printing (0.12-0.14, removed from runtime)
 
@@ -173,7 +184,8 @@ connections and the image task's optional fallback are stored in `aiWorkspace`.
 comes from Inventory, then at most five matches are phrased with bounded output and
 internal-ID rejection. Failure returns the local answer. This public behavior is
 separate from `SearchService.preview`, which applies saved rules/optional embeddings
-but does not attach the isolated identity verifier or alter public search.
+and, in source 0.30.0-dev, optional saved identity verification. It does not alter
+public search.
 
 ## Search journal
 

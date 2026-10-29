@@ -1,20 +1,19 @@
 # Remaining work
 
-Reviewed 2026-10-29 for production 0.29.0. This file contains outstanding actions
+Reviewed 2026-10-29 for production 0.29.0 / source 0.30.0-dev. This file contains outstanding actions
 only; delivered behavior is in [Status](docs/STATUS.md) and [History](docs/HISTORY.md).
 Order is suggested. Optional work is not a production blocker.
 
 ## Next: semantic search and short answers
 
-- [ ] Verify authenticated native Ollama `GET /api/tags` and `POST /api/embed`
-  from the production network. The last recorded gateway check returned 404;
-  compatible embeddings and the vision route do not establish native support.
-- [ ] Select/configure the identity-verification endpoint, thresholds and latency
-  budget, then connect the verified decision service to the runtime preview.
-  Saved rules/model configuration already exists; the verifier is not wired into it.
+- [ ] Accept the identity model, thresholds and latency budget before a production
+  configuration change. Native routing and saved runtime verifier/threshold controls
+  are implemented; an isolated Qwen/BGE check passed the functional path but is not
+  calibration or independent acceptance. The app changes are not deployed yet.
 - [ ] Obtain fresh independent decision acceptance, including absent items, related
   but different objects, ambiguity, exact codes/dimensions, stale data and outages.
   Previous 30/30 and 20/20 runs are regression evidence after inspecting failures.
+  Fresh owner questions are deferred until further hands-on testing (2026-10-29).
 - [ ] After acceptance, integrate shared semantic retrieval/selection into browser,
   REST, MCP and HA paths with lexical fallback. Production embeddings are disabled;
   public `/ask` currently phrases ordinary lexical matches.
@@ -46,8 +45,8 @@ and [evaluation evidence](docs/SEMANTIC-EVALUATION.md).
 
 - [ ] Remove the adjacent-port assumption in `test/security.test.js`. Parallel
   Windows runs can fail with `EADDRINUSE` because the second app uses the first
-  port plus one. The full 110-test suite passes serially; see Verification for
-  the temporary command. No test/application change is part of this docs update.
+  port plus one. The full suite passes serially; see Verification for the
+  temporary command.
 
 ## Remaining compatibility and product work
 

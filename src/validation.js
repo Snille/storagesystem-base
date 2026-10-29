@@ -168,7 +168,7 @@ export function validateAnswerRules(rules) {
 
 export function validateSearchWorkspace(config) {
   object(config, 'searchWorkspace');
-  for (const key of Object.keys(config)) if (!['embedding', 'rules'].includes(key)) throw new InputError('Unsupported search setting.');
+  for (const key of Object.keys(config)) if (!['embedding', 'rules', 'verification'].includes(key)) throw new InputError('Unsupported search setting.');
   const e = object(config.embedding, 'embedding');
   for (const key of Object.keys(e)) if (!['enabled', 'baseUrl', 'model', 'modelRevision', 'dimensions', 'apiKey'].includes(key)) throw new InputError('Unsupported embedding setting.');
   if (typeof e.enabled !== 'boolean' || !Number.isInteger(e.dimensions) || e.dimensions < 1 || e.dimensions > 8192) throw new InputError('Choose a valid embedding dimension and preview mode.');
@@ -186,7 +186,29 @@ export function validateSearchWorkspace(config) {
   if (e.modelRevision && !/^[a-f0-9]{64}$/.test(e.modelRevision)) throw new InputError('Choose the model digest from the saved server model list.');
   if (e.enabled && (!e.baseUrl || !e.model.trim() || !e.modelRevision)) throw new InputError('Save a server, model and immutable digest before enabling embeddings.');
   validateAnswerRules(config.rules);
+  if (config.verification !== undefined) validateSearchVerification(config.verification);
   return config;
+}
+
+export function validateSearchVerification(value) {
+  const v = object(value, 'verification');
+  if (Object.keys(v).some(key => !['enabled', 'baseUrl', 'model', 'timeoutMs', 'similarity', 'margin', 'apiKey'].includes(key))) throw new InputError('Unsupported identity verification setting.');
+  if (typeof v.enabled !== 'boolean' || !Number.isInteger(v.timeoutMs) || v.timeoutMs < 100 || v.timeoutMs > 90000) throw new InputError('Choose a verification timeout between 100 and 90000 ms.');
+  for (const key of ['baseUrl', 'model']) {
+    text(v[key], key, { empty: true });
+    if (v[key].length > (key === 'baseUrl' ? 1000 : 200)) throw new InputError('Identity verification setting is too long.');
+  }
+  if (v.baseUrl) {
+    let url; try { url = new URL(v.baseUrl); } catch { throw new InputError('Enter an HTTP(S) compatible API base URL.'); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new InputError('Enter an HTTP(S) compatible API base URL without credentials.');
+  }
+  text(v.apiKey, 'apiKey', { optional: true, empty: true });
+  if (v.apiKey && (v.apiKey.length > 4096 || /[\r\n]/.test(v.apiKey))) throw new InputError('Use an API key without line breaks.');
+  for (const [key, min, max] of [['similarity', -1, 1], ['margin', 0, 2]]) {
+    if (v[key] !== null && (!Number.isFinite(v[key]) || v[key] < min || v[key] > max)) throw new InputError('Choose valid explicit semantic thresholds.');
+  }
+  if (v.enabled && (!v.baseUrl || !v.model.trim() || v.similarity === null || v.margin === null)) throw new InputError('Save a verification server, model and explicit thresholds before enabling verification.');
+  return v;
 }
 
 // Printer settings now live in the label service. Databases from 0.12-0.14 still hold the old CUPS settings and

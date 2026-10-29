@@ -1,5 +1,40 @@
 # History
 
+## 0.30.0-dev - 2026-10-29 (not deployed)
+
+- Connected optional saved identity verification to management semantic preview.
+  Separate compatible endpoint/model/key, timeout and explicit similarity/margin
+  settings are editable under Search & answers and validated on save/import/audit/
+  restore. Old settings stay disabled with no preset thresholds; keys are redacted,
+  retained only for the same destination and independently clearable. Public search,
+  REST/HA ask and MCP keep their existing behavior.
+- Direct inventory evidence bypasses verification. Semantic-only answers require
+  a threshold-qualified candidate and source-bound identity proof. Busy, timeout,
+  provider/format failures and unsupported identity abstain. Settings and current
+  content, including competitors, are checked after inference. Valid vectors are
+  reused when only verification settings/rules change. No main-schema migration.
+- Added `verify-runtime-preview.js` to test an explicitly configured gateway and
+  runtime using a read-only backup imported into memory, with isolated derived cache,
+  source/code hashes and private report. It checks inventory/backup/cache integrity
+  and never imports production credentials/settings or changes deployment settings.
+- Provisioned only Storage System's authenticated native tags/embed paths on
+  Ollama01, using the existing Storage-only authorization map. Nginx backup/test/
+  reload completed without restarting Ollama. Native 200/200/1024-vector verified
+  from the actual production container; unauthorized/other-native routes refused.
+  Mimers Brain's existing compatible embedding route still passed.
+- A separate 166-box snapshot indexed in 16.1 s. Seven development queries obtained
+  semantic rankings. Two English knee-pad queries selected Knäskydd after verification
+  (10.7 s first, 1.4 s next); a thermal-camera substitution was rejected (1.6 s).
+  `Masterenhet` used direct evidence; `mat enhet` remained unsupported. This reused
+  historical regression thresholds, not new calibration or independent acceptance.
+  Fresh owner questions are deferred until further hands-on testing. Production
+  remains 0.29.0 with embeddings disabled and no app deployment from this change.
+- Validation: 121 tests pass serially on Windows and pinned Node 24.14 Docker;
+  syntax, language catalogs and whitespace checks pass. Parallel `npm run check`
+  still hits the existing security-test adjacent-port collision. Swedish browser
+  checks cover saving/reloading disabled verification settings, private key flags,
+  normal direct-evidence preview and its journal entry.
+
 ## 0.29.0 - 2026-10-29
 
 - Added a shared SQLite search journal, shown by default under Search & answers →

@@ -1,11 +1,32 @@
 # Current status
 
-Reviewed 2026-10-29 against the source and live production. Application/source
-version: **0.29.0** (see [VERSION](../VERSION)), deployed to Portainer. This app
+Reviewed 2026-10-29 against the source and live production. Source:
+**0.30.0-dev** (see [VERSION](../VERSION)); production: **0.29.0** in Portainer. This app
 has been production since 2026-10-25. Use [TODO](../TODO.md) for outstanding actions,
 [Deployment](DEPLOYMENT.md) for operations and [History](HISTORY.md) for releases.
 
-## Latest verification: 0.29.0, 2026-10-29
+## Prepared next: 0.30.0-dev (not deployed)
+
+- Management preview now connects the optional identity verifier, with saved,
+  redacted independent credentials, explicit similarity/margin and timeout settings.
+  It rejects configuration/content races, including changes to ranking competitors.
+  Verification and thresholds remain unset/disabled unless explicitly configured.
+- Ollama01's authenticated native tags/embed routes were added and verified from
+  the actual production application container. Only the Storage System key gains
+  these routes; Mimers Brain's existing compatible embeddings still work.
+- On an isolated read-only production-backup import, all 166 boxes indexed in
+  16.1 s. Seven development queries completed with semantic retrieval; two English
+  knee-pad queries selected Knäskydd through verification (10.7 s first, 1.4 s next).
+  Thermal-camera substitution was refused. `mat enhet` still has no supported match;
+  transcription repair is not implemented. These are functional/regression results,
+  not independent acceptance or calibrated production thresholds.
+- Fresh owner-labelled questions are deferred at the owner's request until more
+  hands-on voice testing. Public browser/REST/MCP/HA search remains unchanged and
+  production still has embeddings disabled. No app deployment occurred in this work.
+- All 121 tests pass serially on Windows and pinned Node 24.14 Docker; syntax and
+  language checks pass. The existing parallel security-test port collision remains.
+
+## Latest production verification: 0.29.0, 2026-10-29
 
 | Check | Result |
 | --- | --- |
@@ -52,8 +73,8 @@ the full serial suite and pinned Docker suite pass. See [Verification](VERIFICAT
 - Printing through label-service, with templates per label type and a remembered
   non-standard box template. This app does not connect to CUPS or the printer.
 - Optional management-only semantic indexing, answer rules and decision preview.
-  Source-bound identity verification exists as an isolated service/evaluation path;
-  the management preview does not wire it into requests.
+  In production 0.29.0 the identity verifier remains an isolated evaluation path;
+  source 0.30.0-dev connects it to the management preview as described above.
 
 ## Deployment and continuation
 

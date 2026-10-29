@@ -2,11 +2,14 @@ import { sourceRevision } from './settings.js';
 import { SearchSettings } from './search-settings.js';
 import { createSemanticRuntime } from './semantic-runtime.js';
 import { InputError, object, text } from './validation.js';
+import { IdentityVerifier } from './identity-verifier.js';
+import { semanticDocument } from './semantic-index.js';
 
 export class SearchService {
   constructor(inventory, env) {
     this.inventory = inventory; this.env = env; this.settings = new SearchSettings(inventory.store, env);
     this.runtime = null; this.active = null; this.transition = null; this.closed = false; this.dirty = false; this.failed = false;
+    this.verifier = null; this.verifierRevision = null;
     this.unsubscribe = inventory.store.subscribe(() => this.refresh());
     this.refresh();
   }
@@ -51,11 +54,33 @@ export class SearchService {
     if (Object.keys(input).some(key => !['query', 'revision'].includes(key))) throw new InputError('Preview accepts only a query and saved settings revision.');
     const revision = input.revision ?? this.settings.revision(); this.settings.assertCurrent(revision);
     const config = this.settings.config();
+    const contentsRevision = () => sourceRevision(this.inventory.list(language).map(semanticDocument));
+    const contents = contentsRevision();
     let retrieval = { available: false, reason: config.embedding.enabled ? 'index_not_ready' : 'disabled', semanticMatches: [] };
     if (!this.transition && this.runtime && this.active === sourceRevision(config.embedding)) retrieval = await this.runtime.index.search(input.query);
     this.settings.assertCurrent(revision);
-    const result = this.inventory.previewAnswer(input.query, { semanticMatches: retrieval.semanticMatches, rules: config.rules }, language);
-    return { ...result, revision, retrieval,
+    const v = config.verification;
+    const options = { semanticMatches: retrieval.semanticMatches, rules: config.rules };
+    let result, verification = { enabled: v.enabled, outcome: 'not_required' };
+    if (v.enabled && retrieval.available) {
+      const verifierRevision = sourceRevision(v);
+      if (this.verifierRevision !== verifierRevision) {
+        this.verifier = new IdentityVerifier(v); this.verifierRevision = verifierRevision;
+      }
+      const verifier = this.verifier;
+      result = await this.inventory.verifiedPreviewAnswer(input.query, { ...options,
+        thresholds: { similarity: v.similarity, margin: v.margin } }, {
+        verify: async (...args) => {
+          if (verifier.busy) { verification.outcome = 'busy'; return null; }
+          const proof = await verifier.verify(...args);
+          verification.outcome = verifier.lastOutcome;
+          return proof;
+        }
+      }, language);
+    } else result = this.inventory.previewAnswer(input.query, options, language);
+    this.settings.assertCurrent(revision);
+    if (retrieval.available && contents !== contentsRevision()) throw new InputError('Inventory changed during semantic verification. Try the question again.', 409);
+    return { ...result, revision, retrieval, verification,
       lexicalFallback: retrieval.available ? [] : this.inventory.search(input.query, 5, language) };
   }
   async close() {
