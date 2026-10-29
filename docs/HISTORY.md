@@ -34,6 +34,8 @@
   still hits the existing security-test adjacent-port collision. Swedish browser
   checks cover saving/reloading disabled verification settings, private key flags,
   normal direct-evidence preview and its journal entry.
+- Wrap-up clarified the deployment guide's source/production version distinction;
+  no additional application release, container publication or deployment.
 
 ## 0.29.0 - 2026-10-29
 

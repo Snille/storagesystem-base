@@ -1,6 +1,7 @@
 # Deployment and operations
 
-Production/source: 0.29.0, deployed 2026-10-29. First production cutover: 2026-10-25. Last read-only health/audit
+Production: 0.29.0, deployed 2026-10-29; source: 0.30.0-dev, not deployed.
+First production cutover: 2026-10-25. Last read-only health/audit
 check: 2026-10-29. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
 counts and pre-update backup evidence are in the
 [dated migration record](archive/PORTAINER-MIGRATION-2026-10.md).
