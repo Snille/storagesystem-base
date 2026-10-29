@@ -36,3 +36,9 @@ Excel catalog import/export is retired. Full prompt editing is closed in favor o
 built-in instructions and task extras. Printer protocols, drivers and label design
 belong to label-service. Real speech normalization remains deferred. Optional work
 is not an unmet gate for the already completed production migration.
+
+## Implemented development slice (0.29.0-dev, not deployed)
+
+The shared SQLite search journal covers browser, public REST/HA, MCP and preview
+requests, with WebGUI filters/history under Search & answers. It does not enable
+semantic search or correct transcription. See [Search log](SEARCH-LOG.md).

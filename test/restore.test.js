@@ -69,7 +69,7 @@ test('files that are not backups of this application, or fail the audit, are ref
 test('a backup from schema 2 is migrated during the check and restores', async t => {
   const { dir, store, upload, apply, backup } = await setup(t);
   writeFileSync(join(dir, 'old.sqlite'), backup);
-  const old = new Store(join(dir, 'old.sqlite')); old.db.exec("UPDATE settings SET record = json_set(record, '$.background', 'hills') WHERE id = 'appearance'; DROP TABLE media; PRAGMA user_version = 2"); old.close();
+  const old = new Store(join(dir, 'old.sqlite')); old.db.exec("UPDATE settings SET record = json_set(record, '$.background', 'hills') WHERE id = 'appearance'; DROP TABLE search_history; DROP TABLE media; PRAGMA user_version = 2"); old.close();
   const check = await (await upload(readFileSync(join(dir, 'old.sqlite')))).json(); assert.equal(check.sourceSchemaVersion, 2);
   assert.equal((await apply({ token: check.token, confirm: 'RESTORE' })).status, 200);
   assert.equal(store.read().boxes.find(b => b.boxId === fixture.boxes[0].boxId).label, 'Restored label'); assert.equal(store.media('background'), null); assert.equal(store.audit().ok, true);

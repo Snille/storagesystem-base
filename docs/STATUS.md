@@ -1,11 +1,25 @@
 # Current status
 
 Reviewed 2026-10-29 against the source, release records and read-only production endpoints.
-Application version: **0.28.0** (see [VERSION](../VERSION)). This application has been
+Production version: **0.28.0**. Source [VERSION](../VERSION) is now **0.29.0-dev**
+for the undeployed feature described below. This application has been
 production since 2026-10-25. Start here for continuation; use [TODO](../TODO.md) for
 remaining actions and [Deployment](DEPLOYMENT.md) for operations.
 
-## Verified now
+## Development source: 0.29.0-dev (not deployed)
+
+The shared SQLite search log and WebGUI tab are implemented; see
+[Search log](SEARCH-LOG.md). Source schema is 4; production remains schema 3/0.28.0.
+The new table migrates in isolation and follows SQLite backup/full restore. All
+116 tests pass serially; JavaScript syntax, language catalogs and whitespace pass.
+A synthetic browser check verified the log, source/text filters and a final AI answer.
+All 116 tests also pass in pinned Node 24.14 Docker; the isolated container harness
+passes persistence, audit, backup, fresh restore and MCP on schema 4. Local image:
+`storagesystem-base:search-log-0.29.0-dev`. Search semantics/public response shapes
+are unchanged; no image publication or production deployment has been performed.
+Owner-reported HA voice field tests generally work; transcription mistakes remain.
+
+## Production verification (0.28.0)
 
 | Check | Result on 2026-10-29 |
 | --- | --- |

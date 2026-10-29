@@ -22,7 +22,7 @@ function toToolBox(box) {
     photos: photos.map(({ photoId, role, notes }) => ({ photoId, role, notes })), ...(score ? { score } : {}) };
 }
 
-export async function handleMcp(message, inventory, photos, version) {
+export async function handleMcp(message, inventory, photos, version, history) {
   if (!message || typeof message !== 'object' || Array.isArray(message) || message.jsonrpc !== '2.0') return failure(null, -32600, 'Invalid JSON-RPC message.');
   if (message.id === undefined || typeof message.method !== 'string') return null;
   const { id, method } = message;
@@ -44,8 +44,12 @@ export async function handleMcp(message, inventory, photos, version) {
     for (const key of ['language', 'photo_id']) text(args[key], key, { optional: true });
     if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 25)) throw new InputError('limit must be an integer from 1 to 25.');
     if (name === 'search_inventory') {
-      const matches = inventory.search(args.query, args.limit, args.language).map(toToolBox);
-      return success(result({ query: args.query, count: matches.length, matches }));
+      const work = () => {
+        const matches = inventory.search(args.query, args.limit, args.language);
+        return { query: args.query, count: matches.length, matches };
+      };
+      const found = history ? await history.run({ source: 'mcp', mode: 'search', query: args.query, language: inventory.language(args.language) }, work) : work();
+      return success(result({ ...found, matches: found.matches.map(toToolBox) }));
     }
     if (name === 'get_box') {
       const box = inventory.get(args.box_id, args.language);

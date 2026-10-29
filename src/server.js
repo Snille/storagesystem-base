@@ -9,6 +9,7 @@ import { Photos } from './photos.js';
 import { Catalog } from './catalog.js';
 import { Ai } from './ai.js';
 import { SearchService } from './search-service.js';
+import { SearchHistory } from './search-history.js';
 import { Printing } from './printing.js';
 import { RestoreService } from './restore.js';
 import { InputError, object, text } from './validation.js';
@@ -56,6 +57,7 @@ export function createApp({ store, env = process.env }) {
   const catalog = new Catalog(store, photos, inventory);
   const ai = new Ai(store, catalog, photos);
   const search = new SearchService(inventory, env);
+  const history = new SearchHistory(store);
   const printing = new Printing(inventory, { env });
   const restoring = new RestoreService(store);
   const server = createServer(async (req, res) => {
@@ -136,6 +138,9 @@ export function createApp({ store, env = process.env }) {
       const printJobMatch = path.match(/^\/api\/manage\/printing\/jobs\/([a-f0-9-]{36})$/);
       if (printJobMatch && method === 'GET') return json(await printing.job(printJobMatch[1]));
       if (path === '/api/manage/search-settings' && method === 'GET') return json(search.settings.view());
+      if (path === '/api/manage/search-history' && method === 'GET') return json(history.list({
+        before: url.searchParams.get('before') ?? undefined, source: url.searchParams.get('source') || undefined, query: url.searchParams.get('q') || ''
+      }));
       if (path === '/api/manage/search-settings' && method === 'PUT') return json(search.settings.save(await body(req)));
       if (path === '/api/manage/search-settings/models' && method === 'POST') return json(await search.settings.models(await body(req)));
       if (path === '/api/manage/semantic' && method === 'GET') return json(search.status());
@@ -143,21 +148,28 @@ export function createApp({ store, env = process.env }) {
         return json(search.retry(), 202);
       }
       if (path === '/api/manage/semantic/preview' && method === 'POST') {
-        const preview = await search.preview(await body(req), lang);
+        const input = object(await body(req)); text(input.query, 'query');
+        const preview = await history.run({ source: 'preview', mode: 'preview', query: input.query, language: inventory.language(lang) }, () => search.preview(input, lang));
         return json({ ...preview, matches: preview.matches.map(withUrls), lexicalFallback: preview.lexicalFallback.map(withUrls) });
       }
       if (path === '/api/public/health' && method === 'GET') return json({ ok: true, service: 'lagersystem', date: new Date().toISOString() });
       if (path === '/api/public/search' && method === 'GET') {
         const query = url.searchParams.get('q')?.trim() || '';
         if (!query) throw new InputError('The q parameter is required.');
-        const matches = inventory.search(query, Number(url.searchParams.get('limit') ?? 10), lang).map(withUrls);
-        return json({ query, count: matches.length, matches });
+        const result = await history.run({ source: 'api', mode: 'search', query, language: inventory.language(lang) }, () => {
+          const matches = inventory.search(query, Number(url.searchParams.get('limit') ?? 10), lang);
+          return { query, count: matches.length, matches };
+        });
+        return json({ ...result, matches: result.matches.map(withUrls) });
       }
       if (path === '/api/public/ask' && method === 'POST') {
         const input = object(await body(req)); text(input.query, 'query'); text(input.language, 'language', { optional: true });
-        const result = inventory.ask(input.query.trim(), input.language);
-        const phrased = await ai.phraseAnswer(result.query, result.matches, inventory.language(input.language));
-        return json({ ...result, ...(phrased ? { answer: phrased.answer, source: 'ai' } : {}), matches: result.matches.map(withUrls) });
+        const result = await history.run({ source: 'api', mode: 'ask', query: input.query.trim(), language: inventory.language(input.language) }, async () => {
+          const found = inventory.ask(input.query.trim(), input.language);
+          const phrased = await ai.phraseAnswer(found.query, found.matches, inventory.language(input.language));
+          return { ...found, ...(phrased ? { answer: phrased.answer, source: 'ai' } : {}) };
+        });
+        return json({ ...result, matches: result.matches.map(withUrls) });
       }
       const boxMatch = path.match(/^\/api\/public\/boxes\/([^/]+)$/);
       if (boxMatch && method === 'GET') {
@@ -180,7 +192,7 @@ export function createApp({ store, env = process.env }) {
           return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error.' } }, 400);
         }
         const list = Array.isArray(input) ? input : [input];
-        const results = (await Promise.all(list.map(m => handleMcp(m, inventory, photos, version)))).filter(Boolean);
+        const results = (await Promise.all(list.map(m => handleMcp(m, inventory, photos, version, history)))).filter(Boolean);
         if (!results.length) { res.writeHead(202); return res.end(); }
         return json(Array.isArray(input) ? results : results[0]);
       }
@@ -203,8 +215,11 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/manage/search' && method === 'GET') {
         const query = url.searchParams.get('q')?.trim() || '';
         if (!query) throw new InputError('The q parameter is required.');
-        const matches = inventory.search(query, 25, lang).map(withUrls);
-        return json({ query, count: matches.length, matches });
+        const result = await history.run({ source: 'web', mode: 'search', query, language: inventory.language(lang) }, () => {
+          const matches = inventory.search(query, 25, lang);
+          return { query, count: matches.length, matches };
+        });
+        return json({ ...result, matches: result.matches.map(withUrls) });
       }
       if (path === '/api/manage/settings' && method === 'GET') return json(catalog.settings.view());
       if (path === '/api/manage/security' && method === 'GET') return json(catalog.settings.security(env));

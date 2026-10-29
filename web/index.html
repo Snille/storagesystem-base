@@ -74,7 +74,7 @@
     <p class="hint">A completed job means the label service delivered the label to the printer driver. Check the physical label for text and orientation.</p>
   </dialog>
   <dialog id="storage-map-dialog" aria-labelledby="storage-map-title">
-    <div class="dialog-title"><h2 id="storage-map-title">Storage map</h2><div class="map-unit-photo"><button id="storage-map-photo" class="quiet map-photo" type="button" hidden></button><div class="actions"><button id="storage-map-choose-photo" class="quiet" type="button">Choose photo</button><button id="storage-map-remove-photo" class="quiet" type="button" hidden>Remove photo</button></div></div><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
+    <div class="dialog-title storage-map-heading"><div class="map-unit-heading"><h2 id="storage-map-title">Storage map</h2><div class="actions map-photo-actions"><button id="storage-map-choose-photo" class="quiet" type="button">Choose photo</button><button id="storage-map-remove-photo" class="quiet" type="button" hidden>Remove photo</button></div></div><button id="storage-map-photo" class="quiet map-photo" type="button" hidden></button><button id="close-storage-map" class="quiet" aria-label="Close storage map">✕</button></div>
     <section id="storage-map-photo-picker" class="panel" hidden><p class="hint">Choose a photo of this storage unit from the album. Put the photo in the same album as the box photos.</p><p id="storage-map-photo-status" class="hint" role="status"></p><div id="storage-map-photo-list" class="map-photo-list"></div><button id="storage-map-photo-cancel" class="quiet" type="button">Cancel</button></section>
     <p id="storage-map-query" class="hint"></p>
     <label>Storage unit<select id="storage-map-unit"></select></label>
@@ -261,9 +261,17 @@
     </section>
   </dialog>
   <dialog id="search-settings-dialog" aria-labelledby="search-settings-title">
-    <div class="dialog-title"><div><h2 id="search-settings-title">Search &amp; answers</h2><p class="hint">Try saved search rules here. The usual search and Home Assistant are unchanged.</p></div><button id="close-search-settings" class="quiet" aria-label="Close search settings">✕</button></div>
+    <div class="dialog-title"><div><h2 id="search-settings-title">Search &amp; answers</h2><p class="hint">Review searches and answers, or try saved search rules.</p></div><button id="close-search-settings" class="quiet" aria-label="Close search settings">✕</button></div>
     <p id="search-settings-status" role="status" aria-live="polite" class="hint"></p>
-    <nav class="actions search-tabs" aria-label="Search settings sections"><button type="button" data-search-page="rules">Answer rules</button><button type="button" data-search-page="model" class="quiet">Embedding model</button><button type="button" data-search-page="preview" class="quiet">Try a question</button></nav>
+    <nav class="actions search-tabs" aria-label="Search settings sections"><button type="button" data-search-page="history">Search log</button><button type="button" data-search-page="rules" class="quiet">Answer rules</button><button type="button" data-search-page="model" class="quiet">Embedding model</button><button type="button" data-search-page="preview" class="quiet">Try a question</button></nav>
+    <section id="search-page-history">
+      <h3>Search log</h3>
+      <p class="hint">Searches from the web, API / Home Assistant and MCP are saved here, including questions with no matches. Preview questions are marked separately. The text is what the server received, not the original speech.</p>
+      <p class="hint">Keeps up to 10,000 entries for 90 days. Earlier searches were not recorded. Backups include this log.</p>
+      <form id="search-history-filter" class="actions"><label>Search text<input id="search-history-query" type="search" maxlength="2000"></label><label>Source<select id="search-history-source"><option value="">All sources</option><option value="web">Web</option><option value="api">API / Home Assistant</option><option value="mcp">MCP</option><option value="preview">Preview</option></select></label><button type="submit" class="quiet">Refresh log</button></form>
+      <p id="search-history-status" role="status" class="hint"></p><div id="search-history-list" class="search-history-list"></div>
+      <div class="actions"><button type="button" id="search-history-newest" class="quiet">Newest searches</button><button type="button" id="search-history-older" class="quiet" disabled>Older searches</button></div>
+    </section>
     <section id="search-page-rules">
       <h3>Choose how ambiguous questions are answered</h3><p class="hint">A rule can accept either location, return two locations, or ask which type you need. Every selected box must still have current evidence for the question.</p>
       <div id="search-rules-list"></div><button type="button" id="search-add-rule">Add answer rule</button>

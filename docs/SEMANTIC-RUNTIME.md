@@ -19,7 +19,7 @@ are excluded. This serializer differs from the earlier offline corpus; results
 are a new regression measurement, not an unchanged reproduction of that corpus.
 
 Vectors live in a separate SQLite file, defaulting to
-`<inventory database path>.semantic.sqlite`. The cache is independent of the main inventory database (currently schema 3);
+`<inventory database path>.semantic.sqlite`. The cache is independent of the main inventory database (schema 4 in development; deployed 0.28.0 uses schema 3);
 semantic settings/indexing introduce no main-schema migration. Each cache row carries the box ID, current session ID, content hash,
 dimension and profile hash. The profile includes document version, endpoint,
 model, immutable model digest and native API protocol. Keys and original source

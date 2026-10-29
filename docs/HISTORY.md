@@ -1,5 +1,41 @@
 # History
 
+## 0.29.0-dev - 2026-10-29 (not deployed)
+
+- Added a shared SQLite search journal, shown by default under Search & answers →
+  Search log (Sökningar och svar → Söklogg). It records web search, public search/ask
+  including HA, MCP search and management previews once per accepted request,
+  including repeated queries, no matches and safe failure status. Public API payloads
+  and search behavior are unchanged. REST/HA share the `api` source because the
+  existing client does not distinguish them; speech audio/intended wording and the
+  MCP caller's own final response are not available to the server.
+- Entries preserve the received query, completion time, language, source/mode,
+  duration, returned match snapshots and final server answer/source. Only bounded
+  text fields are copied; headers, credentials, photo URLs and provider errors are
+  excluded. The GUI supports text/source filters and stable newest-first pagination.
+  Retention is 90 days/up to 10,000 entries, pruned on the next log write. Log access
+  follows management authentication; ordinary public/MCP clients cannot read it.
+- Schema 4 adds the journal without rewriting inventory. SQLite backups/full restore
+  include it; inventory-only JSON does not. Audit validates entries and filter keys;
+  journal writes do not schedule semantic reindexing. A log-write failure warns
+  without leaking request text or breaking search. Existing schema-1/2/3 migration
+  fixtures now cover the new migration; old images cannot open schema 4.
+- Storage map photos are larger and uncropped: natural aspect ratio within a
+  400 x 220 px desktop bound, so landscape photos use more width than portraits.
+  Photo controls moved below the title on the left. At 640 px and below the photo
+  gets its own centered row, constrained to the available width and 180 px height.
+  Browser-checked landscape/portrait and a 390 px mobile viewport with synthetic
+  images; inventory/photo assignments and original assets are unchanged.
+- Validation: all 116 tests pass serially; syntax/catalog/whitespace checks pass.
+  Swedish browser acceptance shows Web/MCP/API entries, filters and the final
+  synthetic AI answer. The browser fixture now accepts text-only phrasing requests.
+  All 116 tests also pass in pinned Node 24.14 Docker. Built the local image
+  `storagesystem-base:search-log-0.29.0-dev`; isolated container persistence, audit,
+  backup, fresh restore and MCP checks pass on schema 4. No image publication/deployment.
+- Production remains 0.28.0. Owner-reported HA voice field tests generally work;
+  transcription errors such as Masterenhet → mat enhet remain a separate issue.
+
+
 ## Documentation maintenance - 2026-10-29 (application remains 0.28.0)
 
 - Reconciled README, current status, roadmap/backlog, architecture, compatibility,

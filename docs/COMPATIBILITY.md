@@ -89,3 +89,11 @@ This app no longer implements CUPS, driver selection or DYMO protocol access.
 output. Current location/unit templates still require physical acceptance when
 needed. Storage-unit photos/labels and additional position management are extensions,
 not requirements inherited from the reference app.
+
+## Development search journal (0.29.0-dev)
+
+Public REST/MCP response shapes and lexical ranking are unchanged. Accepted search
+and answer requests now also write bounded private snapshots to a separate SQLite
+table, readable only through management `GET /api/manage/search-history`. HA shares
+the public API source; no client/header change is needed. Schema 4/SQLite backups
+include the log; inventory-only JSON does not. See [Search log](SEARCH-LOG.md).

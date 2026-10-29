@@ -170,6 +170,9 @@ test('public ask phrases a short answer with the image task route, never speaks 
   c.setCompletion(completion({ answer: 'Lödtennet ligger i Lagerhylla G, hylla 6.' }));
   const phrased = await ask('lodtenn');
   assert.deepEqual([phrased.source, phrased.answer, phrased.count], ['ai', 'Lödtennet ligger i Lagerhylla G, hylla 6.', local.count]);
+  const log = await (await c.request('search-history', undefined, 'GET')).json();
+  assert.equal(log.entries[0].answer, phrased.answer);
+  assert.equal(log.entries[0].answerSource, 'ai', 'history stores the final phrased response, not the initial local answer');
   const call = c.calls.filter(call => call.path.endsWith('completions')).at(-1);
   assert.match(call.body.messages[0].content, /Swedish/); assert.match(call.body.messages[0].content, /Never mention internal IDs/); assert.match(call.body.messages[0].content, /word for word/);
   assert.equal(call.body.response_format.json_schema.name, 'spoken_answer'); assert.ok(!call.body.messages[1].content.includes('IVAR-G-H6-P1-A'));

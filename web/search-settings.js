@@ -3,6 +3,7 @@ import { t, tr, uiLanguage } from './i18n.js';
 export function mountSearchSettings(request, message) {
   const $ = id => document.getElementById(id);
   let state, boxes = [], models = [], editingId = null, generation = 0, busy = false, timer;
+  let historyNext = null, historyGeneration = 0;
   const dialog = $('search-settings-dialog');
   const node = (tag, value, className) => { const e = document.createElement(tag); if (value !== undefined) e.textContent = value; if (className) e.className = className; return e; };
   const api = async (path, payload, method = 'POST') => (await request(path, payload === undefined ? {} : { method, body: JSON.stringify(payload) })).json();
@@ -24,10 +25,48 @@ export function mountSearchSettings(request, message) {
     if (dirty) { generation++; $('search-preview-result').hidden = true; }
   }
   function page(name) {
-    for (const id of ['rules', 'model', 'preview']) $(`search-page-${id}`).hidden = name !== id;
+    for (const id of ['history', 'rules', 'model', 'preview']) $(`search-page-${id}`).hidden = name !== id;
     for (const button of document.querySelectorAll('[data-search-page]')) {
       const active = button.dataset.searchPage === name; button.classList.toggle('quiet', !active);
       if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+    }
+    if (name === 'history') loadHistory();
+  }
+  async function loadHistory(before) {
+    const token = ++historyGeneration;
+    const params = new URLSearchParams({ q: $('search-history-query').value.trim(), source: $('search-history-source').value });
+    if (before) params.set('before', before);
+    $('search-history-status').textContent = t('Loading search log…');
+    $('search-history-older').disabled = true;
+    try {
+      const result = await api(`search-history?${params}`);
+      if (!dialog.open || token !== historyGeneration) return;
+      historyNext = result.next;
+      const sources = { web: 'Web', api: 'API / Home Assistant', mcp: 'MCP', preview: 'Preview' };
+      const modes = { search: 'Search', ask: 'Question and answer', preview: 'Preview' };
+      const cards = result.entries.map(entry => {
+        const card = node('article', undefined, 'search-history-entry');
+        const date = new Date(entry.createdAt).toLocaleString(uiLanguage() === 'sv' ? 'sv-SE' : 'en-GB');
+        card.append(node('h4', entry.query), node('p', `${date} · ${t(sources[entry.source])} · ${t(modes[entry.mode])} · ${entry.count === 1 ? t('1 match') : tr('{0} matches', entry.count)} · ${entry.durationMs} ms`, 'hint'));
+        if (entry.outcome === 'error') card.append(node('p', t('The request failed.'), 'error'));
+        else if (entry.answer) {
+          card.append(node('p', entry.answer), node('p', t(entry.answerSource === 'ai' ? 'AI answer' : entry.answerSource === 'decision-preview' ? 'Decision preview' : 'Local answer'), 'hint'));
+        } else card.append(node('p', t('Search results only; no answer was generated.'), 'hint'));
+        if (entry.queryTruncated || entry.answerTruncated) card.append(node('p', t('Stored text was shortened.'), 'hint'));
+        if (entry.matches.length) {
+          const details = node('details'); details.append(node('summary', t('Matching boxes')));
+          const list = node('ul'); list.append(...entry.matches.map(m => node('li', `${m.label} · ${m.location}`)));
+          details.append(list); card.append(details);
+        }
+        return card;
+      });
+      $('search-history-list').replaceChildren(...cards);
+      $('search-history-status').textContent = cards.length === 1 ? t('Showing 1 search.') : cards.length ? tr('Showing {0} searches, newest first.', cards.length) : t('No searches recorded for this filter.');
+      $('search-history-older').disabled = !historyNext;
+    } catch (error) {
+      if (dialog.open && token === historyGeneration) {
+        historyNext = null; $('search-history-list').replaceChildren(); $('search-history-status').textContent = t(error.message);
+      }
     }
   }
   async function refreshStatus() {
@@ -95,12 +134,16 @@ export function mountSearchSettings(request, message) {
   $('open-search-settings').addEventListener('click', async () => {
     try {
       [state, { boxes }] = await Promise.all([api('search-settings'), api('boxes')]);
-      generation++; models = []; $('search-models').replaceChildren(); status(''); populate(); page('rules');
-      dialog.showModal(); await refreshStatus();
+      generation++; models = []; $('search-models').replaceChildren(); status(''); populate();
+      dialog.showModal(); page('history'); await refreshStatus();
     } catch (error) { message(error.message, true); }
   });
   $('close-search-settings').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => { generation++; clearTimeout(timer); $('search-key').value = ''; });
+  dialog.addEventListener('close', () => { generation++; historyGeneration++; clearTimeout(timer); $('search-key').value = ''; });
+  $('search-history-filter').addEventListener('submit', event => { event.preventDefault(); loadHistory(); });
+  $('search-history-source').addEventListener('change', () => loadHistory());
+  $('search-history-newest').addEventListener('click', () => loadHistory());
+  $('search-history-older').addEventListener('click', () => { if (historyNext) loadHistory(historyNext); });
   for (const button of document.querySelectorAll('[data-search-page]')) button.addEventListener('click', () => page(button.dataset.searchPage));
   $('search-model-form').addEventListener('input', () => { status(t('Save changes before loading models or trying a question.')); updateDirty(); });
   $('search-model').addEventListener('change', () => {

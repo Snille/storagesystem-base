@@ -114,10 +114,10 @@ test('the overview image is the album cover, management-only, signed and without
 test('the background image survives migration from schema 2, backup and restore; the audit finds a damaged image', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'storage-appearance-')); t.after(() => rmSync(dir, { recursive: true, force: true }));
   const old = new Store(join(dir, 'old.sqlite')); old.importLegacy(structuredClone(fixture)); const before = old.read();
-  old.db.exec('DROP TABLE media; PRAGMA user_version = 2'); old.close();
+  old.db.exec('DROP TABLE search_history; DROP TABLE media; PRAGMA user_version = 2'); old.close();
   const store = new Store(join(dir, 'old.sqlite'));
   try {
-    assert.equal(store.audit().schemaVersion, 3); assert.deepEqual(store.read(), before);
+    assert.equal(store.audit().schemaVersion, 4); assert.deepEqual(store.read(), before);
     store.transaction(() => { store.setMedia('background', 'image/png', png); store.writeSettings({ appearance: { background: 'custom' } }); });
     await store.backup(join(dir, 'backup.sqlite')); await restore(join(dir, 'backup.sqlite'), join(dir, 'restored.sqlite'));
     const restored = new Store(join(dir, 'restored.sqlite'));

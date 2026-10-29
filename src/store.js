@@ -3,6 +3,7 @@ import { mkdirSync, existsSync, openSync, closeSync, unlinkSync } from 'node:fs'
 import { dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { InputError, validateSettings, validateInventory, validatePrintJob } from './validation.js';
+import { validateSearchEntry, historyQueryKey, historyDays, historyLimit } from './search-history.js';
 
 const schema = `
 CREATE TABLE locations (id TEXT PRIMARY KEY NOT NULL CHECK(length(trim(id)) > 0)) STRICT;
@@ -45,6 +46,15 @@ const mediaSchema = `CREATE TABLE media (
   id TEXT PRIMARY KEY NOT NULL, mime TEXT NOT NULL CHECK(mime IN ('image/jpeg', 'image/png', 'image/webp')),
   sha256 TEXT NOT NULL CHECK(length(sha256) = 64), data BLOB NOT NULL CHECK(length(data) BETWEEN 1 AND ${maxMediaBytes})
 ) STRICT; PRAGMA user_version = 3;`;
+const searchSchema = `CREATE TABLE search_history (
+  sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL,
+  created_at TEXT NOT NULL, source TEXT NOT NULL CHECK(source IN ('web', 'api', 'mcp', 'preview')),
+  query_key TEXT NOT NULL,
+  record TEXT NOT NULL CHECK(json_valid(record) AND json_extract(record, '$.id') = id
+    AND json_extract(record, '$.createdAt') = created_at AND json_extract(record, '$.source') = source)
+) STRICT;
+CREATE INDEX search_history_created ON search_history(created_at);
+PRAGMA user_version = 4;`;
 const signatures = { 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47], 'image/webp': [0x52, 0x49, 0x46, 0x46] };
 export const mediaMatchesType = (mime, data) => signatures[mime]?.every((byte, i) => data[i] === byte)
   && (mime !== 'image/webp' || data.subarray(8, 12).toString('latin1') === 'WEBP');
@@ -58,28 +68,39 @@ export class Store {
     try {
       this.db.exec('PRAGMA foreign_keys = ON; PRAGMA trusted_schema = OFF;');
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 3 || (readOnly && ![1, 2, 3].includes(version))) throw new Error(`Unsupported database schema: ${version}`);
+      if (version > 4 || (readOnly && ![1, 2, 3, 4].includes(version))) throw new Error(`Unsupported database schema: ${version}`);
       if (!readOnly) {
         this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
         if (!version) this.transaction(() => this.db.exec(schema));
         if (version < 2) this.transaction(() => this.db.exec(printSchema));
         if (version < 3) this.transaction(() => this.db.exec(mediaSchema));
+        if (version < 4) this.transaction(() => this.db.exec(searchSchema));
       }
     } catch (error) { this.close(); throw error; }
   }
 
   close() { this.db.close(); }
 
-  transaction(work) {
+  transaction(work, { notify = true } = {}) {
     this.db.exec('BEGIN IMMEDIATE');
     let result;
     try { result = work(); this.db.exec('COMMIT'); }
     catch (error) { this.db.exec('ROLLBACK'); throw error; }
-    for (const listener of this.listeners) { try { listener(); } catch { /* A background task cannot fail a committed inventory write. */ } }
+    if (notify) for (const listener of this.listeners) { try { listener(); } catch { /* A background task cannot fail a committed inventory write. */ } }
     return result;
   }
 
   subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+
+  addSearchEntry(entry) {
+    validateSearchEntry(entry);
+    this.transaction(() => {
+      this.db.prepare('INSERT INTO search_history (id, created_at, source, query_key, record) VALUES (?, ?, ?, ?, ?)')
+        .run(entry.id, entry.createdAt, entry.source, historyQueryKey(entry.query), JSON.stringify(entry));
+      this.db.prepare('DELETE FROM search_history WHERE created_at < ?').run(new Date(Date.now() - historyDays * 86400000).toISOString());
+      this.db.prepare('DELETE FROM search_history WHERE sequence NOT IN (SELECT sequence FROM search_history ORDER BY sequence DESC LIMIT ?)').run(historyLimit);
+    }, { notify: false });
+  }
 
   // Read-only journal of jobs submitted directly to CUPS by 0.12-0.14. The label service keeps the journal now.
   printJobs() {
@@ -161,6 +182,14 @@ export class Store {
     if (this.db.prepare('PRAGMA foreign_key_check').all().length) errors.push('Broken foreign keys.');
     try { validateInventory(this.read()); validateSettings(this.settings()); } catch (error) { errors.push(error.message); }
     try { for (const job of this.printJobs()) validatePrintJob(job); } catch { errors.push('Invalid print job journal.'); }
+    if (this.db.prepare('PRAGMA user_version').get().user_version >= 4) {
+      try {
+        for (const row of this.db.prepare('SELECT query_key, record FROM search_history').all()) {
+          const entry = validateSearchEntry(JSON.parse(row.record));
+          if (row.query_key !== historyQueryKey(entry.query)) throw new Error();
+        }
+      } catch { errors.push('Invalid search history.'); }
+    }
     if (this.db.prepare('PRAGMA user_version').get().user_version >= 3) {
       for (const row of this.db.prepare('SELECT id, mime, sha256, data FROM media').all()) {
         const data = Buffer.from(row.data);
@@ -200,7 +229,7 @@ export class Store {
   }
 }
 
-const tables = ['locations', 'boxes', 'sessions', 'photos', 'settings', 'print_jobs', 'media'];
+const tables = ['locations', 'boxes', 'sessions', 'photos', 'settings', 'print_jobs', 'media', 'search_history'];
 
 // Opens an uploaded backup copy, refusing anything that is not one of this application's
 // databases, migrates it to the current schema in place and audits it. The copy is changed;
@@ -211,7 +240,7 @@ export function checkBackup(path) {
     const probe = new DatabaseSync(path, { readOnly: true });
     try { version = probe.prepare('PRAGMA user_version').get().user_version; } finally { probe.close(); }
   } catch { throw new InputError('The file is not an SQLite backup from this application.'); }
-  if (![1, 2, 3].includes(version)) throw new InputError(version > 3 ? 'The backup is from a newer version of this application.' : 'The file is not an SQLite backup from this application.');
+  if (![1, 2, 3, 4].includes(version)) throw new InputError(version > 4 ? 'The backup is from a newer version of this application.' : 'The file is not an SQLite backup from this application.');
   let store;
   try { store = new Store(path); } catch { throw new InputError('The backup could not be opened.'); }
   try { return { ...store.audit(), sourceSchemaVersion: version }; } finally { store.close(); }

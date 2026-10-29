@@ -4,7 +4,28 @@ Reviewed 2026-10-29 for 0.28.0. This page separates current checks, recorded liv
 acceptance and outstanding work. Historical release details are in [History](HISTORY.md)
 and the [migration record](archive/PORTAINER-MIGRATION-2026-10.md).
 
-## Current verification
+## Development search-log verification (0.29.0-dev)
+
+All 116 tests pass with `node --test --test-concurrency=1 --test-timeout=20000`.
+JavaScript syntax and whitespace checks pass. Parallel `npm run check` still hits
+the previously recorded security-test adjacent-port collision. A Swedish browser
+fixture verified Web/MCP/API entries, text/source filters, matching boxes and the
+final synthetic AI answer; the fixture now supports text-only answer requests.
+The storage-map photo layout was also browser-checked with landscape and portrait
+fixtures at desktop size and a 390 px mobile viewport; images remain uncropped.
+
+New isolated checks cover the schema-4 search journal, all transport sources,
+repeated/no-result queries, final AI answers, filtering/pagination, bounded/private
+snapshots, safe failures, retention, audit and migration/backup/full restore. The
+production installation remains 0.28.0/schema 3; no real search log has been enabled
+there by these local changes. Docker Desktop was started for isolated verification:
+all 116 tests pass in pinned Node 24.14, image
+`storagesystem-base:search-log-0.29.0-dev` was built, and `verify-container.ps1 -Image
+storagesystem-base:search-log-0.29.0-dev` passes restart persistence, audit, backup,
+fresh restore and MCP on schema 4. Its temporary container/volume were removed.
+No image publication or production deployment is claimed. See [Search log](SEARCH-LOG.md).
+
+## Production review (0.28.0)
 
 On 2026-10-29 an initial `npm run check` passed all 110 tests on Windows Node
 26.12.1. Two later parallel runs hit `EADDRINUSE` in the existing open-management
@@ -43,7 +64,7 @@ git diff --check
 The port-allocation assumption remains a test-harness follow-up; serial success
 does not fix it. Syntax is checked by `npm run check` before its test phase.
 
-Coverage includes ID/history-preserving import/export/backup/restore; schema 1→2→3
+Coverage includes ID/history-preserving import/export/backup/restore; schema 1→2→3→4
 migrations; relationship/shape/integrity checks; atomic session writes and occupancy;
 management/public authorization, open-mode host/origin restrictions and key privacy;
 REST/MCP contracts and shared search; photo assignment, previews, source revisions,

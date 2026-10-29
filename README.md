@@ -114,6 +114,16 @@ Open **Search & answers → Answer rules** to choose **Either location is fine**
 
 Under **Embedding model**, save the native Ollama origin/key, then explicitly **Load saved server models**. Choosing a listed name fills its immutable digest; check dimensions before enabling **Use embeddings in this preview**. Enabling sends current descriptions to that server and starts background indexing. A model list does not prove embedding support. A blank key retains it; changing server clears it. Configuration changes apply without restarting inventory. No identity model or paid text/image request is selected by this panel. See SEMANTIC-RUNTIME.md for server-route requirements and API details.
 
+## Search log
+
+The 0.29.0-dev source adds **Search & answers → Search log**, a shared SQLite log
+for web, REST/HA, MCP searches and decision previews. It shows the received text,
+returned matches, server answer, timestamp, source and duration, with text/source
+filters and older pages. Keeps 90 days/up to 10,000 entries; SQLite backups include
+it and JSON export does not. Earlier requests were not recorded. This development
+feature has not been deployed to the 0.28.0 production installation.
+See [Search log](docs/SEARCH-LOG.md) for attribution and retention limits.
+
 ## AI assistance
 
 Choose **AI assistance** for an overview, **Connections** for service addresses/keys, and **Image inventory** for the model, output language and optional extra instructions. Start with one named connection. OpenRouter uses its fixed API base; llama.cpp and OpenAI-compatible services use their configured API base, including `/v1` when required. Select **llama.cpp (local)** for that server: inventory requests disable its template thinking phase so the output budget is used for the description. Other compatible services receive no llama.cpp-specific options. Other provider protocols are not implemented. Changing connection identity clears its key; a blank key otherwise retains the saved value. Legacy AI settings remain preserved but are not automatically activated.
@@ -173,7 +183,7 @@ npm run inventory -- restore ./storage-backup.sqlite ./data/restored.sqlite
 
 Restore validates the backup and refuses to overwrite an existing file. Stop the target instance and point it at the newly restored database after verification. Audit the new file by setting `STORAGE_DB` to its path. A backup contains inventory **and settings/credentials**; keep it private. JSON export contains inventory only. Neither includes original photos from external services. Settings import retains provider configuration, prompts, label templates and other existing sections without claiming their features are implemented. Separate legacy language files are not imported yet.
 
-The UI offers inventory JSON import/export, data audit, SQLite backup download and a controlled full restore under **Security → Data & maintenance**. A restore uploads the backup, checks it (only this application's schemas 1-3, older ones are migrated, the audit must pass) and shows the current and backup totals. Only after you type `RESTORE` does it replace all inventory, settings, keys and the background image in one transaction. The current database is saved first in `restore-backups` beside the database file (`/data/restore-backups` in Docker); remove old safety backups there yourself. The offline CLI restore into a new file still works.
+The UI offers inventory JSON import/export, data audit, SQLite backup download and a controlled full restore under **Security → Data & maintenance**. A restore uploads the backup, checks it (only this application's schemas 1-4, older ones are migrated, the audit must pass) and shows the current and backup totals. Only after you type `RESTORE` does it replace all inventory, settings, keys and the background image in one transaction. The current database is saved first in `restore-backups` beside the database file (`/data/restore-backups` in Docker); remove old safety backups there yourself. The offline CLI restore into a new file still works.
 
 ## Documentation
 
@@ -215,6 +225,8 @@ storage unit on the map. Edit points to place, drag or turn them together. Point
 are saved per image; a new cover can inherit the latest saved set before its first edit.
 
 On the storage map **Choose photo** assigns an album image to that unit, and clicking
-it opens the photo viewer. Unit photos count as assigned in the album inbox and cannot
+it opens the photo viewer. In 0.29.0-dev, Change/Remove controls sit below the title
+and the uncropped photo uses up to 400 x 220 px: landscape images can be wider than
+portraits. On narrow screens the image moves below the heading and controls. Unit photos count as assigned in the album inbox and cannot
 also be newly attached to a box. The photo remains in the external service; settings
 store its asset ID. The album cover is kept out of ordinary new photo selection.

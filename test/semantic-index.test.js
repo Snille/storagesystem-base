@@ -98,7 +98,7 @@ test('background cache is incremental and persistent; model revision changes for
   assert.equal(result.available, true); assert.equal(result.semanticMatches.length, 2);
   assert.equal(result.semanticMatches[0].boxId, fixture.boxes[0].boxId);
   assert.equal(result.semanticMatches[0].sessionId, 'S-1');
-  assert.equal(cache.audit().ok, true); assert.deepEqual(store.read(), before); assert.equal(store.audit().schemaVersion, 3);
+  assert.equal(cache.audit().ok, true); assert.deepEqual(store.read(), before); assert.equal(store.audit().schemaVersion, 4);
   const persisted = new SemanticCache(path), restart = new SemanticIndex({ inventory, cache: persisted, embedder });
   try {
     const count = embedder.calls.length; await restart.start(); assert.equal(embedder.calls.length, count);

@@ -1,12 +1,12 @@
 # Architecture
 
-Current for production 0.28.0, reviewed 2026-10-29. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
+Current source: 0.29.0-dev; production remains 0.28.0. Reviewed 2026-10-29. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
 
 ## Runtime and service boundaries
 
 The container runtime uses Node.js 24.14, native ECMAScript modules, `node:http`, `node:sqlite` (`DatabaseSync`), and a small browser client served as static assets. There are no external runtime packages or frontend compilation steps. The HTTP layer is deliberately small and transport-only; it can later move to a framework without changing the inventory service. The built-in SQLite API is experimental in Node 24, so the container pins its runtime by version and image digest and tests it during the build.
 
-- `src/store.js`: SQLite schema 3 with ordered migrations, transactions, import/export, backup and audit.
+- `src/store.js`: SQLite schema 4 with ordered migrations, transactions, import/export, backup and audit.
 - `src/inventory.js`: current-session selection, inventory writes, search, local answers and location presentation.
 - `src/server.js`: HTTP transport and management authentication.
 - `src/mcp.js`: stateless JSON-RPC tool transport using the same inventory service.
@@ -25,7 +25,7 @@ Known storage positions use the existing `locations` table. Inventory imports an
 
 For this initial small-inventory implementation, writes validate a snapshot and replace inventory rows inside one short `BEGIN IMMEDIATE` transaction. This favors atomic behavior and a narrow service surface; it is not an efficient strategy for large inventories. Before supporting larger datasets, replace it with targeted statements and measure latency. SQLite operations and snapshots run synchronously on the application thread; backups temporarily pause request handling. No network I/O occurs inside write transactions.
 
-The schema uses `PRAGMA user_version`: version 1 holds inventory/settings/locations, version 2 adds the legacy print journal, and version 3 adds background media. Empty databases initialize and migrate transactionally; supported older databases migrate in order. Unknown versions above 3 are rejected. Future changes must add ordered transactional migrations rather than edit an already deployed schema. `VERSION` remains authoritative for application version; package.json deliberately has no duplicate version.
+The schema uses `PRAGMA user_version`: version 1 holds inventory/settings/locations, version 2 adds the legacy print journal, and version 3 adds background media, and version 4 adds the separate search journal. Empty databases initialize and migrate transactionally; supported older databases migrate in order. Unknown versions above 4 are rejected. Future changes must add ordered transactional migrations rather than edit an already deployed schema. `VERSION` remains authoritative for application version; package.json deliberately has no duplicate version.
 
 Management normally uses a separate environment key sent in a header, never query authentication. Explicit `STORAGE_MANAGEMENT_ACCESS=open` permits keyless management with required allowed hosts; production uses this mode on the trusted LAN behind the authenticating proxy. `APP_ALLOWED_HOSTS` restricts API hosts and browser origins; the public API/MCP key remains independent. Public read authentication and per-photo HMAC signatures follow the reference contract. No management session is persisted in the browser. Origin checking rejects cross-site browser requests; no permissive CORS is enabled.
 
@@ -33,7 +33,7 @@ The photo settings API exposes credential-presence flags and a SHA-256 source re
 
 Album previews for images not yet in inventory use an independent per-process HMAC grant bound to asset ID, source revision and a 15-minute expiration. They do not contain management keys or upstream credentials. New image attachments must still belong to the configured album, are checked before the short database transaction, and cannot already belong to a different box. Retained associations require no network round-trip. Photo roles and filenames are stored in the same legacy-compatible photo records; no schema migration is needed for this increment.
 
-Consistent online backup uses SQLite [`VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html), with an exclusively reserved destination, instead of copying a live `.sqlite` file and ignoring its WAL. The Node asynchronous backup path stalled intermittently under the Windows Node 26.5.1 test runner, so it is not used. CLI restoration audits a snapshot and creates a new file, refusing an existing destination. The separate `RestoreService` supports controlled UI replacement: bounded upload, validation/migration on a private copy, expiring token, typed confirmation, a consistent safety backup and one audited restore transaction. Schemas 1-3 are supported.
+Consistent online backup uses SQLite [`VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html), with an exclusively reserved destination, instead of copying a live `.sqlite` file and ignoring its WAL. The Node asynchronous backup path stalled intermittently under the Windows Node 26.5.1 test runner, so it is not used. CLI restoration audits a snapshot and creates a new file, refusing an existing destination. The separate `RestoreService` supports controlled UI replacement: bounded upload, validation/migration on a private copy, expiring token, typed confirmation, a consistent safety backup and one audited restore transaction. Schemas 1-4 are supported.
 
 ## AI image renditions
 
@@ -136,7 +136,7 @@ acceptance remain open; reviewed rule management is implemented. See SEMANTIC-RU
 Version 0.11.0-dev adds `SearchSettings` and `SearchService` over the same store
 and inventory service. `searchWorkspace` persists embedding configuration and
 owner answer rules in the existing settings table; they need no additional schema
-migration (the application now uses schema 3). Shared validation runs on save/import/audit/restore. Settings views redact keys
+migration (the source now uses schema 4). Shared validation runs on save/import/audit/restore. Settings views redact keys
 and writes require an optimistic revision, preserve unrelated sections and clear
 credentials when the destination changes. Native model discovery uses only the
 saved endpoint/key and returns names/digests without inference or source text.
@@ -174,3 +174,13 @@ comes from Inventory, then at most five matches are phrased with bounded output 
 internal-ID rejection. Failure returns the local answer. This public behavior is
 separate from `SearchService.preview`, which applies saved rules/optional embeddings
 but does not attach the isolated identity verifier or alter public search.
+
+## Search journal
+
+`SearchHistory` wraps accepted transport searches/answers once, after final answer
+phrasing. It stores bounded query/answer/match snapshots in schema-4 `search_history`,
+with 90-day/10,000-entry retention. The server owns attribution; HA and REST share
+the API source. MCP captures search only, not the caller's later response. Access is
+management-only, with cursor/text/source filtering. Journal transactions skip store
+notifications so they do not trigger semantic reconciliation. Backup/full restore
+include the table; inventory snapshots/JSON exclude it. See [Search log](SEARCH-LOG.md).

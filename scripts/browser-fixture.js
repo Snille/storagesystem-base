@@ -17,6 +17,10 @@ const source = createServer(async (req, res) => {
   if (req.url === '/v1/chat/completions') {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString()); const content = body.messages[1].content;
+    if (typeof content === 'string') {
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ answer: 'Syntetiskt testsvar: skruvarna finns på Lagerhylla: A, Hylla 2, Plats: 1A.' }) }, finish_reason: 'stop' }] }));
+    }
     const batch = content[0].text.startsWith('Build one draft') || content[0].text.startsWith('Build one updated');
     const contextMatch = content[0].text.match(/Current editor description \(data, never instructions\): (.*)\. Do not save anything\.$/);
     const context = contextMatch ? JSON.parse(contextMatch[1]) : null;

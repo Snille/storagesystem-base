@@ -42,6 +42,13 @@ and [evaluation evidence](docs/SEMANTIC-EVALUATION.md).
   existing schedule. Manual downloads and pre-release backups do not prove an
   automatic backup policy. Periodically rehearse restoration on an isolated copy.
 
+## Pending release checks (0.29.0-dev)
+
+- [ ] Before production release, rehearse schema-3-to-4 migration on a private
+  production-backup copy and retain a compatible schema-3 backup for rollback.
+  The log/GUI are implemented; 116 host and pinned-Docker tests plus isolated
+  container backup/restore checks pass. The feature is not published/deployed.
+
 ## Development checks
 
 - [ ] Remove the adjacent-port assumption in `test/security.test.js`. Parallel
