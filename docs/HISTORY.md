@@ -1,6 +1,6 @@
 # History
 
-## 0.29.0-dev - 2026-10-29 (not deployed)
+## 0.29.0 - 2026-10-29 (not deployed)
 
 - Added a shared SQLite search journal, shown by default under Search & answers →
   Search log (Sökningar och svar → Söklogg). It records web search, public search/ask
@@ -30,7 +30,7 @@
   Swedish browser acceptance shows Web/MCP/API entries, filters and the final
   synthetic AI answer. The browser fixture now accepts text-only phrasing requests.
   All 116 tests also pass in pinned Node 24.14 Docker. Built the local image
-  `storagesystem-base:search-log-0.29.0-dev`; isolated container persistence, audit,
+  `mrsnille/storagesystem-base:0.29.0`; isolated container persistence, audit,
   backup, fresh restore and MCP checks pass on schema 4. No image publication/deployment.
 - Production remains 0.28.0. Owner-reported HA voice field tests generally work;
   transcription errors such as Masterenhet → mat enhet remain a separate issue.

@@ -133,7 +133,7 @@ The module does not infer which alternatives a person considers equivalent.
 ## Verification
 
 `npm run check` includes decision and verifier fixtures alongside the existing
-suite. The 0.29.0-dev application has 116 tests as of 2026-10-29; 63 was the
+suite. The 0.29.0 application has 116 tests as of 2026-10-29; 63 was the
 count at the initial verifier implementation. They check evidence versus wrong semantic candidates,
 current locations/read-only behavior, identifiers and units, competing
 destinations, rule failure/translation behavior, stale sessions, historical and

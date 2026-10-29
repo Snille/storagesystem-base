@@ -42,7 +42,7 @@ and [evaluation evidence](docs/SEMANTIC-EVALUATION.md).
   existing schedule. Manual downloads and pre-release backups do not prove an
   automatic backup policy. Periodically rehearse restoration on an isolated copy.
 
-## Pending release checks (0.29.0-dev)
+## Pending release checks (0.29.0)
 
 - [ ] Before production release, rehearse schema-3-to-4 migration on a private
   production-backup copy and retain a compatible schema-3 backup for rollback.

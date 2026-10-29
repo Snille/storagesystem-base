@@ -116,7 +116,7 @@ Under **Embedding model**, save the native Ollama origin/key, then explicitly **
 
 ## Search log
 
-The 0.29.0-dev source adds **Search & answers → Search log**, a shared SQLite log
+The 0.29.0 source adds **Search & answers → Search log**, a shared SQLite log
 for web, REST/HA, MCP searches and decision previews. It shows the received text,
 returned matches, server answer, timestamp, source and duration, with text/source
 filters and older pages. Keeps 90 days/up to 10,000 entries; SQLite backups include
@@ -225,7 +225,7 @@ storage unit on the map. Edit points to place, drag or turn them together. Point
 are saved per image; a new cover can inherit the latest saved set before its first edit.
 
 On the storage map **Choose photo** assigns an album image to that unit, and clicking
-it opens the photo viewer. In 0.29.0-dev, Change/Remove controls sit below the title
+it opens the photo viewer. In 0.29.0, Change/Remove controls sit below the title
 and the uncropped photo uses up to 400 x 220 px: landscape images can be wider than
 portraits. On narrow screens the image moves below the heading and controls. Unit photos count as assigned in the album inbox and cannot
 also be newly attached to a box. The photo remains in the external service; settings

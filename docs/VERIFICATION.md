@@ -4,7 +4,7 @@ Reviewed 2026-10-29 for 0.28.0. This page separates current checks, recorded liv
 acceptance and outstanding work. Historical release details are in [History](HISTORY.md)
 and the [migration record](archive/PORTAINER-MIGRATION-2026-10.md).
 
-## Development search-log verification (0.29.0-dev)
+## Development search-log verification (0.29.0)
 
 All 116 tests pass with `node --test --test-concurrency=1 --test-timeout=20000`.
 JavaScript syntax and whitespace checks pass. Parallel `npm run check` still hits
@@ -20,8 +20,8 @@ snapshots, safe failures, retention, audit and migration/backup/full restore. Th
 production installation remains 0.28.0/schema 3; no real search log has been enabled
 there by these local changes. Docker Desktop was started for isolated verification:
 all 116 tests pass in pinned Node 24.14, image
-`storagesystem-base:search-log-0.29.0-dev` was built, and `verify-container.ps1 -Image
-storagesystem-base:search-log-0.29.0-dev` passes restart persistence, audit, backup,
+`mrsnille/storagesystem-base:0.29.0` was built, and `verify-container.ps1 -Image
+mrsnille/storagesystem-base:0.29.0` passes restart persistence, audit, backup,
 fresh restore and MCP on schema 4. Its temporary container/volume were removed.
 No image publication or production deployment is claimed. See [Search log](SEARCH-LOG.md).
 

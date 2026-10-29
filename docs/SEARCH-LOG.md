@@ -1,6 +1,6 @@
 # Shared search log
 
-Implemented in 0.29.0-dev, not yet deployed. Open **Search & answers → Search log**
+Implemented in 0.29.0, not yet deployed. Open **Search & answers → Search log**
 (Swedish: **Sökningar och svar → Söklogg**). This is the initial tab. Filter by
 received search text and source, refresh the newest page or browse older entries.
 Dates are displayed in the browser's local timezone. Expand Matching boxes for

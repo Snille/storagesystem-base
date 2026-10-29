@@ -1,6 +1,6 @@
 # Deployment and operations
 
-Production application: 0.28.0, since 2026-10-25. Source is ahead at 0.29.0-dev. Last read-only health/audit
+Production application: 0.28.0, since 2026-10-25. Source is ahead at 0.29.0. Last read-only health/audit
 check: 2026-10-29. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
 counts and pre-update backup evidence are in the
 [dated migration record](archive/PORTAINER-MIGRATION-2026-10.md).
@@ -74,7 +74,7 @@ changes. Backups contain settings/credentials and the custom background. Invento
 JSON export excludes settings, registered empty positions and background media.
 Neither format contains original external photos or the derived semantic cache.
 
-The 0.29.0-dev source extends UI restore to schemas 1-4; deployed 0.28.0 accepts 1-3. It migrates older backups on a private copy,
+The 0.29.0 source extends UI restore to schemas 1-4; deployed 0.28.0 accepts 1-3. It migrates older backups on a private copy,
 requires typed `RESTORE`, writes a safety backup under `/data/restore-backups`, and
 replaces data in one audited transaction. CLI restore refuses an existing output
 file. Test restores on separate data. A newer schema may not be readable by an
@@ -112,7 +112,7 @@ removing them. The original Docker Desktop development stack was removed on
   cleanup commands over shared Docker resources or private backup directories.
 - PowerShell piped SSH scripts can acquire CRLF; preserve LF for remote shell code.
 
-## Pending 0.29.0-dev update
+## Pending 0.29.0 update
 
 The source adds a shared search journal in schema 4. It is not deployed. Before an
 update, take a consistent schema-3 backup and validate migration on a private copy,
