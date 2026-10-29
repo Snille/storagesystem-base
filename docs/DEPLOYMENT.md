@@ -1,6 +1,6 @@
 # Deployment and operations
 
-Production: 0.29.0, deployed 2026-10-29; source: 0.30.0-dev, not deployed.
+Production: 0.29.0, deployed 2026-10-29; source: 0.30.0, prepared for deployment.
 First production cutover: 2026-10-25. Last read-only health/audit
 check: 2026-10-29. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
 counts and pre-update backup evidence are in the
@@ -66,6 +66,22 @@ Never point a development instance at the production volume.
    needs its own applicable authorization; health alone does not test either.
 7. Record version, image digest, verification and backup outcome in the release
    record. Keep backup files private; do not commit live settings or inventory.
+
+## Semantic activation and behavioral rollback (0.30.0)
+
+Publish/deploy the code before enabling ordinary semantic search. Save a private
+pre-update backup and preserve unrelated settings/environment. First configure
+indexing/verification with `publicEnabled: false`, wait for full current coverage
+and an intact cache, then preview the frozen owner cases. Save only the ordinary
+activation flag after those checks. Keep the existing owner rules except explicit
+owner replacements; actual IDs come from current location mapping, never inference.
+
+For a behavioral rollback, turn off ordinary semantic search in Search & answers;
+this restores the legacy lexical/AI-phrasing path without changing inventory. Turn
+off indexing as well if stopping background inference is required. Schema remains
+4, but new configuration/rule/journal JSON is not supported by older validators:
+an image-only downgrade is not an audited rollback. Use a compatible pre-update
+backup and reconcile later inventory changes before restoring an older image.
 
 ## Backup and restore
 

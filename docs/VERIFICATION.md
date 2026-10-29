@@ -1,8 +1,30 @@
 # Verification and acceptance
 
-Reviewed 2026-10-29 for source 0.30.0-dev / production 0.29.0. This page separates current checks, recorded live
+Reviewed 2026-10-30 for source 0.30.0 (prepared) / production 0.29.0. This page separates current checks, recorded live
 acceptance and outstanding work. Historical release details are in [History](HISTORY.md)
 and the [migration record](archive/PORTAINER-MIGRATION-2026-10.md).
+
+## Release preparation (0.30.0, 2026-10-30)
+
+`npm run check` passes all 126 tests, syntax/catalog checks and whitespace checks.
+The old parallel port collision is fixed by reserving an OS-assigned port in the
+security fixture, without changing application security behavior. New coverage
+checks explicit activation/backward defaults, shared web/REST/ask/MCP selections,
+no free-form answer rephrasing, semantic journal entries, provider outages, safe
+absence/ambiguity, preferred/two-place rules, exact code guards, backup/restore,
+reanalysis/session invalidation, retained filename lookups and distinct cable
+wording/negation. Pinned Node 24.14 release-image validation follows the same code.
+
+The 11 owner search words were frozen before baseline inference (7/11). Fourteen
+owner cases including two absent objects and one exact question/three-candidate
+clarification then pass all four transports (56 checks). The combined configuration
+preserves five old rules, updates one and adds four. The actual HA HTTP client and
+result mapping pass against the isolated server; button/Whisper/Piper/speaker and
+conversation continuation were not exercised. Seven supplementary source/regression
+cases also pass, including English synonyms requiring real identity verification.
+The Swedish browser shows both requested places and the shared semantic answer.
+No runtime inventory or credentials are committed. Private source hashes and reports
+are retained under the canonical backup directory; source inventory stays unchanged.
 
 ## Development verification (0.30.0-dev, not deployed)
 

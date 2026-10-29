@@ -42,10 +42,13 @@ test('open management needs no key but only answers listed hosts and same-site o
   const port = app.address().port, base = `http://127.0.0.1:${port}`;
   // node's fetch cannot set Host, so check the listed LAN address with a second app below.
   assert.equal((await fetch(base + '/api/manage/audit')).status, 403, 'an unlisted host is refused');
-  const lan = createApp({ store, env: { STORAGE_MANAGEMENT_ACCESS: 'open', STORAGE_API_KEY: 'read', APP_ALLOWED_HOSTS: `127.0.0.1:${port + 1}` } });
-  lan.listen(port + 1, '127.0.0.1'); await once(lan, 'listening');
+  const lanEnv = { STORAGE_MANAGEMENT_ACCESS: 'open', STORAGE_API_KEY: 'read', APP_ALLOWED_HOSTS: '127.0.0.1:0' };
+  const lan = createApp({ store, env: lanEnv });
+  lan.listen(0, '127.0.0.1'); await once(lan, 'listening');
+  // Let the OS reserve a free port; adjacent ephemeral ports can belong to another parallel test.
+  lanEnv.APP_ALLOWED_HOSTS = `127.0.0.1:${lan.address().port}`;
   t.after(async () => { lan.closeAllConnections(); await new Promise(r => lan.close(r)); });
-  const lanBase = `http://127.0.0.1:${port + 1}`;
+  const lanBase = `http://127.0.0.1:${lan.address().port}`;
   assert.equal((await fetch(lanBase + '/api/manage/audit')).status, 200, 'no key needed on a listed host');
   const save = origin => fetch(lanBase + '/api/manage/positions', { method: 'POST', headers: { 'content-type': 'application/json', origin }, body: JSON.stringify({ locationId: 'Z-H1-P1-A' }) });
   assert.equal((await save('https://evil.example')).status, 403, 'another website cannot change data');

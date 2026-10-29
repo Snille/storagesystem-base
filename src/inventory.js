@@ -117,7 +117,7 @@ export class Inventory {
 
   storageMap(language) { return buildStorageMap(this.list(language), this.positions(language)); }
 
-  // Development decision layer; public ask/search retain their current contracts.
+  // Shared evidence/decision layer; the runtime service owns retrieval and configuration.
   previewAnswer(query, options, language) {
     return previewAnswerDecision(query, this.list(language), options, this.language(language));
   }

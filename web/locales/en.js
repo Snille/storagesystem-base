@@ -757,5 +757,17 @@ export default {
   "Choose valid explicit semantic thresholds.": "Choose valid explicit semantic thresholds.",
   "Save a verification server, model and explicit thresholds before enabling verification.": "Save a verification server, model and explicit thresholds before enabling verification.",
   "Enter an HTTP(S) compatible API base URL.": "Enter an HTTP(S) compatible API base URL.",
-  "Enter an HTTP(S) compatible API base URL without credentials.": "Enter an HTTP(S) compatible API base URL without credentials."
+  "Enter an HTTP(S) compatible API base URL without credentials.": "Enter an HTTP(S) compatible API base URL without credentials.",
+  "Use this location": "Use this location",
+  "Semantic inventory answer": "Semantic inventory answer",
+  "Choose one box for a preferred location, two for both locations, or at least two for the other rules.": "Choose one box for a preferred location, two for both locations, or at least two for the other rules.",
+  "When needed, sends the question and one candidate's current text to the saved verification server. No photos or locations are sent. Ordinary search requires separate activation below.": "When needed, sends the question and one candidate's current text to the saved verification server. No photos or locations are sent. Ordinary search requires separate activation below.",
+  "Use semantic search in web, API, MCP and Home Assistant": "Use semantic search in web, API, MCP and Home Assistant",
+  "Enable after testing the preview. All interfaces use the same supported selections and answer rules. If embeddings are unavailable, current direct text evidence and rules still work. Ambiguous requests ask for clarification.": "Enable after testing the preview. All interfaces use the same supported selections and answer rules. If embeddings are unavailable, current direct text evidence and rules still work. Ambiguous requests ask for clarification.",
+  "Public semantic search mode must be a boolean.": "Public semantic search mode must be a boolean.",
+  "Enable and configure embeddings and identity verification before public semantic search.": "Enable and configure embeddings and identity verification before public semantic search.",
+  "Inventory changed during semantic verification. Try the question again.": "Inventory changed during semantic verification. Try the question again.",
+  "Build the semantic search index": "Build the semantic search index",
+  "Verify semantic candidates": "Verify semantic candidates",
+  "A rule can prefer one location, accept either location, return two locations, or ask which type you need. Every selected box must still have current evidence for the question.": "A rule can prefer one location, accept either location, return two locations, or ask which type you need. Every selected box must still have current evidence for the question."
 };

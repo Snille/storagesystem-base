@@ -1,6 +1,6 @@
 # Architecture
 
-Current source: 0.30.0-dev; production: 0.29.0. Reviewed 2026-10-29. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
+Current source: 0.30.0 (prepared); production: 0.29.0. Reviewed 2026-10-30. Preview-only semantic behavior is identified separately below. See [Status](STATUS.md) and [Roadmap](ROADMAP.md) for availability and remaining scope.
 
 ## Runtime and service boundaries
 

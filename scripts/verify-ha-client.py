@@ -38,7 +38,7 @@ async def verify(args):
         box = await client.async_box(match["boxId"])
         assert box["boxId"] == match["boxId"]
         ask = await client.async_ask(args.query)
-        assert ask["answer"] and ask["source"] == "search"
+        assert ask["answer"] and ask["source"] == args.expected_source
         mapped = result.build_result(ask, mode="ask", query=args.query)
         assert mapped["box_id"] == match["boxId"] and mapped["match_count"] > 0
         assert mapped["location"] and mapped["keywords"]
@@ -58,4 +58,5 @@ if __name__ == "__main__":
     parser.add_argument("--source", required=True, help="Read-only reference storagesystem-ha checkout")
     parser.add_argument("--base-url", required=True, help="Isolated development server URL")
     parser.add_argument("--query", default="demo")
+    parser.add_argument("--expected-source", choices=["search", "ai", "semantic"], default="search")
     asyncio.run(verify(parser.parse_args()))

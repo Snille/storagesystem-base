@@ -751,5 +751,17 @@ export default {
   "Choose valid explicit semantic thresholds.": "Välj giltiga uttryckliga semantiska trösklar.",
   "Save a verification server, model and explicit thresholds before enabling verification.": "Spara kontrollserver, modell och uttryckliga trösklar innan kontrollen aktiveras.",
   "Enter an HTTP(S) compatible API base URL.": "Ange en HTTP(S)-basadress till ett kompatibelt API.",
-  "Enter an HTTP(S) compatible API base URL without credentials.": "Ange en HTTP(S)-basadress till ett kompatibelt API utan inloggningsuppgifter."
+  "Enter an HTTP(S) compatible API base URL without credentials.": "Ange en HTTP(S)-basadress till ett kompatibelt API utan inloggningsuppgifter.",
+  "Use this location": "Använd denna plats",
+  "Semantic inventory answer": "Semantiskt inventeringssvar",
+  "Choose one box for a preferred location, two for both locations, or at least two for the other rules.": "Välj en låda för en föredragen plats, två för båda platserna eller minst två för övriga regler.",
+  "When needed, sends the question and one candidate's current text to the saved verification server. No photos or locations are sent. Ordinary search requires separate activation below.": "Vid behov skickas frågan och en kandidats aktuella text till den sparade kontrollservern. Inga bilder eller platser skickas. Vanlig sökning aktiveras separat nedan.",
+  "Use semantic search in web, API, MCP and Home Assistant": "Använd semantisk sökning i webb, API, MCP och Home Assistant",
+  "Enable after testing the preview. All interfaces use the same supported selections and answer rules. If embeddings are unavailable, current direct text evidence and rules still work. Ambiguous requests ask for clarification.": "Aktivera efter test av förhandsgranskningen. Alla gränssnitt använder samma belagda urval och svarsregler. Om embeddings är otillgängliga fungerar fortfarande aktuellt direkt textstöd och regler. Vid tvetydighet ställs en följdfråga.",
+  "Public semantic search mode must be a boolean.": "Läget för vanlig semantisk sökning måste vara på eller av.",
+  "Enable and configure embeddings and identity verification before public semantic search.": "Aktivera och konfigurera embeddings och identitetskontroll innan vanlig semantisk sökning aktiveras.",
+  "Inventory changed during semantic verification. Try the question again.": "Inventeringen ändrades under den semantiska kontrollen. Försök med frågan igen.",
+  "Build the semantic search index": "Bygg det semantiska sökindexet",
+  "Verify semantic candidates": "Kontrollera semantiska kandidater",
+  "A rule can prefer one location, accept either location, return two locations, or ask which type you need. Every selected box must still have current evidence for the question.": "En regel kan föredra en plats, godta valfri plats, ange två platser eller fråga vilken typ du behöver. Varje vald låda måste fortfarande ha aktuellt stöd för frågan."
 };

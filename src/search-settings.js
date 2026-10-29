@@ -8,7 +8,7 @@ export class SearchSettings {
   constructor(store, env = {}) { this.store = store; this.env = env; this.busy = false; }
   config() {
     const saved = this.store.settings().searchWorkspace;
-    return saved ? { ...saved, verification: saved.verification || verificationDefaults() } : { embedding: {
+    return saved ? { ...saved, publicEnabled: saved.publicEnabled ?? false, verification: saved.verification || verificationDefaults() } : { publicEnabled: false, embedding: {
       enabled: this.env.STORAGE_SEMANTIC_PREVIEW === '1', baseUrl: this.env.STORAGE_EMBEDDING_URL || '',
       model: this.env.STORAGE_EMBEDDING_MODEL || '', modelRevision: this.env.STORAGE_EMBEDDING_REVISION || '',
       dimensions: Number(this.env.STORAGE_EMBEDDING_DIMENSIONS || 1024),
@@ -22,13 +22,13 @@ export class SearchSettings {
   view() {
     const config = this.config(), { apiKey, ...embedding } = config.embedding;
     const { apiKey: verifierKey, ...verification } = config.verification;
-    return { revision: this.revision(), embedding: { ...embedding, apiKeyConfigured: Boolean(apiKey) },
+    return { revision: this.revision(), publicEnabled: config.publicEnabled, embedding: { ...embedding, apiKeyConfigured: Boolean(apiKey) },
       verification: { ...verification, apiKeyConfigured: Boolean(verifierKey) }, rules: config.rules,
       usingEnvironment: !this.store.settings().searchWorkspace && this.env.STORAGE_SEMANTIC_PREVIEW === '1' };
   }
   save(input) {
     object(input);
-    if (Object.keys(input).some(key => !['revision', 'embedding', 'rules', 'verification'].includes(key))) throw new InputError('Unsupported search setting.');
+    if (Object.keys(input).some(key => !['revision', 'embedding', 'rules', 'verification', 'publicEnabled'].includes(key))) throw new InputError('Unsupported search setting.');
     return this.store.transaction(() => {
       this.assertCurrent(input.revision);
       const old = this.config(), submitted = object(input.embedding, 'embedding');
@@ -52,7 +52,8 @@ export class SearchSettings {
         if (old.verification.baseUrl === verification.baseUrl && !submittedVerifier.clearCredentials && old.verification.apiKey) verification.apiKey = old.verification.apiKey;
         if (submittedVerifier.apiKey?.trim()) verification.apiKey = submittedVerifier.apiKey.trim();
       }
-      const config = validateSearchWorkspace({ embedding, rules: input.rules, verification });
+      const config = validateSearchWorkspace({ embedding, rules: input.rules, verification,
+        publicEnabled: input.publicEnabled === undefined ? old.publicEnabled : input.publicEnabled });
       const ids = new Set(this.store.read().boxes.map(box => box.boxId));
       for (const rule of config.rules) {
         const unchanged = old.rules.some(before => JSON.stringify(before) === JSON.stringify(rule));

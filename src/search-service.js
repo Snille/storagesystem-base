@@ -49,6 +49,35 @@ export class SearchService {
     else { this.active = null; this.refresh(); }
     return { scheduled: true };
   }
+  async search(query, limit = 10, language) {
+    text(query, 'query');
+    const size = Math.max(1, Math.min(25, Number.isFinite(limit) ? Math.trunc(limit) : 10));
+    const lexical = this.inventory.search(query, 25, language);
+    if (!this.settings.config().publicEnabled) {
+      const matches = lexical.slice(0, size);
+      return { query, count: matches.length, matches };
+    }
+    // Retained filenames are explicit current-box lookups, not semantic guesses.
+    if (lexical[0]?.score >= 5000) {
+      const matches = lexical.slice(0, size);
+      return { ...this.inventory.ask(query, language), source: 'semantic', decision: 'answer',
+        reason: 'retained_filename', count: matches.length, matches, semanticAvailable: false };
+    }
+    const result = await this.preview({ query }, language);
+    this.settings.assertCurrent(result.revision);
+    const clarificationRule = result.reason === 'item_type_distinction' ? this.settings.config().rules.find(rule => rule.id === result.ruleId) : null;
+    const candidates = result.decision === 'answer' ? result.selectedBoxIds.map(id => this.inventory.get(id, language))
+      : clarificationRule ? clarificationRule.boxIds.map(id => this.inventory.get(id, language))
+      : result.decision === 'clarify' ? result.matches.filter(box => box.evidence
+        || (result.reason === 'semantic_margin' && box.similarity >= this.settings.config().verification.similarity)).slice(0, 5) : [];
+    const matches = candidates.slice(0, size);
+    return { query, count: matches.length, matches, answer: result.answer, source: 'semantic',
+      decision: result.decision, reason: result.reason, semanticAvailable: result.retrieval.available,
+      ...(!result.retrieval.available ? { fallback: result.retrieval.reason } : {}) };
+  }
+  async ask(query, language) {
+    return this.settings.config().publicEnabled ? this.search(query, 25, language) : this.inventory.ask(query, language);
+  }
   async preview(input, language) {
     object(input); text(input.query, 'query');
     if (Object.keys(input).some(key => !['query', 'revision'].includes(key))) throw new InputError('Preview accepts only a query and saved settings revision.');

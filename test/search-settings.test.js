@@ -148,14 +148,15 @@ test('rules and model configuration survive full backup/restore; runtime invento
   const store = new Store(join(dir, 'source.sqlite'));
   try {
     store.importLegacy(structuredClone(fixture)); const settings = new SearchSettings(store), view = settings.view();
-    settings.save({ revision: view.revision, embedding: { ...fields(view), baseUrl: 'http://localhost:11434', apiKey: 'synthetic-backup-key' }, rules: [rule('clarify')],
-      verification: { ...verifierFields(view), baseUrl: 'http://localhost:11434/v1', apiKey: 'synthetic-verifier-key' } });
+    settings.save({ revision: view.revision, embedding: { ...fields(view), enabled: true, baseUrl: 'http://localhost:11434', apiKey: 'synthetic-backup-key', model: 'synthetic', modelRevision: 'a'.repeat(64) }, rules: [rule('clarify')],
+      verification: { ...verifierFields(view), enabled: true, baseUrl: 'http://localhost:11434/v1', model: 'synthetic', similarity: 0.7, margin: 0.1, apiKey: 'synthetic-verifier-key' }, publicEnabled: true });
     await store.backup(join(dir, 'backup.sqlite')); await restore(join(dir, 'backup.sqlite'), join(dir, 'restored.sqlite'));
     const restored = new Store(join(dir, 'restored.sqlite'));
     try {
       assert.deepEqual(restored.settings(), store.settings()); assert.deepEqual(restored.read(), store.read());
       assert.equal(new SearchSettings(restored).view().rules[0].question.sv, 'Ska det vara en färdig kabel?');
       assert.equal(new SearchSettings(restored).view().verification.apiKeyConfigured, true);
+      assert.equal(new SearchSettings(restored).view().publicEnabled, true);
       assert.equal(restored.audit().ok, true);
     } finally { restored.close(); }
   } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
@@ -282,4 +283,128 @@ test('runtime identity busy and timeout outcomes abstain without overlapping ver
   state.verificationDelay = 200;
   const timedOut = await service.preview({ query: 'joining electronics', revision: view.revision }, 'sv');
   assert.equal(timedOut.decision, 'no_supported_match'); assert.equal(timedOut.verification.outcome, 'unavailable');
+});
+
+test('ordinary semantic search activation is explicit, validated and retained by older clients', async t => {
+  const { config } = await native(t), { settings } = setup(t);
+  let view = settings.view(); assert.equal(view.publicEnabled, false);
+  for (const publicEnabled of [true, null, 'true']) assert.throws(() => settings.save({
+    revision: view.revision, embedding: fields(view), rules: [], publicEnabled }));
+  view = settings.save({ revision: view.revision, embedding: config, verification: verifierConfig(config), rules: [], publicEnabled: true });
+  assert.equal(view.publicEnabled, true);
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [] });
+  assert.equal(view.publicEnabled, true);
+  assert.throws(() => settings.save({ revision: view.revision, embedding: { ...fields(view), enabled: false }, rules: [] }));
+  view = settings.save({ revision: view.revision, embedding: { ...fields(view), enabled: false }, rules: [], publicEnabled: false });
+  assert.equal(view.publicEnabled, false);
+});
+
+test('preferred destination rules require one current supported box, never an invented location', async t => {
+  const { store, settings } = setup(t), service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  let view = settings.view();
+  const preferred = { id: 'preferred-consumable', queries: ['solder'], action: 'prefer', boxIds: [fixture.boxes[0].boxId] };
+  view = settings.save({ revision: view.revision, embedding: fields(view), rules: [preferred] });
+  let result = await service.preview({ query: 'solder' }, 'sv');
+  assert.equal(result.reason, 'confirmed_preferred_destination'); assert.deepEqual(result.selectedBoxIds, preferred.boxIds);
+  assert.throws(() => settings.save({ revision: view.revision, embedding: fields(view), rules: [{ ...preferred, boxIds: fixture.boxes.map(b => b.boxId) }] }));
+  store.mutate(data => { data.sessions.find(s => s.sessionId === 'S-1').itemKeywords = []; data.boxes[0].label = 'Empty box'; });
+  result = await service.preview({ query: 'solder' }, 'sv');
+  assert.equal(result.reason, 'rule_evidence_missing'); assert.deepEqual(result.selectedBoxIds, []);
+});
+
+test('web, REST, MCP and HA ask share supported selections and journal final answers without rephrasing', async t => {
+  const { state, config } = await native(t), { store, settings } = setup(t);
+  store.writeSettings({ aiWorkspace: { connections: [{ id: 'fake-phrasing', name: 'Synthetic', provider: 'compatible', baseUrl: `${config.baseUrl}/v1` }],
+    imageInventory: { connectionId: 'fake-phrasing', model: 'must-not-rephrase', language: 'sv', extraInstructions: '' } } });
+  settings.save({ revision: settings.revision(), embedding: config, verification: verifierConfig(config), rules: [], publicEnabled: true });
+  const app = createApp({ store, env: { STORAGE_ADMIN_KEY: 'admin', STORAGE_API_KEY: 'read' } });
+  app.listen(0, '127.0.0.1'); await once(app, 'listening');
+  t.after(async () => { app.closeAllConnections(); await new Promise(resolve => app.close(resolve)); });
+  const base = `http://127.0.0.1:${app.address().port}`;
+  const request = async (path, body, admin = false) => {
+    const r = await fetch(base + path, { method: body ? 'POST' : 'GET', headers: { 'x-api-key': admin ? 'admin' : 'read', 'content-type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {}) });
+    assert.equal(r.status, 200); return r.json();
+  };
+  await until(async () => (await request('/api/manage/semantic', null, true)).state === 'ready');
+  const query = 'joining electronics', results = [];
+  results.push(await request('/api/manage/search?q=' + encodeURIComponent(query), null, true));
+  results.push(await request('/api/public/search?q=' + encodeURIComponent(query)));
+  results.push(await request('/api/public/ask', { query }));
+  const rpc = await request('/api/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_inventory', arguments: { query } } });
+  results.push(rpc.result.structuredContent);
+  for (const result of results) {
+    assert.equal(result.source, 'semantic'); assert.equal(result.reason, 'verified_semantic_evidence');
+    assert.deepEqual(result.matches.map(b => b.boxId), [fixture.boxes[0].boxId]); assert.equal(result.answer, results[0].answer);
+  }
+  assert.ok(state.calls.filter(c => c.path === '/v1/chat/completions').every(c => c.input.model === 'synthetic-identity'));
+  const history = await request('/api/manage/search-history', null, true);
+  assert.equal(history.entries.length, 4); assert.ok(history.entries.every(e => e.answerSource === 'semantic' && e.answer === results[0].answer));
+  assert.deepEqual(new Set(history.entries.map(e => e.source)), new Set(['web', 'api', 'mcp']));
+  state.verificationStatus = 503;
+  let result = await request('/api/public/ask', { query });
+  assert.equal(result.decision, 'no_supported_match'); assert.equal(result.matches.length, 0);
+  state.status = 503;
+  result = await request('/api/public/ask', { query: 'solder' });
+  assert.equal(result.decision, 'answer'); assert.equal(result.fallback, 'embedding_unavailable');
+  assert.deepEqual(result.matches.map(b => b.boxId), [fixture.boxes[0].boxId]);
+  result = await request('/api/public/ask', { query: 'M99 screws' });
+  assert.equal(result.decision, 'no_supported_match'); assert.equal(result.count, 0);
+  store.mutate(data => { for (const session of data.sessions.filter(s => s.isCurrent)) session.itemKeywords.push('fastener', 'shared'); });
+  const view = settings.view();
+  settings.save({ revision: view.revision, embedding: fields(view), rules: [{ id: 'both-fasteners', queries: ['fastener'], action: 'all', boxIds: fixture.boxes.map(b => b.boxId) }] });
+  result = await request('/api/public/ask', { query: 'fastener' });
+  assert.equal(result.reason, 'confirmed_compatible_destinations'); assert.equal(result.count, 2);
+  for (const box of result.matches) assert.ok(result.answer.includes(Object.values(box.location).filter(Boolean).join(', ')));
+  result = await request('/api/public/search?q=fastener&limit=1'); assert.equal(result.count, 1);
+  result = await request('/api/public/ask', { query: 'shared' });
+  assert.equal(result.decision, 'clarify'); assert.equal(result.count, 2);
+  assert.equal(store.audit().ok, true);
+});
+
+test('reanalysis replaces public evidence and vectors while retained filename lookups still locate the current box', async t => {
+  const { config } = await native(t), { store, settings } = setup(t);
+  store.mutate(data => { data.photos[0].originalFileName = 'old_box_image.jpg'; });
+  settings.save({ revision: settings.revision(), embedding: config, verification: verifierConfig(config), rules: [], publicEnabled: true });
+  const service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  await until(() => service.status().state === 'ready');
+  assert.equal((await service.search('solder')).decision, 'answer');
+  store.mutate(data => {
+    data.boxes.find(b => b.boxId === fixture.boxes[0].boxId).label = 'Connector parts'; data.sessions.find(s => s.sessionId === 'S-1').isCurrent = false;
+    data.sessions.push({ sessionId: 'NEW-SESSION', boxId: fixture.boxes[0].boxId, isCurrent: true,
+      createdAt: '2026-10-29T20:00:00Z', summary: 'Current connectors only.', itemKeywords: ['connector'] });
+  });
+  assert.equal((await service.search('solder')).decision, 'no_supported_match');
+  await until(() => service.status().state === 'ready');
+  assert.equal((await service.search('solder')).decision, 'no_supported_match');
+  const current = await service.search('connector');
+  assert.equal(current.matches[0].sessionId, 'NEW-SESSION'); assert.equal(current.matches[0].summary, 'Current connectors only.');
+  const filename = await service.search('old_box_image.jpg');
+  assert.equal(filename.reason, 'retained_filename'); assert.equal(filename.matches[0].sessionId, 'NEW-SESSION');
+  assert.equal(store.audit().ok, true);
+});
+
+test('network-cable evidence supports both Swedish phrasings while owner rule triggers stay distinct', async t => {
+  const { store, settings } = setup(t);
+  store.mutate(data => {
+    data.boxes.find(b => b.boxId === fixture.boxes[0].boxId).label = 'Kabel för Nätverk';
+    data.boxes.find(b => b.boxId === fixture.boxes[1].boxId).label = 'Nätverkskabel';
+    for (const s of data.sessions.filter(s => s.isCurrent)) { s.summary = 'Nätverkskablar.'; s.itemKeywords = ['nätverkskabel']; }
+    data.boxes.push({ boxId: 'SHORT-CABLES', label: 'Små nätverkskablar', currentLocationId: 'C-H1-P1-A', createdAt: '2026-01-01T10:00:00Z', updatedAt: '2026-01-01T10:00:00Z' });
+    data.sessions.push({ sessionId: 'SHORT-SESSION', boxId: 'SHORT-CABLES', summary: 'Korta nätverkskablar.', itemKeywords: [], isCurrent: true, createdAt: '2026-01-01T10:00:00Z' });
+  });
+  const ids = fixture.boxes.map(b => b.boxId), view = settings.view();
+  const question = 'Ska det vara en färdig nätverkskabel?';
+  settings.save({ revision: view.revision, embedding: fields(view), rules: [
+    { id: 'two-cables', queries: ['nätverkskabel'], action: 'all', boxIds: [ids[1], 'SHORT-CABLES'] },
+    { id: 'cable-kind', queries: ['kabel för nätverk'], action: 'clarify', boxIds: [...ids, 'SHORT-CABLES'], question: { sv: question } }
+  ] });
+  const service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  let result = await service.preview({ query: 'nätverkskabel' }, 'sv');
+  assert.equal(result.decision, 'answer'); assert.deepEqual(result.selectedBoxIds, [ids[1], 'SHORT-CABLES']);
+  result = await service.preview({ query: 'kabel för nätverk' }, 'sv');
+  assert.equal(result.reason, 'item_type_distinction'); assert.equal(result.answer, question);
+  store.mutate(data => { data.sessions.find(s => s.sessionId === 'SHORT-SESSION').summary = 'Inga nätverkskablar.'; });
+  result = await service.preview({ query: 'kabel för nätverk' }, 'sv');
+  assert.equal(result.reason, 'rule_evidence_missing');
 });

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { Store } from '../src/store.js';
 import { Inventory } from '../src/inventory.js';
 import { SearchService } from '../src/search-service.js';
+import { locationKey } from '../src/locations.js';
 
 const [backupArg, configArg, questionsArg, outputArg] = process.argv.slice(2);
 if (!outputArg) throw new Error('Usage: node scripts/verify-runtime-preview.js BACKUP CONFIG_JSON QUESTIONS_JSON NEW_PRIVATE_OUTPUT');
@@ -26,7 +27,8 @@ try {
   store.importLegacy(source.read()); // Deliberately excludes credentials and settings from the backup.
   const inventoryHash = hash(JSON.stringify(store.read()));
   mkdirSync(output); // Refuse existing output, including previous evidence.
-  service = new SearchService(new Inventory(store), { STORAGE_EMBEDDING_CACHE: join(output, 'semantic.sqlite') });
+  const inventory = new Inventory(store);
+  service = new SearchService(inventory, { STORAGE_EMBEDDING_CACHE: join(output, 'semantic.sqlite') });
   const saved = service.settings.save({ revision: service.settings.revision(), ...config,
     embedding: { ...config.embedding, apiKey: process.env.STORAGE_EMBEDDING_KEY || '' },
     ...(config.verification ? { verification: { ...config.verification, apiKey: process.env.STORAGE_VERIFICATION_KEY || '' } } : {}) });
@@ -38,9 +40,22 @@ try {
   const buildMs = Math.round(performance.now() - started), results = [];
   for (const question of questions) {
     const before = performance.now();
-    const result = await service.preview({ query: question.query, revision: saved.revision }, question.language || 'sv');
-    results.push({ ...question, latencyMs: Math.round(performance.now() - before), result });
-    console.log(`${question.id}: ${result.decision} / ${result.reason} / ${result.verification.outcome} (${results.at(-1).latencyMs} ms)`);
+    const result = config.publicEnabled ? await service.search(question.query, 25, question.language || 'sv')
+      : await service.preview({ query: question.query, revision: saved.revision }, question.language || 'sv');
+    let correct;
+    if (question.expected) {
+      const expected = question.expected;
+      if (!['answer', 'clarify', 'no_supported_match'].includes(expected.kind)) throw new Error('Invalid expected decision.');
+      const actual = result.decision === 'answer' ? (result.selectedBoxIds || result.matches.map(box => box.boxId))
+        .map(id => locationKey(inventory.get(id).locationId)).sort() : [];
+      const required = (expected.requiredLocationIds || []).map(locationKey).sort();
+      const candidates = config.publicEnabled && result.decision === 'clarify' ? result.matches.map(box => locationKey(box.locationId)).sort() : actual;
+      correct = result.decision === expected.kind && (!expected.answer || result.answer === expected.answer)
+        && (expected.kind !== 'answer' || required.length > 0)
+        && (!required.length || (required.every(id => candidates.includes(id)) && (expected.allowExtraLocations || candidates.length === required.length)));
+    }
+    results.push({ ...question, ...(correct === undefined ? {} : { correct }), latencyMs: Math.round(performance.now() - before), result });
+    console.log(`${question.id}: ${result.decision} / ${result.reason}${correct === undefined ? '' : correct ? ' / PASS' : ' / FAIL'} (${results.at(-1).latencyMs} ms)`);
   }
   assert.equal(hash(JSON.stringify(store.read())), inventoryHash);
   assert.equal(hash(readFileSync(backup)), originalHash);
@@ -52,12 +67,14 @@ try {
   const codeHashes = Object.fromEntries(codeFiles.map(path => [path, hash(readFileSync(path))]));
   for (const path of codeFiles) writeFileSync(join(output, path.replaceAll('/', '__')), readFileSync(path), { flag: 'wx' });
   const summary = { boxes: store.read().boxes.length, buildMs, cases: results.length,
-    semanticAvailable: results.filter(r => r.result.retrieval.available).length,
+    semanticAvailable: results.filter(r => r.result.retrieval?.available || r.result.semanticAvailable).length,
+    labelledCases: results.filter(r => r.correct !== undefined).length, correct: results.filter(r => r.correct === true).length,
     verifiedAnswers: results.filter(r => r.result.reason === 'verified_semantic_evidence').length };
   writeFileSync(join(output, 'report.json'), JSON.stringify({ createdAt: new Date().toISOString(), backupHash: originalHash,
     inventoryHash, codeHashes, configuration: saved, summary, results,
     limitations: ['Development runtime/latency check; not independent decision acceptance.',
-      'No public search activation, production settings changes, speech test or inventory writes.'] }, null, 2) + '\n', { flag: 'wx' });
+      'No deployed search activation, production settings changes, speech test or inventory writes.'] }, null, 2) + '\n', { flag: 'wx' });
+  if (results.some(row => row.correct === false)) process.exitCode = 1;
   console.log(JSON.stringify(summary));
 } finally {
   await service?.close(); store.close(); source.close();

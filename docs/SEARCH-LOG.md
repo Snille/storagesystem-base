@@ -23,8 +23,9 @@ individual server requests, not a count of distinct spoken questions.
 
 Records contain an ID, completion time, source/mode, received query, language,
 duration, outcome, returned count and match snapshots (box ID, label and readable
-location). Public `/ask` records its final AI-phrased answer or local fallback;
-plain search has no generated answer. Preview answers are marked separately.
+location). Public `/ask` records its final answer. With semantic mode enabled, web/REST/MCP
+search also records the shared deterministic answer or clarification (`semantic`);
+legacy plain search has no generated answer. Preview answers are marked separately.
 MCP returns candidates to its caller, so the caller's later prose is not recorded.
 
 This log does not contain microphone audio or what the person intended to say.

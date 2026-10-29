@@ -31,11 +31,20 @@ function labelMatch(query, label) {
   return a.length > 0 && b.length > 0 && (same(a.join(''), b.join(''))
     || (a.length === b.length && a.every((word, index) => same(word, b[index]))));
 }
+function evidenceQueries(query) {
+  const terms = words(query).filter(term => term !== 'for');
+  // Swedish compound/order equivalence applies to source evidence only. Keep
+  // owner rule triggers distinct: these phrasings may have different policies.
+  if (terms.length === 2 && terms.some(term => same(term, 'kabel')) && terms.some(term => same(term, 'natverk'))) return [query, 'nätverkskabel'];
+  if (terms.length === 1 && same(terms[0], 'natverkskabel')) return [query, 'kabel för nätverk'];
+  return [query];
+}
 function evidence(query, box) {
   if (labelMatch(query, box.boxId) || labelMatch(query, box.locationId)) return 'identifier';
-  if (labelMatch(query, box.label)) return 'label';
-  if (covers(query, (box.itemKeywords || []).join(' '))) return 'keyword';
-  if (covers(query, [box.label, box.summary, ...(box.itemKeywords || [])].join(' '))) return 'summary';
+  const variants = evidenceQueries(query);
+  if (variants.some(q => labelMatch(q, box.label))) return 'label';
+  if (variants.some(q => covers(q, (box.itemKeywords || []).join(' ')))) return 'keyword';
+  if (variants.some(q => covers(q, [box.label, box.summary, ...(box.itemKeywords || [])].join(' ')))) return 'summary';
   return null;
 }
 
@@ -81,8 +90,9 @@ export function previewAnswerDecision(query, boxes, { semanticMatches = [], thre
     return labelMatch(query, box.boxId) || labelMatch(query, box.locationId)
       || requiredCodes.every(code => contents.includes(` ${code} `));
   };
-  const candidates = boxes.filter(box => !denies(query, box.summary)
-    && !(box.itemKeywords || []).some(keyword => denies(query, keyword)) && retainsCodes(box))
+  const variants = evidenceQueries(query);
+  const candidates = boxes.filter(box => !variants.some(q => denies(q, box.summary)
+    || (box.itemKeywords || []).some(keyword => denies(q, keyword))) && retainsCodes(box))
     .map(box => ({ box, similarity: scores.get(box.boxId), evidence: evidence(query, box) }));
   const weight = { identifier: 4, label: 3, keyword: 2, summary: 1 };
   const direct = candidates.filter(item => item.evidence).sort((a, b) => (weight[b.evidence] - weight[a.evidence])
@@ -108,6 +118,7 @@ export function previewAnswerDecision(query, boxes, { semanticMatches = [], thre
     const relevant = rule.boxIds.map(id => direct.find(item => item.box.boxId === id));
     if (relevant.some(item => !item)) return finish('clarify', [], 'rule_evidence_missing');
     if (rule.action === 'clarify') return finish('clarify', [], 'item_type_distinction', rule);
+    if (rule.action === 'prefer') return finish('answer', rule.boxIds, 'confirmed_preferred_destination', rule);
     if (rule.action === 'all') return finish('answer', rule.boxIds, 'confirmed_compatible_destinations', rule);
     const chosen = direct.find(item => rule.boxIds.includes(item.box.boxId));
     return finish('answer', [chosen.box.boxId], 'confirmed_equivalent_destinations', rule);

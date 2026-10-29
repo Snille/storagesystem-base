@@ -1,30 +1,26 @@
 # Current status
 
-Reviewed 2026-10-29 against the source and live production. Source:
-**0.30.0-dev** (see [VERSION](../VERSION)); production: **0.29.0** in Portainer. This app
-has been production since 2026-10-25. Use [TODO](../TODO.md) for outstanding actions,
-[Deployment](DEPLOYMENT.md) for operations and [History](HISTORY.md) for releases.
+Reviewed 2026-10-30. Source: **0.30.0**, prepared for deployment; production:
+**0.29.0**. VERSION owns the source version. See TODO for remaining work and
+Deployment/History for operations and dated release evidence.
 
-## Prepared next: 0.30.0-dev (not deployed)
+## Prepared next: 0.30.0
 
-- Management preview now connects the optional identity verifier, with saved,
-  redacted independent credentials, explicit similarity/margin and timeout settings.
-  It rejects configuration/content races, including changes to ranking competitors.
-  Verification and thresholds remain unset/disabled unless explicitly configured.
-- Ollama01's authenticated native tags/embed routes were added and verified from
-  the actual production application container. Only the Storage System key gains
-  these routes; Mimers Brain's existing compatible embeddings still work.
-- On an isolated read-only production-backup import, all 166 boxes indexed in
-  16.1 s. Seven development queries completed with semantic retrieval; two English
-  knee-pad queries selected Knäskydd through verification (10.7 s first, 1.4 s next).
-  Thermal-camera substitution was refused. `mat enhet` still has no supported match;
-  transcription repair is not implemented. These are functional/regression results,
-  not independent acceptance or calibrated production thresholds.
-- Fresh owner-labelled questions are deferred at the owner's request until more
-  hands-on voice testing. Public browser/REST/MCP/HA search remains unchanged and
-  production still has embeddings disabled. No app deployment occurred in this work.
-- All 121 tests pass serially on Windows and pinned Node 24.14 Docker; syntax and
-  language checks pass. The existing parallel security-test port collision remains.
+- Explicit shared semantic mode for browser, REST/HA and MCP, using supported
+  current selections and deterministic location answers. Single words work.
+- Optional source-bound identity verification with BGE-M3/Qwen on Ollama01; current
+  direct evidence and saved rules remain usable when embeddings are unavailable.
+- One-box preference, two-place, alternative and clarification rules. The prepared
+  ten-rule profile preserves five existing rules, updates one and adds four.
+- Fourteen owner cases pass all four transports (56 checks), including two absent
+  objects and the exact cable clarification/three candidates. Real HA HTTP client
+  and result mapping pass. Seven supplementary development cases pass.
+- Reanalysis replaces source/session-bound cached evidence; old descriptions cannot
+  authorize answers. Actual inventory and the frozen backup are not modified by tests.
+- All 126 configured tests/checks pass on Windows; release image validation follows.
+  The old parallel security-test port conflict is fixed. Physical speech/printing,
+  external authentication, backup schedule and yes/no conversation context remain
+  separate checks or follow-up work. This is not general unseen model acceptance.
 
 ## Latest production verification: 0.29.0, 2026-10-29
 

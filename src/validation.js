@@ -151,10 +151,11 @@ export function validateAnswerRules(rules) {
       || !Array.isArray(rule.queries) || !rule.queries.length || rule.queries.length > 30
       || rule.queries.some(q => typeof q !== 'string' || !q.trim() || q.length > 240
         || !normalizeText(q).split(' ').some(word => word && !answerIgnoredWords.has(word)))
-      || !['clarify', 'any', 'all'].includes(rule.action)
-      || !Array.isArray(rule.boxIds) || rule.boxIds.length < 2 || rule.boxIds.length > 25
+      || !['clarify', 'any', 'all', 'prefer'].includes(rule.action)
+      || !Array.isArray(rule.boxIds) || rule.boxIds.length < (rule.action === 'prefer' ? 1 : 2) || rule.boxIds.length > 25
       || new Set(rule.boxIds).size !== rule.boxIds.length || rule.boxIds.some(id => typeof id !== 'string' || !id.trim() || id.length > 200)
-      || (rule.action === 'all' && rule.boxIds.length > 2)) throw new InputError('Invalid answer rule: choose queries and distinct boxes; return at most two locations.');
+      || (rule.action === 'all' && rule.boxIds.length > 2)
+      || (rule.action === 'prefer' && rule.boxIds.length !== 1)) throw new InputError('Invalid answer rule: choose queries and distinct boxes; return at most two locations.');
     if (rule.question !== undefined) {
       object(rule.question, 'question');
       if (Object.keys(rule.question).some(key => !['en', 'sv', 'de'].includes(key))
@@ -168,7 +169,8 @@ export function validateAnswerRules(rules) {
 
 export function validateSearchWorkspace(config) {
   object(config, 'searchWorkspace');
-  for (const key of Object.keys(config)) if (!['embedding', 'rules', 'verification'].includes(key)) throw new InputError('Unsupported search setting.');
+  for (const key of Object.keys(config)) if (!['embedding', 'rules', 'verification', 'publicEnabled'].includes(key)) throw new InputError('Unsupported search setting.');
+  if (config.publicEnabled !== undefined && typeof config.publicEnabled !== 'boolean') throw new InputError('Public semantic search mode must be a boolean.');
   const e = object(config.embedding, 'embedding');
   for (const key of Object.keys(e)) if (!['enabled', 'baseUrl', 'model', 'modelRevision', 'dimensions', 'apiKey'].includes(key)) throw new InputError('Unsupported embedding setting.');
   if (typeof e.enabled !== 'boolean' || !Number.isInteger(e.dimensions) || e.dimensions < 1 || e.dimensions > 8192) throw new InputError('Choose a valid embedding dimension and preview mode.');
@@ -187,6 +189,7 @@ export function validateSearchWorkspace(config) {
   if (e.enabled && (!e.baseUrl || !e.model.trim() || !e.modelRevision)) throw new InputError('Save a server, model and immutable digest before enabling embeddings.');
   validateAnswerRules(config.rules);
   if (config.verification !== undefined) validateSearchVerification(config.verification);
+  if (config.publicEnabled && (!e.enabled || !config.verification?.enabled)) throw new InputError('Enable and configure embeddings and identity verification before public semantic search.');
   return config;
 }
 

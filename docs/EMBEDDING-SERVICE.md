@@ -1,6 +1,6 @@
 # Shared embedding service
 
-Last recorded infrastructure changes: 2026-10-29. Source application 0.30.0-dev;
+Last recorded infrastructure changes: 2026-10-29. Source application 0.30.0 (prepared);
 production application remains 0.29.0.
 Ollama01 is the shared TowerCube GPU service. Mimers Brain switched embeddings on
 2026-10-22. Storage System uses its vision fallback, but **not production embeddings**.

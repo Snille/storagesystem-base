@@ -1,16 +1,15 @@
-# Inventory answer decision preview
+# Shared inventory answer decisions
 
-Implemented in 0.10.0-dev with a verified preview added in 0.10.1-dev, not activated
-in public search/ask, browser, REST, MCP or Home Assistant. Its purpose is to
+Source 0.30.0 connects this policy to explicitly enabled browser, REST/HA and MCP
+search. Disabled mode preserves legacy behavior. The standalone and management
+preview APIs below remain available; source-bound verification is optional in
+preview and required configuration before enabling ordinary semantic mode.
+
+
+Implemented in 0.10.0-dev with a verified preview added in 0.10.1-dev, initially isolated from public interfaces. Its purpose is to
 evaluate selection and answer behavior before public activation. Optional runtime
 embeddings arrived in 0.10.2-dev; saved rule/model configuration and management UI
 arrived in 0.11.0-dev. See SEMANTIC-RUNTIME.md.
-
-Source 0.30.0-dev now connects the verifier to the management preview through
-optional saved endpoint/model/key, timeout and explicit thresholds. Old settings
-default to disabled with no thresholds. Production remains 0.29.0 with embeddings
-disabled; the implementation is not public-search activation. See the runtime
-document for the isolated 166-box functional/latency check and its acceptance limits.
 
 ## Service boundary
 

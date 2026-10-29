@@ -1,6 +1,6 @@
 # Compatibility inventory
 
-Current application contracts reviewed against 0.29.0 source on 2026-10-29.
+Current application contracts reviewed against 0.30.0 source on 2026-10-30.
 This application is already in production. Historical reference commits below identify
 the original comparison; they are not a claim of a new exhaustive parity review.
 
@@ -26,7 +26,7 @@ Reusable behavior includes current-session precedence, structured location gramm
 | Album inbox and photo selection | Implemented for Immich/PhotoPrism with selected album, roles and unassigned filtering |
 | AI photo roles, analysis, matching and corrections | Single-photo tests, multi-photo new-box drafts and selected-photo existing-box updates implemented with explicit review/edit/save; manual roles retained; automatic matching remains pending |
 | AI-generated natural answers | AI phrasing of lexical candidates with local fallback; semantic decision policy is preview-only |
-| Settings, prompts and per-model overrides | Photo source, independent UI/external/AI language, named AI connections and task extra instructions implemented; Search & answers adds embedding settings and saved owner rules for management preview. Full prompt management closed by owner; legacy customizations preserved but inactive |
+| Settings, prompts and per-model overrides | Photo source, independent UI/external/AI language, named AI connections and task extra instructions implemented; Search & answers adds embedding settings and saved owner rules for preview and explicitly enabled shared search. Full prompt management closed by owner; legacy customizations preserved but inactive |
 | Language catalogs and translation tool | API location labels/local answers in en/sv/de; catalog/override editing and separate-file migration pending |
 | Label designer and printer selection/status | Box/location/unit labels use label-service templates and status. Physical box output through the service accepted; designer/media/sheets/QR belong to label-service |
 | Excel catalog import/export | Retired from scope on 2026-10-20 at Erik's request; one-time initial label import, no future use |
@@ -39,7 +39,7 @@ Public routes use `x-api-key`, Bearer authentication, or the legacy `?key=` fall
 | --- | --- |
 | `GET /api/public/health` | `{ok, service:"lagersystem", date}` |
 | `GET /api/public/search?q=...&limit=...&lang=...` | Trimmed query; default limit 10, clamp 1–25, nonfinite fallback; `{query,count,matches}`; missing q → 400 |
-| `POST /api/public/ask` | `{query,language?}` → `{query,answer,source,count,matches}`; source is `ai` for valid provider phrasing or `search` for the local fallback |
+| `POST /api/public/ask` | `{query,language?}` → `{query,answer,source,count,matches}`; source is `semantic` in enabled decision mode; otherwise `ai` for provider phrasing or `search` for local fallback |
 | `GET /api/public/boxes/:boxId?lang=...` | One box; unknown identifier → 404; optional fields omitted when absent |
 | `GET /api/public/assets/:assetId/thumbnail`, `/preview` or `/original` | Public API authentication or per-asset/per-variant `?sig=` authentication; configured provider retrieval |
 

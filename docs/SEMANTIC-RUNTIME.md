@@ -1,14 +1,54 @@
-# Semantic runtime preview
+# Shared semantic search and decision preview
 
-Current source: 0.30.0-dev, reviewed 2026-10-29. Production 0.29.0 reports `enabled: false`.
+Current source: 0.30.0 (prepared), reviewed 2026-10-30. Production 0.29.0 reports `enabled: false`.
 Management-only means the configured management access mode (key or explicitly
 open management), not a separate mandatory key in every deployment.
 
 Version 0.10.2-dev introduced an optional background vector index and management-only
 decision preview. Version 0.11.0-dev adds saved model/rule configuration and the
-Search & answers dialog. Public search/ask, MCP, browser search and HA retain their
-existing behavior. This does not complete independent acceptance or enable the
-voice assistant's new decision policy.
+Search & answers dialog. Source 0.30.0 adds a separate explicit ordinary-search activation switch. When
+disabled, public/browser/HA/MCP paths retain their previous behavior. When enabled,
+all use the same supported selections and saved rules.
+
+## Ordinary search (0.30.0)
+
+`searchWorkspace.publicEnabled` defaults to false and is independent of embedding
+indexing. Enabling requires configured/enabled embedding and identity verification
+settings, including explicit thresholds. Older clients omitting the flag retain it;
+unknown or nonboolean values are rejected. The WebGUI offers the separate switch
+under Search & answers → Embedding model. Turning it off restores legacy behavior.
+
+When enabled, web search, public REST search/ask and MCP search all call
+`SearchService.search`. Answers use only selected current boxes; exact filenames
+retain their explicit lookup path. Ambiguity returns a short question/candidates,
+unsupported requests return no claimed matches. Missing/stale/busy/unavailable
+embeddings use current direct text evidence and saved rules without semantic scores.
+Identity failure cannot authorize a semantic-only answer. Settings/content races
+fail closed. MCP instructions require preserving the decision rather than choosing
+another candidate. The enabled ask path skips legacy AI answer rephrasing.
+
+Payloads preserve query/count/matches and add answer, `source: semantic`, decision,
+reason and semanticAvailable (plus a safe fallback category when needed). Match
+limits remain 1–25. The journal records the shared final answer once per request.
+A preferred rule selects exactly one current supported box; all selects two, any
+accepts alternatives and clarify asks the saved question. No inventory-specific
+rules ship as defaults. Swedish cable compound/order normalization applies only
+to evidence: different query phrasings can still intentionally trigger different
+owner rules. Session reanalysis automatically replaces indexed evidence; old
+sessions cannot authorize answers. Conversational yes/no state is not implemented.
+
+Fourteen owner-labelled cases are frozen privately in
+`owner-search-20261029T225316Z/questions-v2.json` (SHA-256
+`8651868d083f42d868557d6567b9f24d161411865955e7afb2b102334a8c754d`).
+The release config preserves five existing rules, updates one and adds four (ten
+in total). All 56 transport checks and the real HA HTTP client mapping pass on
+an isolated 166-box backup. `verify-shared-search.js BACKUP CONFIG_JSON QUESTIONS_JSON
+NEW_PRIVATE_OUTPUT` accepts expected answer/clarify/no-supported decisions, exact
+clarification text and location sets. Optional `STORAGE_HA_SOURCE` and
+`STORAGE_TEST_PYTHON` enable the actual reference client. Keys come from the same
+explicit environment variables as verify-runtime-preview, not config files.
+These configured snapshot checks and seven supplementary source/regression cases
+are not a claim of general unseen model accuracy. Physical voice remains separate.
 
 ## Source and cache boundaries
 
@@ -119,7 +159,7 @@ This is linguistic inflection, not speech-error correction. Deleted or changed
 inventory cannot be overridden by a saved rule. Conflicts/missing evidence are
 explained in the preview. No predefined workshop-specific rules are shipped.
 
-Source 0.30.0-dev attaches the optional identity verifier through saved
+Source 0.30.0 attaches the optional identity verifier through saved
 `verification`: `enabled`, compatible `baseUrl`, `model`, `timeoutMs`, `similarity`,
 `margin`, and optional private `apiKey`. The UI exposes these under Embedding model.
 Old databases default to disabled, blank endpoint/model and null thresholds;
@@ -134,8 +174,8 @@ locations, IDs and photos do not. Direct evidence does not invoke it. Busy,
 unavailable, invalid, oversized or unsupported verification cannot authorize an
 answer. Settings are rechecked after verification, and a current-content snapshot
 also guards changes to other ranking competitors. Identity settings/rules do not
-invalidate valid embedding vectors. Production configuration, independent
-acceptance and public-interface activation remain separate work.
+invalidate valid embedding vectors. Ordinary semantic activation is separate from index/verification setup. Broader
+quality measurement and physical voice acceptance remain separate checks.
 
 ## Verification
 

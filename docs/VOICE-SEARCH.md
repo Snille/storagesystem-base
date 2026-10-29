@@ -1,7 +1,7 @@
 # Workshop voice search: current flow and proposed design
 
 Hardware/pipeline evidence was recorded on 2026-10-20; application sections were
-reconciled with production 0.29.0 / source 0.30.0-dev on 2026-10-29. The public backend switched to this
+reconciled with production 0.29.0 / source 0.30.0 (prepared) on 2026-10-30. The public backend switched to this
 application on 2026-10-25. Hardware selectors/firmware and physical speech were not
 retested for the documentation update. Keep the dated observations separate from
 the implemented backend and proposed semantic flow.
@@ -114,7 +114,7 @@ audio. Old backend behavior was checked against the reference source at
 `a92ed1d22f5bfb3e61a168e29bdae0b1ea04aadb`; no production backend settings or
 private prompts were exported.
 
-## Current application behavior (production 0.29.0 / source 0.30.0-dev)
+## Current application behavior (production 0.29.0 / source 0.30.0 (prepared))
 
 Shared lexical search serves browser, REST and MCP, with Swedish word variants,
 RC synonyms, short transpositions and retained filename lookup. Reviewed image-AI
@@ -128,9 +128,8 @@ both missed the same 11 lexical retrieval cases. This is recorded regression,
 not physical speaker acceptance or proof of the future selection policy.
 
 The optional semantic index, owner-rule UI and decision preview are implemented,
-and source 0.30.0-dev connects optional saved identity verification/thresholds to
-the management preview. Production indexing is disabled, and public search/ask/HA
-do not use this policy. Contextual follow-up
+and source 0.30.0 connects identity verification/thresholds to the management preview
+and explicitly enabled ordinary search. Production is still 0.29.0 until deployment. Contextual follow-up
 is not implemented. See [Semantic runtime](SEMANTIC-RUNTIME.md).
 
 Browser voice input (0.24.0) fills the search using SpeechRecognition when supported.

@@ -10,7 +10,7 @@ export function mountSearchSettings(request, message) {
   const status = (value, error = false) => { $('search-settings-status').textContent = value; $('search-settings-status').classList.toggle('error', error); };
   const location = box => Object.values(box.location || {}).filter(Boolean).join(' · ');
   const boxName = id => { const box = boxes.find(b => b.boxId === id); return box ? `${box.label} · ${location(box)}` : tr('Unavailable box: {0}', id); };
-  const actionNames = { any: 'Either location is fine', all: 'Return both locations', clarify: 'Ask which type' };
+  const actionNames = { any: 'Either location is fine', all: 'Return both locations', clarify: 'Ask which type', prefer: 'Use this location' };
   const fields = () => ({ enabled: $('search-enabled').checked, baseUrl: $('search-server').value.trim().replace(/\/+$/, ''), model: $('search-model').value.trim(),
     modelRevision: $('search-model-revision').value.trim(), dimensions: Number($('search-dimensions').value) });
   const savedFields = () => Object.fromEntries(Object.keys(fields()).map(key => [key, state.embedding[key]]));
@@ -20,7 +20,8 @@ export function mountSearchSettings(request, message) {
     margin: $('search-verification-margin').value === '' ? null : Number($('search-verification-margin').value) });
   const savedVerificationFields = () => Object.fromEntries(Object.keys(verificationFields()).map(key => [key, state.verification[key]]));
   const modelDirty = () => state && (JSON.stringify(fields()) !== JSON.stringify(savedFields()) || $('search-key').value !== '' || $('search-clear-key').checked
-    || JSON.stringify(verificationFields()) !== JSON.stringify(savedVerificationFields()) || $('search-verification-key').value !== '' || $('search-verification-clear-key').checked);
+    || JSON.stringify(verificationFields()) !== JSON.stringify(savedVerificationFields()) || $('search-verification-key').value !== '' || $('search-verification-clear-key').checked
+    || $('search-public-enabled').checked !== state.publicEnabled);
   function updateDirty() {
     const dirty = modelDirty();
     for (const button of dialog.querySelectorAll('button[type="submit"]')) button.disabled = busy;
@@ -56,7 +57,7 @@ export function mountSearchSettings(request, message) {
         card.append(node('h4', entry.query), node('p', `${date} · ${t(sources[entry.source])} · ${t(modes[entry.mode])} · ${entry.count === 1 ? t('1 match') : tr('{0} matches', entry.count)} · ${entry.durationMs} ms`, 'hint'));
         if (entry.outcome === 'error') card.append(node('p', t('The request failed.'), 'error'));
         else if (entry.answer) {
-          card.append(node('p', entry.answer), node('p', t(entry.answerSource === 'ai' ? 'AI answer' : entry.answerSource === 'decision-preview' ? 'Decision preview' : 'Local answer'), 'hint'));
+          card.append(node('p', entry.answer), node('p', t(entry.answerSource === 'ai' ? 'AI answer' : entry.answerSource === 'decision-preview' ? 'Decision preview' : entry.answerSource === 'semantic' ? 'Semantic inventory answer' : 'Local answer'), 'hint'));
         } else card.append(node('p', t('Search results only; no answer was generated.'), 'hint'));
         if (entry.queryTruncated || entry.answerTruncated) card.append(node('p', t('Stored text was shortened.'), 'hint'));
         if (entry.matches.length) {
@@ -109,6 +110,7 @@ export function mountSearchSettings(request, message) {
   }
   function populate() {
     const e = state.embedding;
+    $('search-public-enabled').checked = state.publicEnabled;
     $('search-enabled').checked = e.enabled; $('search-server').value = e.baseUrl; $('search-model').value = e.model;
     $('search-model-revision').value = e.modelRevision; $('search-dimensions').value = e.dimensions;
     $('search-key').value = ''; $('search-clear-key').checked = false;
@@ -123,10 +125,10 @@ export function mountSearchSettings(request, message) {
     $('search-rule-form').hidden = true; $('search-preview-result').hidden = true; editingId = null;
     ruleList(); updateDirty();
   }
-  async function save(embedding, rules, verification = savedVerificationFields()) {
+  async function save(embedding, rules, verification = savedVerificationFields(), publicEnabled = state.publicEnabled) {
     busy = true; updateDirty(); generation++;
     try {
-      state = await api('search-settings', { revision: state.revision, embedding, rules, verification }, 'PUT');
+      state = await api('search-settings', { revision: state.revision, embedding, rules, verification, publicEnabled }, 'PUT');
       models = []; $('search-models').replaceChildren(); populate(); await refreshStatus();
     } finally { busy = false; updateDirty(); }
   }
@@ -167,7 +169,7 @@ export function mountSearchSettings(request, message) {
     event.preventDefault();
     try {
       await save({ ...fields(), apiKey: $('search-key').value, clearCredentials: $('search-clear-key').checked }, state.rules,
-        { ...verificationFields(), apiKey: $('search-verification-key').value, clearCredentials: $('search-verification-clear-key').checked });
+        { ...verificationFields(), apiKey: $('search-verification-key').value, clearCredentials: $('search-verification-clear-key').checked }, $('search-public-enabled').checked);
       status(t('Search model settings saved.'));
     }
     catch (error) { status(t(error.message), true); }

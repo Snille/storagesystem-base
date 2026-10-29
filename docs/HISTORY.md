@@ -1,5 +1,42 @@
 # History
 
+## 0.30.0 - 2026-10-30 (prepared for deployment)
+
+- Added explicit shared semantic search activation for browser, public REST/HA and
+  MCP. All four paths return the same supported selection, clarification or no-match
+  decision. Single-word searches work. Enabled `/ask` formats current locations in
+  application code without another free-form AI rewrite, preserving both requested
+  places. Disabled mode keeps legacy lexical search/AI phrasing. No HA contract,
+  public key or existing identifier changes; `source: semantic` and decision metadata
+  are additive. The browser shows the short answer above matching boxes.
+- Added one-box preferred-location rules alongside existing any/all/clarify actions.
+  Swedish network-cable compound/order equivalence supports current source evidence
+  without merging distinct owner rule triggers. Exact codes and negated evidence
+  remain guarded. Rules/models/thresholds are saved configuration, never hardcoded
+  workshop defaults. Reanalysis invalidates old current-content vectors and answers;
+  retained filenames still locate the current box rather than historical contents.
+- Preserved the five unrelated existing owner rules, updated the network clarification
+  trigger to the owner's new wording, and prepared four additional owner rules.
+  Fourteen frozen owner cases pass across all four transports (56 checks), including
+  two absent objects and an exact clarification question with three candidate places.
+  Initial 11-case baseline was 7/11; configured owner rules produced 11/11. These
+  measurements validate this snapshot/configuration, not general unseen accuracy.
+- Seven supplementary development cases pass: two verified English synonyms,
+  ambiguity, exact-code rejection, unsupported property, related-object rejection
+  and refusal to invent an interpretation of the known mishearing. Warm semantic-only
+  checks took about 1.0–1.5 s; owner cases with direct evidence were about 0.1–0.25 s.
+  BGE-M3/Qwen use the existing local Ollama01 gateway, explicit regression thresholds
+  and a 15 s identity timeout. Physical HA speech and yes/no conversation state are
+  separate follow-up work.
+- Added isolated shared-transport verification with optional real HA HTTP client/
+  result-mapping checks. No deployed inventory/settings are imported into test writes;
+  source backup and inventory hashes are checked, evidence remains private. All 126
+  tests and configured checks pass on Windows. Fixed the security test's adjacent-port
+  assumption by reserving an OS-assigned port; pinned Node 24.14 image checks follow.
+- No relational schema change (still 4). New semantic journal entries and saved
+  configuration are backed up/audited. Prefer disabling ordinary semantic mode for
+  behavioral rollback; an older image requires a compatible backup/settings/journal.
+
 ## 0.30.0-dev - 2026-10-29 (not deployed)
 
 - Connected optional saved identity verification to management semantic preview.

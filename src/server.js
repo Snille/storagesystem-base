@@ -156,17 +156,15 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/public/search' && method === 'GET') {
         const query = url.searchParams.get('q')?.trim() || '';
         if (!query) throw new InputError('The q parameter is required.');
-        const result = await history.run({ source: 'api', mode: 'search', query, language: inventory.language(lang) }, () => {
-          const matches = inventory.search(query, Number(url.searchParams.get('limit') ?? 10), lang);
-          return { query, count: matches.length, matches };
-        });
+        const result = await history.run({ source: 'api', mode: 'search', query, language: inventory.language(lang) },
+          () => search.search(query, Number(url.searchParams.get('limit') ?? 10), lang));
         return json({ ...result, matches: result.matches.map(withUrls) });
       }
       if (path === '/api/public/ask' && method === 'POST') {
         const input = object(await body(req)); text(input.query, 'query'); text(input.language, 'language', { optional: true });
         const result = await history.run({ source: 'api', mode: 'ask', query: input.query.trim(), language: inventory.language(input.language) }, async () => {
-          const found = inventory.ask(input.query.trim(), input.language);
-          const phrased = await ai.phraseAnswer(found.query, found.matches, inventory.language(input.language));
+          const found = await search.ask(input.query.trim(), input.language);
+          const phrased = found.source === 'semantic' ? null : await ai.phraseAnswer(found.query, found.matches, inventory.language(input.language));
           return { ...found, ...(phrased ? { answer: phrased.answer, source: 'ai' } : {}) };
         });
         return json({ ...result, matches: result.matches.map(withUrls) });
@@ -192,7 +190,7 @@ export function createApp({ store, env = process.env }) {
           return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error.' } }, 400);
         }
         const list = Array.isArray(input) ? input : [input];
-        const results = (await Promise.all(list.map(m => handleMcp(m, inventory, photos, version, history)))).filter(Boolean);
+        const results = (await Promise.all(list.map(m => handleMcp(m, inventory, photos, version, history, search)))).filter(Boolean);
         if (!results.length) { res.writeHead(202); return res.end(); }
         return json(Array.isArray(input) ? results : results[0]);
       }
@@ -215,10 +213,7 @@ export function createApp({ store, env = process.env }) {
       if (path === '/api/manage/search' && method === 'GET') {
         const query = url.searchParams.get('q')?.trim() || '';
         if (!query) throw new InputError('The q parameter is required.');
-        const result = await history.run({ source: 'web', mode: 'search', query, language: inventory.language(lang) }, () => {
-          const matches = inventory.search(query, 25, lang);
-          return { query, count: matches.length, matches };
-        });
+        const result = await history.run({ source: 'web', mode: 'search', query, language: inventory.language(lang) }, () => search.search(query, 25, lang));
         return json({ ...result, matches: result.matches.map(withUrls) });
       }
       if (path === '/api/manage/settings' && method === 'GET') return json(catalog.settings.view());

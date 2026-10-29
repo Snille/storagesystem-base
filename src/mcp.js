@@ -22,7 +22,7 @@ function toToolBox(box) {
     photos: photos.map(({ photoId, role, notes }) => ({ photoId, role, notes })), ...(score ? { score } : {}) };
 }
 
-export async function handleMcp(message, inventory, photos, version, history) {
+export async function handleMcp(message, inventory, photos, version, history, search) {
   if (!message || typeof message !== 'object' || Array.isArray(message) || message.jsonrpc !== '2.0') return failure(null, -32600, 'Invalid JSON-RPC message.');
   if (message.id === undefined || typeof message.method !== 'string') return null;
   const { id, method } = message;
@@ -30,7 +30,7 @@ export async function handleMcp(message, inventory, photos, version, history) {
   if (method === 'initialize') return success({
     protocolVersion: versions.includes(message.params?.protocolVersion) ? message.params.protocolVersion : versions[0],
     capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'storagesystem', title: 'Storage system', version },
-    instructions: 'Search inventory first, then get_box for details. Browse with list_locations and list_boxes_at_location. Use human-readable locations when answering people.'
+    instructions: 'Search inventory first, then get_box for details. Browse with list_locations and list_boxes_at_location. Use human-readable locations when answering people. When search includes a decision and answer, preserve that decision: ask the clarification for clarify, and do not claim a match for no_supported_match. Do not replace a supported answer with other candidate boxes.'
   });
   if (method === 'ping') return success({});
   if (method === 'tools/list') return success({ tools });
@@ -44,11 +44,12 @@ export async function handleMcp(message, inventory, photos, version, history) {
     for (const key of ['language', 'photo_id']) text(args[key], key, { optional: true });
     if (args.limit !== undefined && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 25)) throw new InputError('limit must be an integer from 1 to 25.');
     if (name === 'search_inventory') {
-      const work = () => {
+      const work = async () => {
+        if (search) return search.search(args.query, args.limit, args.language);
         const matches = inventory.search(args.query, args.limit, args.language);
         return { query: args.query, count: matches.length, matches };
       };
-      const found = history ? await history.run({ source: 'mcp', mode: 'search', query: args.query, language: inventory.language(args.language) }, work) : work();
+      const found = history ? await history.run({ source: 'mcp', mode: 'search', query: args.query, language: inventory.language(args.language) }, work) : await work();
       return success(result({ ...found, matches: found.matches.map(toToolBox) }));
     }
     if (name === 'get_box') {

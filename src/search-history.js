@@ -15,7 +15,7 @@ export function validateSearchEntry(entry) {
     || typeof entry.query !== 'string' || !entry.query.trim() || entry.query.length > 2000
     || typeof entry.language !== 'string' || entry.language.length > 20
     || typeof entry.answer !== 'string' || entry.answer.length > 4000
-    || !['', 'search', 'ai', 'decision-preview'].includes(entry.answerSource)
+    || !['', 'search', 'ai', 'decision-preview', 'semantic'].includes(entry.answerSource)
     || typeof entry.queryTruncated !== 'boolean' || typeof entry.answerTruncated !== 'boolean'
     || !Array.isArray(entry.matches) || entry.matches.length > 25
     || !Number.isSafeInteger(entry.count) || entry.count < entry.matches.length
@@ -42,7 +42,7 @@ export class SearchHistory {
         query: cut(receivedQuery, 2000), queryTruncated: receivedQuery.length > 2000,
         language: cut(language, 20), outcome, durationMs: Math.max(0, Date.now() - started),
         answer: cut(answer, 4000), answerTruncated: answer.length > 4000,
-        answerSource: ['search', 'ai', 'decision-preview'].includes(result?.source) ? result.source : '',
+        answerSource: ['search', 'ai', 'decision-preview', 'semantic'].includes(result?.source) ? result.source : '',
         count: result?.matches?.length || 0,
         matches: (result?.matches || []).slice(0, 25).map(m => ({ boxId: cut(m.boxId, 500), label: cut(m.label, 500),
           location: cut(Object.values(m.location || {}).filter(Boolean).join(', '), 1500) }))

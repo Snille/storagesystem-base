@@ -167,13 +167,20 @@ const normalized = value => value.toLowerCase().normalize('NFKD').replace(/[\u03
 let renderGeneration = 0;
 async function render() {
   const generation = ++renderGeneration;
+  $('search-answer').hidden = true;
   const query = $('search').value.trim(); const location = $('location').value;
   let visible = boxes;
   // Use the application search service for the same matching as REST and MCP.
   if (query) {
     // The management listing includes full box data, but public search may use a different key.
     // A management search endpoint keeps the read API key separate from this tab's key.
-    try { visible = (await (await request(`search?q=${encodeURIComponent(query)}`)).json()).matches; }
+    try {
+      const result = await (await request(`search?q=${encodeURIComponent(query)}`)).json();
+      visible = result.matches;
+      if (generation === renderGeneration && !location && result.source === 'semantic') {
+        $('search-answer').textContent = result.answer; $('search-answer').hidden = false;
+      }
+    }
     catch (error) { message(error.message, true); return; }
   }
   if (generation !== renderGeneration) return;
