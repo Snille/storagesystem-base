@@ -1,6 +1,6 @@
 # Deployment and operations
 
-Production/source: 0.30.0, deployed 2026-10-30.
+Production/source: 0.31.0, deployed 2026-10-30.
 First production cutover: 2026-10-25. Last read-only health/audit
 check: 2026-10-30. [VERSION](../VERSION) is authoritative. Historical rollout hashes,
 counts and pre-update backup evidence are in the
@@ -11,7 +11,7 @@ counts and pre-update backup evidence are in the
 | Component | Deployment |
 | --- | --- |
 | Application | Portainer stack `storagesystem`, ID 13, endpoint 2; `10.0.0.25:3210` |
-| Image | `mrsnille/storagesystem-base:0.30.0`, public Docker Hub repository |
+| Image | `mrsnille/storagesystem-base:0.31.0`, public Docker Hub repository |
 | App data | Named volume `storagesystem_app-data`, database `/data/storage.sqlite` |
 | Public names | `https://verkstad.snille.net`, `https://hylla.snille.net`; NPM proxy host 11 |
 | Management | `STORAGE_MANAGEMENT_ACCESS=open`, explicit `APP_ALLOWED_HOSTS`; trusted LAN and external Authelia |

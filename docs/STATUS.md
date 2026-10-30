@@ -1,11 +1,29 @@
 # Current status
 
-Reviewed 2026-10-30 against source and live production. Version **0.30.0** is
+Reviewed 2026-10-30 against source and live production. Version **0.31.0** is
 published and deployed to Portainer, with ordinary semantic search enabled.
 VERSION owns the source version; TODO contains outstanding work. History preserves
 release evidence and Deployment describes update/backup/rollback procedures.
 
-## Latest verification (0.30.0)
+## Latest verification (0.31.0)
+
+| Check | Result |
+| --- | --- |
+| LAN/public health | 0.31.0 on LAN, verkstad.snille.net and hylla.snille.net |
+| Main audit | Pass before and after: schema 4; 166 boxes, 256 sessions, 320 photo references, 166 positions |
+| Private data copy | New image audits a pre-update production copy without errors |
+| No-match answer | Live: `Jag hittar ingen säker träff för "zyxwvutsqr" i inventeringen.` |
+| Public guards | Wrong key 401; `conversationId` over 200 characters 400 |
+| Automated checks | All 127 tests pass; isolated container check passes |
+| Satellite | `workshop-voice-agent` 1.8.0 flashed; storagesystem-ha 1.0.8 released (HACS update pending) |
+
+Image `mrsnille/storagesystem-base:0.31.0` / `:latest`, linux/amd64, built from
+`8fdd49c`, digest `sha256:4e8526cec2a9c8a76cef3bc331ab63384cbcd22de9419079a0ab2ca0a3439a60`.
+Only `STORAGE_IMAGE` changed in stack 13. Pre/post backups are kept privately under
+`release-0.31.0-20261030`. The spoken follow-up reply is not yet accepted on the real
+satellite.
+
+## Previous verification (0.30.0)
 
 | Check | Result |
 | --- | --- |
@@ -64,9 +82,9 @@ retained as a rollback source, with later inventory reconciliation required.
 ## Next
 
 - Test real button/Whisper/Piper/speaker behavior using the new supported answers.
-- Accept the clarification reply on the real satellite. The app (unreleased) and
-  storagesystem-ha 1.0.8 (not deployed) keep the question per device for 120 s;
-  satellite firmware 1.8.0 (not flashed) listens again after a spoken question.
+- Accept the clarification reply on the real satellite after the HACS update to
+  storagesystem-ha 1.0.8: the app keeps the question per device for 120 s and
+  satellite firmware 1.8.0 listens again after a spoken question.
 - Continue fresh acceptance after reanalysis; the frozen cases are regression data.
 - Verify external authentication, automatic backup schedule/retention and physical
   location/unit printing separately. See TODO for compatibility/optional work.
