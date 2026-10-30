@@ -10,6 +10,10 @@ export class SearchService {
     this.inventory = inventory; this.env = env; this.settings = new SearchSettings(inventory.store, env);
     this.runtime = null; this.active = null; this.transition = null; this.closed = false; this.dirty = false; this.failed = false;
     this.verifier = null; this.verifierRevision = null;
+    // Pending clarifications per voice conversation: id -> { query, expires }.
+    this.clarifications = new Map();
+    const seconds = Number(env.STORAGE_CLARIFICATION_SECONDS ?? 120);
+    this.clarificationMs = Number.isFinite(seconds) && seconds >= 0 ? Math.min(seconds, 3600) * 1000 : 120000;
     this.unsubscribe = inventory.store.subscribe(() => this.refresh());
     this.refresh();
   }
@@ -75,8 +79,30 @@ export class SearchService {
       decision: result.decision, reason: result.reason, semanticAvailable: result.retrieval.available,
       ...(!result.retrieval.available ? { fallback: result.retrieval.reason } : {}) };
   }
-  async ask(query, language) {
-    return this.settings.config().publicEnabled ? this.search(query, 25, language) : this.inventory.ask(query, language);
+  async ask(query, language, conversationId) {
+    if (!this.settings.config().publicEnabled) return this.inventory.ask(query, language);
+    const pending = this.pendingClarification(conversationId);
+    if (pending) {
+      // Read a reply together with the question it answers. A reply that does
+      // not settle it is treated as a new question instead.
+      const combined = await this.search(`${pending} ${query}`.slice(0, 2000), 25, language);
+      if (combined.decision === 'answer') return { ...combined, followUpOf: pending };
+    }
+    const result = await this.search(query, 25, language);
+    this.rememberClarification(conversationId, result.decision === 'clarify' ? query : null);
+    return result;
+  }
+  pendingClarification(conversationId) {
+    const now = Date.now();
+    for (const [id, item] of this.clarifications) if (item.expires <= now) this.clarifications.delete(id);
+    const item = conversationId && this.clarifications.get(conversationId);
+    if (item) this.clarifications.delete(conversationId);
+    return item?.query;
+  }
+  rememberClarification(conversationId, query) {
+    if (!conversationId || !query || !this.clarificationMs) return;
+    if (this.clarifications.size >= 200) this.clarifications.delete(this.clarifications.keys().next().value);
+    this.clarifications.set(conversationId, { query, expires: Date.now() + this.clarificationMs });
   }
   async preview(input, language) {
     object(input); text(input.query, 'query');

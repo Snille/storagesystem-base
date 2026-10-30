@@ -49,10 +49,18 @@ function evidence(query, box) {
 }
 
 const languageText = {
-  en: { no: 'I found no supported match in the inventory.', clarify: 'Which type do you need?', at: 'is at' },
-  sv: { no: 'Jag hittar ingen säker träff i inventeringen.', clarify: 'Vilken sort behöver du?', at: 'finns på' },
-  de: { no: 'Ich finde keinen belegten Treffer im Inventar.', clarify: 'Welche Art brauchst du?', at: 'befindet sich bei' }
+  en: { no: 'I found no supported match in the inventory.', noFor: terms => `I found no supported match for "${terms}" in the inventory.`, clarify: 'Which type do you need?', at: 'is at' },
+  sv: { no: 'Jag hittar ingen säker träff i inventeringen.', noFor: terms => `Jag hittar ingen säker träff för "${terms}" i inventeringen.`, clarify: 'Vilken sort behöver du?', at: 'finns på' },
+  de: { no: 'Ich finde keinen belegten Treffer im Inventar.', noFor: terms => `Ich finde keinen belegten Treffer für "${terms}" im Inventar.`, clarify: 'Welche Art brauchst du?', at: 'befindet sich bei' }
 };
+// Speech recognition often mishears, so a no-match answer repeats what was
+// searched for. Keep the original spelling; drop only question filler words.
+export function searchedTerms(query) {
+  const kept = query.split(/\s+/).map(token => token.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    .filter(token => token && words(token).length);
+  const terms = kept.join(' ');
+  return terms.length > 120 ? `${terms.slice(0, 120).replace(/\s+\S*$/, '')}…` : terms;
+}
 
 export function previewAnswerDecision(query, boxes, { semanticMatches = [], thresholds, rules = [], identityEvidence = [], confirmedIntent } = {}, language = 'en') {
   if (typeof query !== 'string' || !query.trim() || query.length > 2000) throw new InputError('A bounded nonempty query is required.');
@@ -104,7 +112,8 @@ export function previewAnswerDecision(query, boxes, { semanticMatches = [], thre
   const finish = (decision, selected, reason, rule) => {
     const selectedBoxes = selected.map(id => byId.get(id));
     const answer = decision === 'answer' ? selectedBoxes.map(box => `${box.label} ${text.at} ${Object.values(box.location).filter(Boolean).join(', ')}`).join('; ') + '.'
-      : decision === 'clarify' ? (rule?.question?.[language] || text.clarify) : text.no;
+      : decision === 'clarify' ? (rule?.question?.[language] || text.clarify)
+      : searchedTerms(query) ? text.noFor(searchedTerms(query)) : text.no;
     return { query, answer, source: 'decision-preview', decision, reason, selectedBoxIds: selected,
       ...(rule ? { ruleId: rule.id } : {}), count: matches.length, matches };
   };

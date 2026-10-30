@@ -1,5 +1,22 @@
 # History
 
+## 0.31.0 - 2026-10-30
+
+- A no-match answer now names what was searched for, for example "Jag hittar ingen
+  säker träff för "skruvmejseln" i inventeringen.". Speech recognition often mishears,
+  and the old answer did not show what the app actually heard. Filler words such as
+  "var finns" are dropped; the original spelling is kept.
+- `/api/public/ask` accepts an optional `conversationId`. After a `clarify` decision
+  the app remembers the question for that conversation for a short time
+  (`STORAGE_CLARIFICATION_SECONDS`, default 120, `0` turns it off). The next reply is
+  first read together with the question; if that gives a supported answer it is
+  returned with `followUpOf`, otherwise the reply is a new question. The context is
+  in memory only, used once, kept per conversation and capped at 200 entries.
+  storagesystem-ha 1.0.8 sends the satellite device as the conversation key, so a
+  satellite can answer the question. The workshop satellite firmware (ESPHome
+  `workshop-voice-agent` 1.8.0) now starts listening by itself after an answer that
+  ends with `?`, so the owner does not press the button again for the reply.
+
 ## 0.30.0 - 2026-10-30
 
 - Added explicit shared semantic search activation for browser, public REST/HA and

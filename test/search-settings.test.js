@@ -312,6 +312,38 @@ test('preferred destination rules require one current supported box, never an in
   assert.equal(result.reason, 'rule_evidence_missing'); assert.deepEqual(result.selectedBoxIds, []);
 });
 
+test('a reply after a clarification is read with the question, per conversation and only for a short time', async t => {
+  const { config } = await native(t), { store, settings } = setup(t);
+  store.mutate(data => {
+    data.boxes[0].label = 'Nätverkskabel'; data.boxes[1].label = 'Kabel för nätverk';
+    const first = data.sessions.find(s => s.sessionId === 'S-1'), second = data.sessions.find(s => s.sessionId === 'S-2');
+    first.summary = 'En färdig nätverkskabel.'; first.itemKeywords = [];
+    second.summary = 'Nätverkskablar på rulle för montering.'; second.itemKeywords = [];
+  });
+  const cableRule = { ...rule('clarify'), queries: ['Nätverkskabel'] };
+  settings.save({ revision: settings.revision(), embedding: config, verification: verifierConfig(config), rules: [cableRule], publicEnabled: true });
+  const ask = async (service, query, conversationId) => service.ask(query, 'sv', conversationId);
+  const service = new SearchService(new Inventory(store), {}); t.after(() => service.close());
+  await until(() => service.status().state === 'ready');
+  assert.equal((await ask(service, 'Nätverkskabel', 'satellite-1')).decision, 'clarify');
+  let result = await ask(service, 'rulle', 'satellite-1');
+  assert.equal(result.decision, 'answer'); assert.equal(result.followUpOf, 'Nätverkskabel');
+  assert.deepEqual(result.matches.map(b => b.boxId), [fixture.boxes[1].boxId]);
+  // The context is used once, belongs to one conversation, and a reply that
+  // settles nothing becomes a new question.
+  assert.equal((await ask(service, 'rulle', 'satellite-1')).followUpOf, undefined);
+  await ask(service, 'Nätverkskabel', 'satellite-1');
+  assert.equal((await ask(service, 'rulle', 'satellite-2')).followUpOf, undefined);
+  result = await ask(service, 'M99', 'satellite-1');
+  assert.equal(result.decision, 'no_supported_match'); assert.equal(result.followUpOf, undefined);
+  assert.equal(result.answer, 'Jag hittar ingen säker träff för "M99" i inventeringen.');
+  assert.equal((await ask(service, 'rulle', 'satellite-1')).followUpOf, undefined);
+  const disabled = new SearchService(new Inventory(store), { STORAGE_CLARIFICATION_SECONDS: '0' }); t.after(() => disabled.close());
+  await until(() => disabled.status().state === 'ready');
+  await ask(disabled, 'Nätverkskabel', 'satellite-1');
+  assert.equal((await ask(disabled, 'rulle', 'satellite-1')).followUpOf, undefined);
+});
+
 test('web, REST, MCP and HA ask share supported selections and journal final answers without rephrasing', async t => {
   const { state, config } = await native(t), { store, settings } = setup(t);
   store.writeSettings({ aiWorkspace: { connections: [{ id: 'fake-phrasing', name: 'Synthetic', provider: 'compatible', baseUrl: `${config.baseUrl}/v1` }],
@@ -348,8 +380,11 @@ test('web, REST, MCP and HA ask share supported selections and journal final ans
   result = await request('/api/public/ask', { query: 'solder' });
   assert.equal(result.decision, 'answer'); assert.equal(result.fallback, 'embedding_unavailable');
   assert.deepEqual(result.matches.map(b => b.boxId), [fixture.boxes[0].boxId]);
-  result = await request('/api/public/ask', { query: 'M99 screws' });
+  result = await request('/api/public/ask', { query: 'M99 screws', conversationId: 'satellite-1' });
   assert.equal(result.decision, 'no_supported_match'); assert.equal(result.count, 0);
+  const tooLong = await fetch(base + '/api/public/ask', { method: 'POST', headers: { 'x-api-key': 'read', 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'solder', conversationId: 'x'.repeat(201) }) });
+  assert.equal(tooLong.status, 400);
   store.mutate(data => { for (const session of data.sessions.filter(s => s.isCurrent)) session.itemKeywords.push('fastener', 'shared'); });
   const view = settings.view();
   settings.save({ revision: view.revision, embedding: fields(view), rules: [{ id: 'both-fasteners', queries: ['fastener'], action: 'all', boxIds: fixture.boxes.map(b => b.boxId) }] });

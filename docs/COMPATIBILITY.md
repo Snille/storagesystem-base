@@ -39,7 +39,7 @@ Public routes use `x-api-key`, Bearer authentication, or the legacy `?key=` fall
 | --- | --- |
 | `GET /api/public/health` | `{ok, service:"lagersystem", date}` |
 | `GET /api/public/search?q=...&limit=...&lang=...` | Trimmed query; default limit 10, clamp 1–25, nonfinite fallback; `{query,count,matches}`; missing q → 400 |
-| `POST /api/public/ask` | `{query,language?}` → `{query,answer,source,count,matches}`; source is `semantic` in enabled decision mode; otherwise `ai` for provider phrasing or `search` for local fallback |
+| `POST /api/public/ask` | `{query,language?,conversationId?}` → `{query,answer,source,count,matches}`; source is `semantic` in enabled decision mode; otherwise `ai` for provider phrasing or `search` for local fallback. In enabled mode, a reply with the same `conversationId` within `STORAGE_CLARIFICATION_SECONDS` (default 120, `0` off) after a `clarify` decision is first read together with that question; a resolved answer adds `followUpOf` |
 | `GET /api/public/boxes/:boxId?lang=...` | One box; unknown identifier → 404; optional fields omitted when absent |
 | `GET /api/public/assets/:assetId/thumbnail`, `/preview` or `/original` | Public API authentication or per-asset/per-variant `?sig=` authentication; configured provider retrieval |
 

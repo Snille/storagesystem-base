@@ -93,6 +93,9 @@ test('unknown, stale, duplicate or invalid semantic candidates and malformed rul
     assert.throws(() => inventory.previewAnswer('tool', { thresholds: { similarity: NaN, margin: 0 } }), /thresholds/);
     assert.throws(() => inventory.previewAnswer('tool', { rules: [{ id: 'bad' }] }), /rule/);
     assert.equal(inventory.previewAnswer('var finns det på').decision, 'no_supported_match');
+    // A no-match answer names what was searched for, so a mishearing is audible.
+    assert.equal(inventory.previewAnswer('Var finns skruvmejseln?', {}, 'sv').answer, 'Jag hittar ingen säker träff för "skruvmejseln" i inventeringen.');
+    assert.equal(inventory.previewAnswer('var finns det på', {}, 'sv').answer, 'Jag hittar ingen säker träff i inventeringen.');
   } finally { store.close(); }
 });
 

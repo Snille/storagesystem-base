@@ -64,8 +64,9 @@ retained as a rollback source, with later inventory reconciliation required.
 ## Next
 
 - Test real button/Whisper/Piper/speaker behavior using the new supported answers.
-- Add bounded conversation context for yes/no replies after a clarification. The
-  question is delivered now; remembering that question for a later reply is not.
+- Accept the clarification reply on the real satellite. The app (unreleased) and
+  storagesystem-ha 1.0.8 (not deployed) keep the question per device for 120 s;
+  satellite firmware 1.8.0 (not flashed) listens again after a spoken question.
 - Continue fresh acceptance after reanalysis; the frozen cases are regression data.
 - Verify external authentication, automatic backup schedule/retention and physical
   location/unit printing separately. See TODO for compatibility/optional work.

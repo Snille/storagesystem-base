@@ -162,8 +162,10 @@ export function createApp({ store, env = process.env }) {
       }
       if (path === '/api/public/ask' && method === 'POST') {
         const input = object(await body(req)); text(input.query, 'query'); text(input.language, 'language', { optional: true });
+        text(input.conversationId, 'conversationId', { optional: true });
+        if (input.conversationId?.length > 200) throw new InputError('conversationId is too long.');
         const result = await history.run({ source: 'api', mode: 'ask', query: input.query.trim(), language: inventory.language(input.language) }, async () => {
-          const found = await search.ask(input.query.trim(), input.language);
+          const found = await search.ask(input.query.trim(), input.language, input.conversationId);
           const phrased = found.source === 'semantic' ? null : await ai.phraseAnswer(found.query, found.matches, inventory.language(input.language));
           return { ...found, ...(phrased ? { answer: phrased.answer, source: 'ai' } : {}) };
         });

@@ -216,8 +216,9 @@ currently be reliably interpreted as clarification of an earlier cable question.
 Contextual clarification needs a compatible integration/API extension: carry a
 conversation/session identifier, store a bounded pending question and candidate
 set, expire it after a short configurable interval, and reset on a new topic.
-Keep different devices/conversations separate. The user presses the button again
-to provide the clarification; microphone activation remains user-controlled.
+Keep different devices/conversations separate. Owner decision 2026-10-30: after a
+spoken clarifying question (an answer ending with `?`) the satellite starts listening
+by itself, at most twice in a row; a button press still starts every new question.
 Test dismissal/repeat behavior so it does not accidentally replay or discard a
 pending clarification.
 
