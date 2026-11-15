@@ -1,5 +1,13 @@
 # History
 
+## Operations - 2026-11-15
+
+- The owner removed the old application (CT 103, `hyllsystem-live`) after a final
+  Proxmox backup. No inventory edits were made there after the 2026-10-25 cutover,
+  so no reconciliation was needed. Features only in the old app (AI suggestion of
+  which existing box new photos belong to, translation editing) were judged not
+  needed. No application code changed.
+
 ## 0.31.0 - 2026-10-30
 
 - A no-match answer now names what was searched for, for example "Jag hittar ingen

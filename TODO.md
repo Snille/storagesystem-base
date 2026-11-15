@@ -26,10 +26,9 @@ and [evaluation evidence](docs/SEMANTIC-EVALUATION.md).
 - [ ] When needed, physically accept location and storage-unit labels from this
   app with the current templates. Live templates/previews and earlier box-label
   acceptance do not prove every new layout on paper.
-- [ ] After an owner-agreed retention period, check every consumer of the old app
-  and CUPS before retiring `hyllsystem-live`. Reconcile newer inventory first if
-  rollback is needed. Remove private migration copies containing credentials only
-  when their retention is no longer needed; the owner decides retirement.
+- [ ] Remove private migration copies containing credentials (for example ignored
+  `data/migration-2026-10-24/`) only when their retention is no longer needed; the
+  owner decides. The old app `hyllsystem-live` was removed on 2026-11-15.
 - [ ] Establish/document the production backup schedule and retention, or verify an
   existing schedule. Manual downloads and pre-release backups do not prove an
   automatic backup policy. Periodically rehearse restoration on an isolated copy.

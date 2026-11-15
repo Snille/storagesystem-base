@@ -76,8 +76,9 @@ PhotoPrism is fixture-tested only. IDs and existing HA/public credentials are pr
 
 The app runs at 10.0.0.25:3210 with volume storagesystem_app-data; public names route
 through the existing proxy. Management is open on the trusted LAN with external
-Authelia; public API/MCP authentication stays independent. The old installation is
-retained as a rollback source, with later inventory reconciliation required.
+Authelia; public API/MCP authentication stays independent. The old installation
+(CT 103, `hyllsystem-live`) was removed by the owner on 2026-11-15 after a final
+Proxmox backup; it had no inventory edits after cutover. There is no old-app rollback.
 
 ## Next
 

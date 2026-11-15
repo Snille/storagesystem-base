@@ -102,17 +102,17 @@ backup schedule/retention has not been established by the reviewed evidence; ver
 an existing policy or set one up separately. Prune safety/migration copies only after
 checking their contents, retention needs and owner decisions.
 
-## Old system and rollback
+## Old system
 
-The former app at `hyllsystem-live` (`10.0.0.33:3000`, `/opt/lagersystem`,
-`lagersystem.service`) was retained at cutover. The historical network rollback is
-to point NPM host 11 back there. It is a snapshot of the older inventory, so simply
-switching back can hide later edits; confirm data reconciliation and current host
-health before any rollback. Current old-host process state was not rechecked here.
+The former app at `hyllsystem-live` (CT 103, `10.0.0.33:3000`) was kept after
+cutover, stopped by 2026-11-07 and removed by the owner on 2026-11-15. A final
+Proxmox backup was taken the night before; no inventory edits were made there after
+cutover. Its source remains in the `Snille/storagesystem` repository. There is no
+old-app network rollback any more; roll back only to a compatible backup/image pair
+of this application.
 
-Only label-service may reserve/print on the DYMO. Do not print through the old CUPS
-or start a second label-service while the live service is used. Check all old-app
-and CUPS consumers before owner-approved retirement. Private migration files under
+Only label-service may reserve/print on the DYMO. Do not start a second
+label-service while the live service is used. Private migration files under
 ignored `data/migration-2026-10-24/` include credentials; review retention before
 removing them. The original Docker Desktop development stack was removed on
 2026-10-25; `compose.yaml` recreates a separate empty development instance.
@@ -155,5 +155,4 @@ uncropped photo on shelving unit E. No inventory edit, AI request or physical
 print was made. Semantic indexing stays disabled.
 
 Schema-3 images cannot open schema 4. Keep the compatible pre-update backup and
-reconcile newer inventory changes before a rollback; the old system is not a
-current copy of the post-cutover inventory. See the rollback section above.
+reconcile newer inventory changes before a rollback.

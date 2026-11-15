@@ -13,7 +13,7 @@ outstanding-action list; this page records milestones and boundaries.
 | Voice | Compatible HA API, isolated real-HA/card acceptance, browser microphone input | Physical speech acceptance, bounded clarification context, optional browser playback; STT normalization deferred |
 | Languages/settings | English/Swedish catalogs, external en/sv/de, independent AI language, appearance, security and maintenance UI | Translation tooling, optional German UI and legacy overrides |
 | Printing | Label-service client, box/location/unit templates, separate print dialog, per-box remembered template; earlier physical box output accepted | Current location/unit template physical acceptance; designer/sheets/QR belong in label-service |
-| Deployment | Docker Hub image, Portainer production since 2026-10-25, updates through 0.30.0, tested backup-copy restores and schema migrations | External authentication check, recurring backup-policy verification, owner-approved old-system retirement |
+| Deployment | Docker Hub image, Portainer production since 2026-10-25, updates through 0.30.0, tested backup-copy restores and schema migrations; old system removed 2026-11-15 | External authentication check, recurring backup-policy verification |
 
 ## Semantic activation milestone
 

@@ -8,8 +8,8 @@ For the next development session, start with [current state and continuation not
 
 This application has been **production since 2026-10-25**. Version **0.31.0** is
 running in Portainer and at `verkstad.snille.net` / `hylla.snille.net`; [VERSION](VERSION)
-is the single application version source (currently **0.31.0**). The previous application is retained as
-a rollback source, not the active backend. This repository has independent Git history.
+is the single application version source (currently **0.31.0**). The previous application was
+removed on 2026-11-15; its source remains in its own Git repository. This repository has independent Git history.
 
 Implemented: box inventory/session history, Immich album/photo workflows, reviewed
 editable AI drafts and updates with fallback, shared lexical/semantic UI/REST/MCP search,
